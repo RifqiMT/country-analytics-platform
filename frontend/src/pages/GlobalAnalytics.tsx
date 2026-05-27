@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import CollapsibleToolbar from "../components/layout/CollapsibleToolbar";
+import PageIntro from "../components/layout/PageIntro";
 import ChartTableToggle from "../components/charts/ChartTableToggle";
 import AccordionSection from "../components/dashboard/AccordionSection";
 import GlobalChoropleth from "../components/global/GlobalChoropleth";
@@ -469,47 +471,63 @@ export default function GlobalAnalytics() {
     snapshot && (snapshot.requestedYear ?? year) !== mapDataYear
   );
 
-  const viewBtn = (mode: ViewMode, label: string, icon: ReactNode) => (
+  const viewBtn = (mode: ViewMode, label: string, shortLabel: string, icon: ReactNode) => (
     <button
       type="button"
       onClick={() => setView(mode)}
-      className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition ${
+      aria-pressed={view === mode}
+      title={label}
+      className={`inline-flex h-9 shrink-0 items-center gap-1 rounded-lg px-2 text-xs font-semibold transition sm:gap-1.5 sm:px-2.5 sm:text-sm ${
         view === mode ? "bg-red-600 text-white shadow-sm" : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
       }`}
     >
       {icon}
-      {label}
+      <span className="sm:hidden">{shortLabel}</span>
+      <span className="hidden sm:inline">{label}</span>
     </button>
   );
 
+  const viewSummary =
+    view === "map" ? "Map" : view === "table" ? "Global table" : "Global charts";
+
   return (
     <div className="space-y-4">
-      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-        <div className="grid grid-cols-1 gap-2">
-          <h1 className="text-2xl font-bold uppercase tracking-tight text-slate-900">Global view</h1>
-          <p className="w-full text-sm text-slate-600">
-            A modern, analyst-grade view across financial, demographic, and health metrics for every country (2000 – latest),
-            powered by World Bank, UN, WHO, and IMF data. Switch between an interactive world map, a full global country
-            table, and global macro charts for cross-country comparison.
-          </p>
-        </div>
+      <PageIntro title="Global view">
+        <p>
+          Analyst-grade financial, demographic, and health metrics for every country (2000 – latest),
+          powered by World Bank, UN, WHO, and IMF data. Switch between an interactive world map, a full
+          global country table, and global macro charts for cross-country comparison.
+        </p>
+      </PageIntro>
 
-        <div className="mt-6 flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-end">
-          <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Year</label>
+      <CollapsibleToolbar
+        title="View controls"
+        summary={`${viewSummary} · ${year} · ${region}`}
+        forceOpen={loading}
+      >
+        <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto sm:gap-2 md:gap-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="shrink-0">
+            <label htmlFor="global-year" className="sr-only">
+              Year
+            </label>
             <input
+              id="global-year"
               type="number"
-              className="mt-1 w-32 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
+              className="h-9 w-[4.5rem] min-w-[4.5rem] rounded-lg border border-slate-200 bg-white px-2 text-center text-sm font-medium tabular-nums text-slate-900 shadow-sm [appearance:textfield] focus:border-red-300 focus:outline-none focus:ring-1 focus:ring-red-300 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
               value={year}
               min={MIN_DATA_YEAR}
               max={maxYear}
               onChange={(e) => setYear(clampPickerYear(Number(e.target.value)))}
             />
           </div>
-          <div className="min-w-[200px]">
-            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Region</label>
+
+          <div className="min-w-[5.5rem] flex-1 shrink basis-0 sm:max-w-[10rem] md:max-w-xs">
+            <label htmlFor="global-region" className="sr-only">
+              Region
+            </label>
             <select
-              className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
+              id="global-region"
+              className="h-9 w-full truncate rounded-lg border border-slate-200 bg-white px-2.5 text-sm text-slate-900 shadow-sm focus:border-red-300 focus:outline-none focus:ring-1 focus:ring-red-300 sm:px-3"
               value={region}
               onChange={(e) => setRegion(e.target.value)}
             >
@@ -520,54 +538,65 @@ export default function GlobalAnalytics() {
               ))}
             </select>
           </div>
-          <div className="flex flex-wrap gap-2">
+
+          <div className="hidden h-9 w-px shrink-0 bg-slate-200 sm:block" aria-hidden />
+
+          {view === "map" ? (
+            <div className="min-w-[7rem] flex-1 shrink basis-0 sm:max-w-[11rem] md:max-w-sm lg:max-w-md">
+              <label htmlFor="global-map-metric" className="sr-only">
+                Metric on map
+              </label>
+              <select
+                id="global-map-metric"
+                className="h-9 w-full truncate rounded-lg border border-slate-200 bg-white px-2.5 text-sm text-slate-900 shadow-sm focus:border-red-300 focus:outline-none focus:ring-1 focus:ring-red-300 sm:px-3"
+                value={mapMetric}
+                onChange={(e) => setMapMetric(e.target.value)}
+              >
+                {(mapSelectOptions
+                  ? mapSelectOptions.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {metricDisplayLabel(m)}
+                      </option>
+                    ))
+                  : [...MAP_METRIC_FALLBACK_ORDER].map((id) => (
+                      <option key={id} value={id}>
+                        {id}
+                      </option>
+                    )))}
+              </select>
+            </div>
+          ) : null}
+
+          <div className="hidden h-9 w-px shrink-0 bg-slate-200 sm:block" aria-hidden />
+
+          <div className="flex shrink-0 items-center gap-1" role="group" aria-label="Global view mode">
             {viewBtn(
               "map",
               "Map",
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              "Map",
+              <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
               </svg>
             )}
             {viewBtn(
               "table",
               "Global table",
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              "Table",
+              <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
               </svg>
             )}
             {viewBtn(
               "charts",
               "Global charts",
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              "Charts",
+              <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 19V5m4 14V9m4 10V7m4 12v-8" />
               </svg>
             )}
           </div>
         </div>
-
-        {view === "map" && (
-          <div className="mt-4 max-w-md">
-            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Metric on map</label>
-            <select
-              className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
-              value={mapMetric}
-              onChange={(e) => setMapMetric(e.target.value)}
-            >
-              {(mapSelectOptions
-                ? mapSelectOptions.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {metricDisplayLabel(m)}
-                    </option>
-                  ))
-                : [...MAP_METRIC_FALLBACK_ORDER].map((id) => (
-                    <option key={id} value={id}>
-                      {id}
-                    </option>
-                  )))}
-            </select>
-          </div>
-        )}
-      </section>
+      </CollapsibleToolbar>
 
       {err && <p className="text-sm text-red-600">{err}</p>}
       {loading && view !== "charts" && <p className="text-sm text-slate-500">Loading…</p>}

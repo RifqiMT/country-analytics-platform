@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import CollapsibleToolbar from "../components/layout/CollapsibleToolbar";
+import PageIntro from "../components/layout/PageIntro";
 import CountrySelect from "../components/CountrySelect";
 import { getJson, postJson } from "../api";
 import type { PorterAnalysis, IloIsicDivision } from "../types/porter";
@@ -83,37 +85,45 @@ export default function Porter() {
   };
 
   return (
-    <div className="space-y-8">
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-        <div className="grid grid-cols-1 gap-3">
-          <h1 className="text-2xl font-bold uppercase tracking-wide text-slate-900">
-            Porter Five Forces
-          </h1>
-          <p className="w-full text-sm leading-relaxed text-slate-600">
-            Industry attractiveness analysis (Threat of new entrants, Bargaining power of suppliers,
-            Bargaining power of buyers, Threat of substitutes, Competitive rivalry) for the selected
-            country and ILO-ISIC industry sector. Uses the same platform data (World Bank, UN, WHO, IMF;
-            2000–{maxSelectableYear()}) and supplementary information from TAVILY, GROQ, or other LLMs.
-          </p>
-        </div>
+    <div className="space-y-6 lg:space-y-8">
+      <PageIntro title="Porter Five Forces">
+        <p>
+          Industry attractiveness analysis for the selected country and ILO-ISIC industry sector. Uses platform
+          data (World Bank, UN, WHO, IMF; 2000–{maxSelectableYear()}) and supplementary information from Tavily,
+          Groq, or other LLMs when configured.
+        </p>
+      </PageIntro>
 
-        <div className="mt-8 rounded-xl border border-slate-100 bg-slate-50/80 p-5 sm:p-6">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:gap-8">
-            <div className="min-w-0 flex-1 space-y-1">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Country</p>
-              <p className="text-xs text-slate-500">Choose the focus country for the dashboard and map.</p>
-              <div className="mt-3 max-w-xl">
-                <CountrySelect value={country} onChange={setCountry} variant="light" showLabel={false} />
-              </div>
+      <CollapsibleToolbar
+        title="Run analysis"
+        summary={`${country} · ${industryForApi.split(" - ")[0] ?? industryForApi}`}
+        forceOpen={loading}
+      >
+        <div className="overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex w-max min-w-full flex-nowrap items-center gap-2 sm:gap-3">
+            <div className="w-[min(100%,10rem)] shrink-0 sm:w-[12rem] md:max-w-[14rem]">
+              <label className="sr-only">Country</label>
+              <CountrySelect
+                value={country}
+                onChange={setCountry}
+                variant="light"
+                showLabel={false}
+                className="gap-0 [&_input]:h-9 [&_input]:truncate [&_input]:py-1.5 [&_input]:pl-2.5 [&_input]:pr-8 [&_input]:text-xs sm:[&_input]:pl-3 sm:[&_input]:pr-10 sm:[&_input]:text-sm"
+              />
             </div>
-            <div className="min-w-0 flex-1 space-y-1">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                Industry / sector (ILO-ISIC division)
-              </p>
+
+            <div className="hidden h-9 w-px shrink-0 bg-slate-200 sm:block" aria-hidden />
+
+            <div className="w-[min(100%,11rem)] shrink-0 sm:w-[13rem] md:w-[16rem] lg:w-[18rem]">
+              <label htmlFor="porter-industry" className="sr-only">
+                Industry / sector (ILO-ISIC)
+              </label>
               <select
+                id="porter-industry"
                 value={industry}
                 onChange={(e) => setIndustry(e.target.value)}
-                className="mt-3 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 pr-10 text-sm text-slate-900 focus:border-red-400 focus:outline-none focus:ring-2 focus:ring-red-100"
+                title={industryForApi}
+                className="h-9 w-full truncate rounded-lg border border-slate-200 bg-white px-2.5 text-xs text-slate-900 shadow-sm focus:border-red-300 focus:outline-none focus:ring-1 focus:ring-red-300 sm:px-3 sm:text-sm"
               >
                 {industryOptions.map((d) => {
                   const val = `${d.code} - ${d.label}`;
@@ -125,18 +135,28 @@ export default function Porter() {
                 })}
               </select>
             </div>
+
             <button
               type="button"
               onClick={run}
               disabled={!country || loading}
-              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700 disabled:opacity-40 lg:self-end"
+              className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-red-600 px-3 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 sm:ml-auto"
+              title="Generate Porter Five Forces analysis"
             >
               <LightningIcon />
-              {loading ? "Generating…" : "Generate Porter 5 Forces Analysis"}
+              {loading ? (
+                <span className="whitespace-nowrap">…</span>
+              ) : (
+                <>
+                  <span className="hidden whitespace-nowrap md:inline">Generate Porter 5 Forces</span>
+                  <span className="hidden whitespace-nowrap sm:inline md:hidden">Generate Porter</span>
+                  <span className="sr-only sm:hidden">Generate Porter Five Forces analysis</span>
+                </>
+              )}
             </button>
           </div>
         </div>
-      </div>
+      </CollapsibleToolbar>
 
       {err && (
         <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">

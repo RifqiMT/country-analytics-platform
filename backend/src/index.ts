@@ -25,6 +25,7 @@ import cors from "cors";
 import express from "express";
 import { METRICS, METRIC_BY_ID } from "./metrics.js";
 import { listCountries, getCountry, fetchCountryByIso3Direct, type CountrySummary } from "./restCountries.js";
+import { fetchEnrichedCountryMeta } from "./countryMetaEnrichment.js";
 import { fetchWikidataCountryEnrichment } from "./wikidataCountryProfile.js";
 import { fetchSeaAroundUsEezAreaKm2 } from "./seaAroundUsEez.js";
 import { EEZ_SQKM_FALLBACK } from "./eezSqKmFallback.js";
@@ -2378,7 +2379,7 @@ app.post("/api/analysis/pestel", async (req, res) => {
       : clampYear(currentDataYear() - 1);
     if (!/^[A-Z]{3}$/.test(cca3)) return res.status(400).json({ error: "countryCode (ISO3) required" });
     const [meta, bundle, profile] = await Promise.all([
-      getCountry(cca3),
+      fetchEnrichedCountryMeta(cca3),
       fetchCountryBundle(cca3, allMetricIds(), MIN_DATA_YEAR, currentDataYear()),
       fetchWbCountryProfile(cca3),
     ]);
@@ -2465,6 +2466,7 @@ app.post("/api/analysis/pestel", async (req, res) => {
     const hasTemporalWindows = webFull.includes("Multi-horizon web research");
     const staticProfile = [
       `Government type (country profile): ${meta?.government ?? "—"}`,
+      meta?.headOfGovernmentTitle ? `Head of government role: ${meta.headOfGovernmentTitle}` : null,
       `Region: ${meta?.region ?? "—"}${meta?.subregion ? ` · Subregion: ${meta.subregion}` : ""}`,
       `World Bank income level: ${profile?.incomeLevel ?? "—"}${profile?.incomeLevelId ? ` (${profile.incomeLevelId})` : ""}`,
       typeof meta?.area === "number" ? `Land area (km², country profile): ${meta.area}` : null,
@@ -2616,7 +2618,7 @@ app.post("/api/analysis/porter", async (req, res) => {
     if (!/^[A-Z]{3}$/.test(cca3)) return res.status(400).json({ error: "countryCode (ISO3) required" });
 
     const [meta, bundle, profile] = await Promise.all([
-      getCountry(cca3),
+      fetchEnrichedCountryMeta(cca3),
       fetchCountryBundle(cca3, allMetricIds(), MIN_DATA_YEAR, currentDataYear()),
       fetchWbCountryProfile(cca3),
     ]);

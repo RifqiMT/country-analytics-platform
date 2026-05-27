@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { formatCompactNumber, formatYoY, yoYClass } from "../../lib/formatValue";
+import { COUNTRY_COMPARISON_METHODOLOGY_PATH } from "../../lib/countryComparisonMethodology";
 import { cmpNullableNumber, cmpString, toggleColumnSort, type SortDir } from "../../lib/tableSort";
 import SortableTh from "../ui/SortableTh";
 
@@ -258,18 +260,21 @@ export default function DashboardComparisonTable({ year, countryName, rows, onEx
           </tbody>
         </table>
       </div>
-        <p
-          className={`shrink-0 px-4 py-2.5 text-xs text-slate-400 ${fullscreen ? "border-t border-slate-100" : ""}`}
+        <div
+          className={`shrink-0 border-t border-slate-100 px-4 py-3 ${fullscreen ? "" : ""}`}
         >
-          Avg country uses REST sovereigns only (WDI “all” rows for WLD/regions are excluded). GDP levels: median
-          economy; GDP per capita: Σ GDP ÷ Σ population at the snapshot year; GNI per capita (Atlas): median economy at
-          the snapshot year; inflation / lending / poverty /
-          unemployment %: population- or labour-force–weighted mean; labour force: median; unemployed (count): median
-          national count. WDI year ≤ your selected year, stepping back up to ~14 years when needed. Global: WLD at that
-          same snapshot year when available; else sum of countries for level totals, or the same weighted / implied
-          aggregate used for the avg column. Unemployed (number) global uses WLD u × WLD LF at the snapshot year when
-          possible, else sum of national counts. EEZ is not connected to a data feed yet.
-        </p>
+          <p className="text-xs leading-relaxed text-slate-500">
+            <span className="font-medium text-slate-700">Avg country</span> and{" "}
+            <span className="font-medium text-slate-700">Global</span> use different aggregation rules than your
+            country column.{" "}
+            <Link
+              to={COUNTRY_COMPARISON_METHODOLOGY_PATH}
+              className="font-semibold text-red-600 hover:text-red-700 hover:underline"
+            >
+              View comparison methodology
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );

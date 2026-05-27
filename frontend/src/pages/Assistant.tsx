@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import PageIntro from "../components/layout/PageIntro";
 import { postJson } from "../api";
 import CountrySelect from "../components/CountrySelect";
 import MessageContent, { type AssistantMessageCitations } from "../components/assistant/MessageContent";
@@ -247,38 +248,32 @@ export default function Assistant() {
   return (
     <div className="flex flex-col">
       <div className="space-y-3">
-        <div className="grid grid-cols-1 gap-2">
-          <h1 className="text-2xl font-bold uppercase tracking-wide text-slate-900">
-            Analytics Assistant
-          </h1>
-          <p className="w-full text-sm leading-relaxed text-slate-600">
+        <PageIntro title="Analytics Assistant">
+          <p>
             The assistant answers in clear, analyst-style prose. For <strong className="font-semibold text-slate-800">numbers and rankings</strong>, it anchors to the{" "}
             <strong className="font-semibold text-slate-800">same indicator series as the dashboard</strong> (World Bank
-            WDI and configured extensions)—including full global snapshots when you ask for top or bottom countries. For{" "}
-            <strong className="font-semibold text-slate-800">news, institutions, and general knowledge</strong>, it blends
-            live web retrieval (when Tavily is configured) with the model, always nudging current reporting over stale
-            training data. Use <em>Web-first</em> when you want retrieval on every turn; <em>Auto</em> keeps metrics
-            cleanly dashboard-grounded unless you need the extra search pass.
+            WDI and configured extensions). For <strong className="font-semibold text-slate-800">news and general knowledge</strong>, it blends
+            live web retrieval (when Tavily is configured) with the model.
           </p>
           <p className="text-xs text-slate-500">
-            API keys are managed in the top header panel (<span className="font-semibold">AI API Keys (App-wide)</span>) and are reused across Assistant, PESTEL, Porter, and Business Analytics.
+            API keys are managed in the header <span className="font-semibold">Tools</span> panel on mobile/tablet, or inline on desktop.
           </p>
-        </div>
-        <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
-          <div>
+        </PageIntro>
+        <div className="flex flex-row flex-wrap items-end gap-2 sm:gap-3">
+          <div className="min-w-0 flex-1 sm:max-w-[240px]">
             <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Answer style</p>
             <select
               value={model}
               onChange={(e) => setModel(e.target.value === "tavily" ? "tavily" : "groq")}
-              className="mt-1 max-w-[220px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
+              className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
               title="Auto uses dashboard-first rules for metrics; Web-first always fetches Tavily when configured."
             >
               <option value="groq">Auto — balanced routing</option>
               <option value="tavily">Web-first — always search</option>
             </select>
           </div>
-          <details ref={stepsPanelRef} className="group relative">
-            <summary className="inline-flex cursor-pointer list-none items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 shadow-sm hover:bg-slate-50 [&::-webkit-details-marker]:hidden">
+          <details ref={stepsPanelRef} className="group relative shrink-0">
+            <summary className="inline-flex cursor-pointer list-none items-center gap-2 whitespace-nowrap rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 shadow-sm hover:bg-slate-50 [&::-webkit-details-marker]:hidden">
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
                 <path
                   strokeLinecap="round"

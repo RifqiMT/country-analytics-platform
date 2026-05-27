@@ -8,7 +8,26 @@ import {
   type UserApiKeysScope,
 } from "../../lib/userApiKeys";
 
-export default function UserApiKeysHeaderPanel() {
+const GROQ_KEYS_URL = "https://console.groq.com/keys";
+const TAVILY_KEYS_URL = "https://app.tavily.com/";
+
+function GetKeyLink({ href, provider }: { href: string; provider: string }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer noopener"
+      className="inline-flex items-center gap-1 text-[10px] font-semibold normal-case tracking-normal text-teal-700 hover:text-teal-900 hover:underline"
+    >
+      Get {provider} key
+      <svg className="h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+      </svg>
+    </a>
+  );
+}
+
+export default function UserApiKeysHeaderPanel({ variant = "default" }: { variant?: "default" | "embedded" }) {
   const [groqApiKey, setGroqApiKey] = useState("");
   const [tavilyApiKey, setTavilyApiKey] = useState("");
   const [remember, setRemember] = useState(false);
@@ -101,21 +120,64 @@ export default function UserApiKeysHeaderPanel() {
     return "Not checked";
   };
 
+  const embedded = variant === "embedded";
+
   return (
-    <details className="group w-full rounded-xl border border-slate-200 bg-slate-50/60 p-2.5">
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-xs font-semibold uppercase tracking-wide text-slate-600 [&::-webkit-details-marker]:hidden">
-        <span>AI API Keys (App-wide)</span>
-        <span className={`rounded-full px-2 py-0.5 text-[10px] ${hasAnyKey ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-600"}`}>
-          {hasAnyKey ? "Active" : "Not set"}
+    <details
+      className={`group w-full [&::-webkit-details-marker]:hidden ${
+        embedded
+          ? "rounded-none border-0 bg-transparent p-0"
+          : "rounded-xl border border-slate-200 bg-slate-50/60 p-2.5"
+      }`}
+    >
+      <summary
+        className={`flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden ${
+          embedded
+            ? "min-h-[2.75rem] px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-600 hover:bg-slate-50/80 sm:px-4"
+            : "text-xs font-semibold uppercase tracking-wide text-slate-600"
+        }`}
+      >
+        <span className="inline-flex min-w-0 items-center gap-2">
+          <svg className="h-4 w-4 shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"
+            />
+          </svg>
+          <span className="truncate">AI API Keys</span>
+          {!embedded && <span className="hidden sm:inline">(App-wide)</span>}
+        </span>
+        <span className="inline-flex shrink-0 items-center gap-2">
+          <span
+            className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+              hasAnyKey ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-600"
+            }`}
+          >
+            {hasAnyKey ? "Active" : "Not set"}
+          </span>
+          <svg
+            className="h-3.5 w-3.5 shrink-0 text-slate-400 transition group-open:rotate-180"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            aria-hidden
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
         </span>
       </summary>
-      <div className="mt-2 grid grid-cols-1 gap-2">
+      <div className={`grid grid-cols-1 gap-2 ${embedded ? "border-t border-slate-100 bg-slate-50/40 p-3 sm:p-4" : "mt-2"}`}>
         <label className="min-w-0">
-          <span className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-            Groq key
-            <span className={`rounded-full px-2 py-0.5 text-[10px] ${statusChipClass(groqStatus)}`}>
-              {statusLabel(groqStatus)}
+          <span className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+            <span className="inline-flex items-center gap-2">
+              Groq key
+              <span className={`rounded-full px-2 py-0.5 text-[10px] ${statusChipClass(groqStatus)}`}>
+                {statusLabel(groqStatus)}
+              </span>
             </span>
+            <GetKeyLink href={GROQ_KEYS_URL} provider="Groq" />
           </span>
           <input
             type="password"
@@ -130,13 +192,19 @@ export default function UserApiKeysHeaderPanel() {
             placeholder="gsk_..."
             className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400"
           />
+          <p className="mt-1 text-[10px] leading-snug text-slate-500">
+            Used for Assistant, PESTEL, Porter, and Business narrative LLM calls.
+          </p>
         </label>
         <label className="min-w-0">
-          <span className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-            Tavily key
-            <span className={`rounded-full px-2 py-0.5 text-[10px] ${statusChipClass(tavilyStatus)}`}>
-              {statusLabel(tavilyStatus)}
+          <span className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+            <span className="inline-flex items-center gap-2">
+              Tavily key
+              <span className={`rounded-full px-2 py-0.5 text-[10px] ${statusChipClass(tavilyStatus)}`}>
+                {statusLabel(tavilyStatus)}
+              </span>
             </span>
+            <GetKeyLink href={TAVILY_KEYS_URL} provider="Tavily" />
           </span>
           <input
             type="password"
@@ -151,6 +219,9 @@ export default function UserApiKeysHeaderPanel() {
             placeholder="tvly-..."
             className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400"
           />
+          <p className="mt-1 text-[10px] leading-snug text-slate-500">
+            Used for live web retrieval in Assistant and analysis modules when search is enabled.
+          </p>
         </label>
         <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
           <label className="inline-flex items-center gap-2">

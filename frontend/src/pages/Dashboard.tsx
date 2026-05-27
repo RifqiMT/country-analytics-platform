@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import CollapsibleToolbar from "../components/layout/CollapsibleToolbar";
 import CountrySelect from "../components/CountrySelect";
 import AccordionSection from "../components/dashboard/AccordionSection";
 import DashboardComparisonTable, {
@@ -750,74 +751,100 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] xl:items-end">
-        <div className="grid min-w-0 grid-cols-1 gap-1">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Country</p>
-          <p className="text-sm text-slate-600">Choose the focus country for the dashboard and charts.</p>
-          <div className="mt-2 w-full min-w-0">
-            <CountrySelect value={country} onChange={setCountry} variant="light" showLabel={false} />
+      <CollapsibleToolbar
+        title="Dashboard controls"
+        summary={`${country} · ${start}–${end}`}
+        forceOpen={loading || loadingExtras}
+      >
+        <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto sm:gap-2 md:gap-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="min-w-[6.5rem] flex-1 shrink basis-0 sm:min-w-[8rem] md:max-w-md lg:max-w-lg">
+            <CountrySelect
+              value={country}
+              onChange={setCountry}
+              variant="light"
+              showLabel={false}
+              className="gap-0 [&_input]:h-9 [&_input]:truncate [&_input]:py-1.5 [&_input]:pl-2.5 [&_input]:pr-8 [&_input]:text-xs sm:[&_input]:pl-3 sm:[&_input]:pr-10 sm:[&_input]:text-sm"
+            />
           </div>
-        </div>
-        <div className="grid min-w-0 grid-cols-1 gap-1">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Year range</p>
-          <p className="text-sm text-slate-600">
-            Default span is 2000–{maxYear} (current calendar year). “To” cannot exceed {maxYear}. Typical WDI/IMF releases
-            lag slightly; the API may extend sparse series from the last observation.
-          </p>
-          <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-            <div className="flex flex-wrap gap-3">
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-500">From</span>
-                <input
-                  type="number"
-                  className="w-24 rounded-lg border border-slate-200 px-2 py-1.5 text-sm shadow-sm"
-                  value={start}
-                  min={MIN_DATA_YEAR}
-                  max={Math.min(end, maxYear)}
-                  onChange={(e) => setStart(clampSpanStart(Number(e.target.value), end))}
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-500">To</span>
-                <input
-                  type="number"
-                  className="w-24 rounded-lg border border-slate-200 px-2 py-1.5 text-sm shadow-sm"
-                  value={end}
-                  min={Math.max(start, MIN_DATA_YEAR)}
-                  max={maxYear}
-                  onChange={(e) => setEnd(clampSpanEnd(Number(e.target.value), start))}
-                />
-              </div>
-            </div>
-            <YearRangePresetDropdown start={start} end={end} maxYear={maxYear} onSelect={setPreset} />
-          </div>
-        </div>
-        <div className="flex flex-wrap gap-2 md:col-span-2 xl:col-span-1 xl:justify-end">
-          <button
-            type="button"
-            onClick={refreshAll}
-            className="inline-flex items-center gap-2 rounded-full bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-700"
+
+          <div className="hidden h-9 w-px shrink-0 bg-slate-200 sm:block" aria-hidden />
+
+          <div
+            className="flex shrink-0 items-center gap-1 sm:gap-1.5"
+            title={`Default span is 2000–${maxYear}. Typical WDI/IMF releases lag slightly; the API may extend sparse series from the last observation.`}
           >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 4v5h5M20 20v-5h-5M5 9a7 7 0 0114 0M19 15a7 7 0 01-14 0"
+            <span className="sr-only">Years</span>
+            <div className="inline-flex h-9 shrink-0 items-center rounded-lg border border-slate-200 bg-slate-50/90 px-1 shadow-sm sm:px-1.5">
+              <label className="sr-only" htmlFor="dashboard-year-from">
+                From year
+              </label>
+              <input
+                id="dashboard-year-from"
+                type="number"
+                className="w-[4rem] min-w-[4rem] border-0 bg-transparent px-0.5 text-center text-xs font-medium tabular-nums text-slate-800 [appearance:textfield] focus:outline-none focus:ring-0 sm:w-[4.5rem] sm:min-w-[4.5rem] sm:px-1 sm:text-sm [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                value={start}
+                min={MIN_DATA_YEAR}
+                max={Math.min(end, maxYear)}
+                onChange={(e) => setStart(clampSpanStart(Number(e.target.value), end))}
               />
-            </svg>
-            Refresh all data
-          </button>
-          <button
-            type="button"
-            onClick={exportAll}
-            disabled={loading}
-            className="rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40"
-          >
-            Export dashboard CSV
-          </button>
+              <span className="select-none px-0.5 text-[10px] text-slate-300 sm:text-xs" aria-hidden>
+                –
+              </span>
+              <label className="sr-only" htmlFor="dashboard-year-to">
+                To year
+              </label>
+              <input
+                id="dashboard-year-to"
+                type="number"
+                className="w-[4rem] min-w-[4rem] border-0 bg-transparent px-0.5 text-center text-xs font-medium tabular-nums text-slate-800 [appearance:textfield] focus:outline-none focus:ring-0 sm:w-[4.5rem] sm:min-w-[4.5rem] sm:px-1 sm:text-sm [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                value={end}
+                min={Math.max(start, MIN_DATA_YEAR)}
+                max={maxYear}
+                onChange={(e) => setEnd(clampSpanEnd(Number(e.target.value), start))}
+              />
+            </div>
+            <YearRangePresetDropdown start={start} end={end} maxYear={maxYear} onSelect={setPreset} compact />
+          </div>
+
+          <div className="hidden h-9 w-px shrink-0 bg-slate-200 sm:block" aria-hidden />
+
+          <div className="flex shrink-0 items-center gap-1 sm:gap-2 md:ml-auto">
+            <button
+              type="button"
+              onClick={refreshAll}
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-600 text-white shadow-sm transition hover:bg-red-700 active:scale-[0.98] sm:w-auto sm:gap-1.5 sm:px-3"
+              title="Refresh all data"
+            >
+              <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 4v5h5M20 20v-5h-5M5 9a7 7 0 0114 0M19 15a7 7 0 01-14 0"
+                />
+              </svg>
+              <span className="hidden text-sm font-semibold md:inline">Refresh</span>
+            </button>
+            <button
+              type="button"
+              onClick={exportAll}
+              disabled={loading}
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50 active:scale-[0.98] disabled:opacity-40 sm:w-auto sm:gap-1.5 sm:px-3"
+              title="Export dashboard CSV"
+            >
+              <svg className="h-4 w-4 shrink-0 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                />
+              </svg>
+              <span className="hidden text-sm font-semibold md:inline">Export CSV</span>
+            </button>
+          </div>
         </div>
-      </div>
+      </CollapsibleToolbar>
 
       {err && <p className="text-sm text-red-600">{err}</p>}
       {(loading || loadingExtras) && (

@@ -1,4 +1,5 @@
 import type { SeriesPoint } from "./worldBank.js";
+import { inferHeadOfGovernmentFromGovernmentType } from "./countryMetaEnrichment.js";
 import type { CountrySummary } from "./restCountries.js";
 import type { WbCountryProfile } from "./wbCountryProfile.js";
 import { METRIC_BY_ID } from "./metrics.js";
@@ -668,7 +669,16 @@ export function buildDataOnlyPestel(
   const region = meta?.region ?? profile?.region ?? "—";
   const sub = meta?.subregion ?? "—";
   const income = profile?.incomeLevel ?? "—";
-  const gov = meta?.government ?? "Government system label is not on file for this profile—confirm with official sources.";
+  const govLabel = meta?.government?.trim();
+  const headRole =
+    meta?.headOfGovernmentTitle?.trim() ||
+    inferHeadOfGovernmentFromGovernmentType(govLabel) ||
+    undefined;
+  const politicalLeadBullet = govLabel
+    ? headRole
+      ? `Government type (country profile): ${govLabel}. Head of government role: ${headRole}.`
+      : `Government type (country profile): ${govLabel}.`
+    : `Government type for ${countryName} (${cca3}) is not listed in reference data; see the Country Dashboard profile card when populated.`;
   const pop = latest(bundle, "population");
   const gdp = latest(bundle, "gdp");
   const gdpPc = latest(bundle, "gdp_per_capita");
@@ -729,7 +739,7 @@ export function buildDataOnlyPestel(
       letter: "P",
       label: "POLITICAL",
       bullets: [
-        `${gov}`,
+        politicalLeadBullet,
         `Geopolitical framing: ${region}${sub !== "—" ? ` · ${sub}` : ""} — validate current leadership and policy priorities with primary sources.`,
         `Cross-check corruption, bureaucracy, and regulatory stability with Transparency International, Doing Business successors, and local counsel.`,
         `Trade and alliance context (e.g. ASEAN, RCEP, bilateral ties) should be confirmed for your sector and time horizon.`,
@@ -834,7 +844,9 @@ export function buildDataOnlyPestel(
     {
       title: "Political factors",
       body: [
-        `The reference profile characterises government as: ${gov}. The economy sits in ${region}${sub !== "—" ? ` / ${sub}` : ""}, which frames alliances, trade blocs, and neighbourhood spillovers relevant to policy risk.`,
+        govLabel
+          ? `The reference profile characterises government as: ${govLabel}${headRole ? ` (${headRole})` : ""}. The economy sits in ${region}${sub !== "—" ? ` / ${sub}` : ""}, which frames alliances, trade blocs, and neighbourhood spillovers relevant to policy risk.`
+          : `The economy sits in ${region}${sub !== "—" ? ` / ${sub}` : ""}, which frames alliances, trade blocs, and neighbourhood spillovers relevant to policy risk; confirm government type on the Country Dashboard profile card.`,
         "Latest elections, cabinet changes, industrial policy, and geopolitical tensions sit outside this indicator snapshot—when live web research is enabled, narrative can incorporate recent reporting alongside these anchors; otherwise verify with embassies and official bulletins.",
         "For business: stress-test scenarios for regulatory stability, FDI screening, sanctions exposure, and sector licensing before scale-up; align public-affairs plans with documented government priorities.",
       ].join("\n\n"),

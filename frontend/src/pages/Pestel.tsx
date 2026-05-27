@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import CollapsibleToolbar from "../components/layout/CollapsibleToolbar";
+import PageIntro from "../components/layout/PageIntro";
 import CountrySelect from "../components/CountrySelect";
 import { postJson } from "../api";
 import type { PestelAnalysis } from "../types/pestel";
@@ -63,39 +65,49 @@ export default function Pestel() {
   };
 
   return (
-    <div className="space-y-8">
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-        <div className="grid grid-cols-1 gap-3">
-          <h1 className="text-2xl font-bold uppercase tracking-wide text-slate-900">PESTEL ANALYSIS</h1>
-          <p className="w-full text-sm leading-relaxed text-slate-600">
-            Comprehensive macro-environmental analysis (Political, Economic, Social, Technological, Environmental,
-            Legal) with PESTEL-SWOT matrix (Opportunities and Risks), new market analysis, key takeaways, and
-            actionable recommendations. Uses the same analyst-grade data as the platform (World Bank, UN, WHO, IMF;
-            2000 – latest) and supplements with web search for dimensions with limited dashboard data.
-          </p>
-        </div>
+    <div className="space-y-6 lg:space-y-8">
+      <PageIntro title="PESTEL Analysis">
+        <p>
+          Comprehensive macro-environmental analysis (Political, Economic, Social, Technological, Environmental,
+          Legal) with PESTEL-SWOT matrix, new market analysis, key takeaways, and actionable recommendations.
+          Uses platform data (World Bank, UN, WHO, IMF; 2000 – latest) and supplements with web search where
+          dashboard data is limited.
+        </p>
+      </PageIntro>
 
-        <div className="mt-8 rounded-xl border border-slate-100 bg-slate-50/80 p-5 sm:p-6">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <div className="min-w-0 flex-1 space-y-1">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Country</p>
-              <p className="text-xs text-slate-500">Choose the focus country for the dashboard and map.</p>
-              <div className="mt-3 max-w-xl">
-                <CountrySelect value={country} onChange={setCountry} variant="light" showLabel={false} />
-              </div>
+      <CollapsibleToolbar title="Run analysis" summary={country || "Select country"} forceOpen={loading}>
+        <div className="overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex w-max min-w-full flex-nowrap items-center gap-2 sm:gap-3">
+            <div className="min-w-[10rem] flex-1 shrink-0 sm:min-w-[12rem] md:max-w-sm">
+              <label className="sr-only">Country</label>
+              <CountrySelect
+                value={country}
+                onChange={setCountry}
+                variant="light"
+                showLabel={false}
+                className="gap-0 [&_input]:h-9 [&_input]:truncate [&_input]:py-1.5 [&_input]:pl-2.5 [&_input]:pr-8 [&_input]:text-xs sm:[&_input]:pl-3 sm:[&_input]:pr-10 sm:[&_input]:text-sm"
+              />
             </div>
             <button
               type="button"
               onClick={run}
               disabled={!country || loading}
-              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700 disabled:opacity-40 lg:self-end"
+              className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-red-600 px-3 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 sm:ml-auto"
+              title="Generate PESTEL analysis"
             >
               <WandIcon />
-              {loading ? "Generating…" : "Generate PESTEL Analysis"}
+              {loading ? (
+                <span className="whitespace-nowrap">…</span>
+              ) : (
+                <>
+                  <span className="hidden whitespace-nowrap sm:inline">Generate PESTEL</span>
+                  <span className="sr-only sm:hidden">Generate PESTEL analysis</span>
+                </>
+              )}
             </button>
           </div>
         </div>
-      </div>
+      </CollapsibleToolbar>
 
       {err && (
         <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{err}</p>

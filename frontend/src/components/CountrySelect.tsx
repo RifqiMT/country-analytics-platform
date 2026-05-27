@@ -14,6 +14,8 @@ type Props = {
   showLabel?: boolean;
   /** Show a Clear action when a country is selected. */
   allowClear?: boolean;
+  /** `below` = link under field; `inline` = × inside field (for single-row toolbars). */
+  clearPlacement?: "below" | "inline";
   placeholder?: string;
 };
 
@@ -26,6 +28,7 @@ export default function CountrySelect({
   variant = "dark",
   showLabel = true,
   allowClear = false,
+  clearPlacement = "below",
   placeholder = DEFAULT_PLACEHOLDER,
 }: Props) {
   const [countries, setCountries] = useState<CountrySummary[]>([]);
@@ -175,6 +178,9 @@ export default function CountrySelect({
 
   const disabled = loading || (!!loadErr && countries.length === 0);
 
+  const showInlineClear = allowClear && clearPlacement === "inline" && Boolean(value);
+  const inputPadRight = showInlineClear ? "pr-16" : "pr-10";
+
   return (
     <div ref={rootRef} className={`relative flex flex-col gap-2 ${className}`}>
       {showLabel && (
@@ -222,8 +228,26 @@ export default function CountrySelect({
           onChange={onInputChange}
           onFocus={onInputFocus}
           onKeyDown={onKeyDown}
-          className={`${inputCls} w-full disabled:cursor-not-allowed disabled:opacity-60`}
+          className={`${inputCls} w-full disabled:cursor-not-allowed disabled:opacity-60 ${inputPadRight}`}
         />
+        {showInlineClear ? (
+          <button
+            type="button"
+            aria-label="Clear selection"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
+              onChange("");
+              closeMenu();
+            }}
+            className={`absolute right-9 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md transition hover:bg-black/5 ${
+              variant === "light" ? "text-slate-400 hover:text-red-600" : "text-slate-400 hover:text-red-300"
+            }`}
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        ) : null}
         <button
           type="button"
           tabIndex={-1}
@@ -302,7 +326,7 @@ export default function CountrySelect({
         <p className={`text-xs ${hintCls}`}>Showing first 400 matches — refine search.</p>
       )}
 
-      {allowClear && value ? (
+      {allowClear && value && clearPlacement === "below" ? (
         <div className="flex items-center justify-end">
           <button
             type="button"

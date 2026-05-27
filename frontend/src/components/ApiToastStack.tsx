@@ -122,7 +122,7 @@ export default function ApiToastStack() {
 
   return (
     <div
-      className="pointer-events-none fixed bottom-3 right-3 z-[60] w-[min(calc(100vw-1.5rem),17.5rem)] sm:bottom-4 sm:right-4"
+      className="pointer-events-none fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] right-3 z-[60] w-[min(calc(100vw-1.5rem),17.5rem)] lg:bottom-4 lg:right-4"
       aria-live="polite"
       aria-atomic="true"
     >

@@ -10,6 +10,8 @@ import {
   clampSpanStart,
   maxSelectableYear,
 } from "../lib/yearBounds";
+import CollapsibleToolbar from "../components/layout/CollapsibleToolbar";
+import PageIntro from "../components/layout/PageIntro";
 import HighlightCountrySelect from "../components/HighlightCountrySelect";
 import CorrelationScatter from "../components/business/CorrelationScatter";
 import ResidualsScatter from "../components/business/ResidualsScatter";
@@ -570,21 +572,10 @@ export default function BusinessAnalytics() {
   }, [res, bizNarrative, analysisConfig]);
 
   return (
-    <div className="space-y-8">
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="grid min-w-0 flex-1 grid-cols-1 gap-3">
-            <h1 className="text-2xl font-bold uppercase tracking-wide text-slate-900">
-              Business Analytics
-            </h1>
-            <p className="w-full text-sm leading-relaxed text-slate-600">
-              Multi-metric correlation analysis: compare countries across two metrics to explore market
-              positioning and correlations. Uses the same analyst-grade data as the platform (World Bank,
-              UN, WHO, IMF; 2000 – latest). Use the filters below (year range, exclude IQR outliers, highlight
-              country, and Variable 1/Variable 2); then click Generate analysis. Each country–year in the
-              range is a point.
-            </p>
-          </div>
+    <div className="space-y-6 lg:space-y-8">
+      <PageIntro
+        title="Business Analytics"
+        actions={
           <button
             type="button"
             onClick={() => setPresentationMode((v) => !v)}
@@ -594,137 +585,193 @@ export default function BusinessAnalytics() {
                 : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
             }`}
           >
-            {presentationMode ? "Exit presentation mode" : "Presentation mode"}
+            {presentationMode ? "Exit presentation" : "Presentation"}
           </button>
-        </div>
-        {!presentationMode && (
-          <div className="mt-3 flex flex-wrap gap-2">
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] text-slate-600">
-              Analysis request: <span className="font-semibold text-slate-800">{analysisDiag.status}</span>
-              {typeof analysisDiag.ms === "number" ? ` · ${analysisDiag.ms} ms` : ""}
+        }
+      >
+        <p>
+          Multi-metric correlation analysis: compare countries across two metrics to explore market
+          positioning and correlations. Uses the same analyst-grade data as the platform (World Bank,
+          UN, WHO, IMF; 2000 – latest). Each country–year in the range is a scatter point.
+        </p>
+      </PageIntro>
+
+      {!presentationMode && (
+        <>
+          <div className="flex flex-wrap gap-2 md:hidden">
+            <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] text-slate-600">
+              Analysis: <span className="font-semibold text-slate-800">{analysisDiag.status}</span>
+              {typeof analysisDiag.ms === "number" ? ` · ${analysisDiag.ms}ms` : ""}
             </span>
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] text-slate-600">
-              Narrative request: <span className="font-semibold text-slate-800">{narrativeDiag.status}</span>
-              {typeof narrativeDiag.ms === "number" ? ` · ${narrativeDiag.ms} ms` : ""}
+            <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] text-slate-600">
+              Narrative: <span className="font-semibold text-slate-800">{narrativeDiag.status}</span>
+              {typeof narrativeDiag.ms === "number" ? ` · ${narrativeDiag.ms}ms` : ""}
             </span>
           </div>
-        )}
 
-        {!presentationMode && (
-          <div className="mt-5 space-y-4">
-          <div className="flex flex-wrap items-end justify-between gap-2">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Filters selection</p>
-            <p className="text-xs text-slate-500">
-              {yearCount} years selected ({startYear}–{endYear})
-            </p>
-          </div>
-
-          <div className="grid gap-3 lg:grid-cols-12">
-            <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 lg:col-span-3">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Year range</p>
-              <div className="mt-2 flex items-center gap-2">
+          <CollapsibleToolbar
+            title="Analysis filters"
+            summary={`${labelX} vs ${labelY} · ${yearCount}y (${startYear}–${endYear})`}
+            forceOpen={loading}
+          >
+            <div className="overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="flex w-max min-w-full flex-nowrap items-center gap-1.5 sm:gap-2 md:gap-3">
+              <div
+                className="inline-flex h-9 shrink-0 items-center rounded-lg border border-slate-200 bg-slate-50/90 px-1 shadow-sm sm:px-1.5"
+                title={`Coverage ${MIN_DATA_YEAR}–${maxY}`}
+              >
+                <label className="sr-only" htmlFor="business-year-from">
+                  From year
+                </label>
                 <input
+                  id="business-year-from"
                   type="number"
                   value={startYear}
                   min={MIN_DATA_YEAR}
                   max={Math.min(endYear, maxY)}
                   onChange={(e) => setStartYear(clampSpanStart(Number(e.target.value), endYear))}
-                  className="w-24 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
+                  className="w-[4.25rem] min-w-[4.25rem] border-0 bg-transparent px-0.5 text-center text-xs font-medium tabular-nums text-slate-900 [appearance:textfield] focus:outline-none sm:w-[4.5rem] sm:min-w-[4.5rem] sm:px-1 sm:text-sm [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                 />
-                <span className="text-slate-400">–</span>
+                <span className="select-none px-0.5 text-[10px] text-slate-300 sm:text-xs" aria-hidden>
+                  –
+                </span>
+                <label className="sr-only" htmlFor="business-year-to">
+                  To year
+                </label>
                 <input
+                  id="business-year-to"
                   type="number"
                   value={endYear}
                   min={Math.max(startYear, MIN_DATA_YEAR)}
                   max={maxY}
                   onChange={(e) => setEndYear(clampSpanEnd(Number(e.target.value), startYear))}
-                  className="w-24 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
+                  className="w-[4.25rem] min-w-[4.25rem] border-0 bg-transparent px-0.5 text-center text-xs font-medium tabular-nums text-slate-900 [appearance:textfield] focus:outline-none sm:w-[4.5rem] sm:min-w-[4.5rem] sm:px-1 sm:text-sm [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                 />
               </div>
-              <p className="mt-1 text-xs text-slate-500">Coverage: {MIN_DATA_YEAR}–{maxY}</p>
-            </div>
 
-            <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 lg:col-span-4">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Analysis options</p>
-              <div className="mt-2 space-y-2">
-                <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-transparent px-1 py-1 hover:border-slate-200">
-                  <input
-                    type="checkbox"
-                    checked={excludeIqr}
-                    onChange={(e) => setExcludeIqr(e.target.checked)}
-                    className="mt-1 rounded border-slate-300"
-                  />
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-600">Exclude IQR outliers</p>
-                    <p className="mt-0.5 text-xs text-slate-500">Removes points outside 1.5×IQR on both selected variables.</p>
-                  </div>
-                </label>
-                <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-transparent px-1 py-1 hover:border-slate-200">
-                  <input
-                    type="checkbox"
-                    checked={strictSelectedRange}
-                    onChange={(e) => setStrictSelectedRange(e.target.checked)}
-                    className="mt-1 rounded border-slate-300"
-                  />
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-600">Strict selected range only</p>
-                    <p className="mt-0.5 text-xs text-slate-500">Disables automatic fallback to shorter windows when timeout occurs.</p>
-                  </div>
-                </label>
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 lg:col-span-5">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Focus country</p>
-              <div className="mt-2">
-                <HighlightCountrySelect value={highlight} onChange={setHighlight} />
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 lg:col-span-5">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Variable 1</p>
-              <select
-                value={xId}
-                onChange={(e) => setXId(e.target.value)}
-                className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
+              <label
+                className="inline-flex h-9 shrink-0 cursor-pointer items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 has-[:checked]:border-red-200 has-[:checked]:bg-red-50 has-[:checked]:text-red-900"
+                title="Exclude IQR outliers — removes points outside 1.5×IQR on both variables"
               >
-                {metrics.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {metricDisplayLabel(m)}
-                  </option>
-                ))}
-              </select>
-            </div>
+                <input
+                  type="checkbox"
+                  checked={excludeIqr}
+                  onChange={(e) => setExcludeIqr(e.target.checked)}
+                  className="rounded border-slate-300 text-red-600 focus:ring-red-500"
+                />
+                <span className="whitespace-nowrap">IQR</span>
+              </label>
 
-            <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 lg:col-span-5">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Variable 2</p>
-              <select
-                value={yId}
-                onChange={(e) => setYId(e.target.value)}
-                className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
+              <label
+                className="inline-flex h-9 shrink-0 cursor-pointer items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 has-[:checked]:border-red-200 has-[:checked]:bg-red-50 has-[:checked]:text-red-900"
+                title="Strict selected range only — disables automatic fallback to shorter windows on timeout"
               >
-                {metrics.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {metricDisplayLabel(m)}
-                  </option>
-                ))}
-              </select>
-            </div>
+                <input
+                  type="checkbox"
+                  checked={strictSelectedRange}
+                  onChange={(e) => setStrictSelectedRange(e.target.checked)}
+                  className="rounded border-slate-300 text-red-600 focus:ring-red-500"
+                />
+                <span className="whitespace-nowrap">Strict</span>
+              </label>
 
-            <div className="flex items-end justify-start lg:col-span-2 lg:justify-end">
+              <div className="hidden h-9 w-px shrink-0 bg-slate-200 md:block" aria-hidden />
+
+              <div className="w-[min(100%,11rem)] shrink-0 sm:w-[12rem] md:w-[14rem]">
+                <label className="sr-only">Focus country</label>
+                <HighlightCountrySelect
+                  value={highlight}
+                  onChange={setHighlight}
+                  clearPlacement="inline"
+                  className="gap-0 [&_input]:h-9 [&_input]:truncate [&_input]:py-1.5 [&_input]:pl-2.5 [&_input]:text-xs sm:[&_input]:pl-3 sm:[&_input]:text-sm"
+                />
+              </div>
+
+              <div className="hidden h-9 w-px shrink-0 bg-slate-200 md:block" aria-hidden />
+
+              <div className="w-[min(100%,9.5rem)] shrink-0 sm:w-[10.5rem] md:w-[12rem]">
+                <label htmlFor="business-var-x" className="sr-only">
+                  Variable 1
+                </label>
+                <select
+                  id="business-var-x"
+                  value={xId}
+                  onChange={(e) => setXId(e.target.value)}
+                  title={labelX}
+                  className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-xs text-slate-900 shadow-sm focus:border-red-300 focus:outline-none focus:ring-1 focus:ring-red-300 sm:px-3 sm:text-sm"
+                >
+                  {metrics.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {metricDisplayLabel(m)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="w-[min(100%,9.5rem)] shrink-0 sm:w-[10.5rem] md:w-[12rem]">
+                <label htmlFor="business-var-y" className="sr-only">
+                  Variable 2
+                </label>
+                <select
+                  id="business-var-y"
+                  value={yId}
+                  onChange={(e) => setYId(e.target.value)}
+                  title={labelY}
+                  className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-xs text-slate-900 shadow-sm focus:border-red-300 focus:outline-none focus:ring-1 focus:ring-red-300 sm:px-3 sm:text-sm"
+                >
+                  {metrics.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {metricDisplayLabel(m)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <button
                 type="button"
                 onClick={onGenerateAnalysis}
                 disabled={loading}
-                className="w-full rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50 lg:w-auto"
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-900 text-white shadow-sm transition hover:bg-slate-800 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:gap-1.5 sm:px-3 md:ml-auto"
+                title="Generate correlation analysis"
               >
-                {loading ? "Generating…" : "Generate analysis"}
+                {loading ? (
+                  <span className="text-sm font-semibold">…</span>
+                ) : (
+                  <>
+                    <svg
+                      className="h-4 w-4 shrink-0 sm:hidden"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      aria-hidden
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.5 4.5L19 12l-5.5 3L10 19l-2.5-4L2 12l5.5-3L10 5z"
+                      />
+                    </svg>
+                    <span className="hidden whitespace-nowrap text-sm font-semibold sm:inline">Generate</span>
+                  </>
+                )}
               </button>
             </div>
+            </div>
+          </CollapsibleToolbar>
+
+          <div className="hidden flex-wrap gap-2 md:flex">
+            <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] text-slate-600">
+              Analysis request: <span className="font-semibold text-slate-800">{analysisDiag.status}</span>
+              {typeof analysisDiag.ms === "number" ? ` · ${analysisDiag.ms} ms` : ""}
+            </span>
+            <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] text-slate-600">
+              Narrative request: <span className="font-semibold text-slate-800">{narrativeDiag.status}</span>
+              {typeof narrativeDiag.ms === "number" ? ` · ${narrativeDiag.ms} ms` : ""}
+            </span>
           </div>
-          </div>
-        )}
-      </div>
+        </>
+      )}
 
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
         <h2 className="text-lg font-bold text-slate-900">Multi-metric correlation analysis</h2>

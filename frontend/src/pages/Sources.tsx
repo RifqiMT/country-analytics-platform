@@ -1,4 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
+import PageIntro from "../components/layout/PageIntro";
+import {
+  COUNTRY_COMPARISON_METHODOLOGY_ID,
+  COUNTRY_COMPARISON_METHODOLOGY_SECTIONS,
+} from "../lib/countryComparisonMethodology";
 import { getJson, type DataProvidersPayload, type MetricDef } from "../api";
 import { metricDisplayLabel } from "../lib/metricDisplay";
 
@@ -150,6 +156,7 @@ function MetricCard({ m }: { m: MetricDef }) {
 }
 
 export default function Sources() {
+  const location = useLocation();
   const [metrics, setMetrics] = useState<MetricDef[]>([]);
   const [dataProviders, setDataProviders] = useState<DataProvidersPayload | null>(null);
   const [query, setQuery] = useState("");
@@ -167,6 +174,17 @@ export default function Sources() {
   useEffect(() => {
     getJson<DataProvidersPayload>("/api/data-providers").then(setDataProviders).catch(console.error);
   }, []);
+
+  useEffect(() => {
+    if (location.hash !== `#${COUNTRY_COMPARISON_METHODOLOGY_ID}`) return;
+    setAccordionOpen(true);
+    const el = document.getElementById(COUNTRY_COMPARISON_METHODOLOGY_ID);
+    if (!el) return;
+    const timer = window.setTimeout(() => {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 150);
+    return () => window.clearTimeout(timer);
+  }, [location.hash]);
 
   const activeChips = useMemo(() => {
     return SOURCE_CHIP_DEFS.filter(
@@ -216,91 +234,75 @@ export default function Sources() {
   };
 
   return (
-    <div className="space-y-8">
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-        <div className="grid grid-cols-1 gap-3">
-          <h1 className="text-2xl font-bold uppercase tracking-wide text-slate-900">
-            Data Sources &amp; Methodology
-          </h1>
-          <p className="w-full text-sm leading-relaxed text-slate-600">
-            The stack is built around <strong>credible public institutions</strong>:{" "}
-            <strong>World Bank WDI</strong> for almost all quantitative series, the <strong>World Bank Country API</strong>{" "}
-            for income and lending metadata, <strong>IMF WEO (DataMapper)</strong> where a metric defines an IMF
-            fallback, <strong>REST Countries</strong> for geography and ISO/UN codes, <strong>Sea Around Us</strong> for
-            EEZ area when their API returns a match, and <strong>Wikidata</strong> only to fill REST Countries gaps
-            (e.g. government type). <strong>UNESCO UIS</strong> indicators appear as <strong>WDI indicator codes</strong>{" "}
-            so units and revisions stay aligned with the Bank; direct UIS API wiring can be added later for targeted
-            gap-fills. Country FX on the dashboard uses <strong>ECB daily rates</strong> (via Frankfurter) with a
-            credibility fallback to <strong>World Bank PA.NUS.FCRF</strong> (official LCU per USD) when daily quotes are
-            unavailable or flagged as outliers.
-          </p>
-          <p className="w-full text-sm leading-relaxed text-slate-600">
-            Outbound calls use a shared user-agent, short exponential retries on transient HTTP errors (429 / 5xx), and
-            server-side caching. The canonical provider list and merge order for time series live at{" "}
-            <code className="rounded bg-slate-100 px-1.5 py-0.5 text-xs">GET /api/data-providers</code> and in the
-            cards below.
-          </p>
-          <p className="w-full text-sm leading-relaxed text-slate-600">
-            Indicator codes, units, and formulas are documented per metric in the searchable dictionary.
-          </p>
-        </div>
+    <div className="space-y-6 lg:space-y-8">
+      <PageIntro title="Data Sources & Methodology">
+        <p>
+          The stack is built around credible public institutions: World Bank WDI for quantitative series, World Bank
+          Country API for income metadata, IMF WEO where defined, REST Countries for geography, Sea Around Us for EEZ,
+          and Wikidata for REST gaps. Dashboard FX uses ECB daily rates (Frankfurter) with World Bank PA.NUS.FCRF fallback.
+        </p>
+        <p>
+          Outbound calls use a shared user-agent, retries on transient errors, and server-side caching. Indicator codes,
+          units, and formulas are documented per metric in the searchable dictionary below.
+        </p>
+      </PageIntro>
 
-        {dataProviders && (
-          <div className="mt-8 space-y-4">
-            <div className="rounded-xl border border-slate-200">
-              <button
-                type="button"
-                onClick={() => setProvidersOpen((o) => !o)}
-                className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-semibold text-slate-900 hover:bg-slate-50"
-              >
-                Provider stack & merge pipeline
-                <ChevronIcon open={providersOpen} />
-              </button>
-              {providersOpen && (
-                <div className="space-y-4 border-t border-slate-200 p-4">
-                  <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-                      Country time-series merge order
-                    </p>
-                    <p className="mt-2 text-sm leading-relaxed text-slate-700">{dataProviders.seriesMergePipeline}</p>
-                  </div>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    {dataProviders.providers.map((p) => (
-                      <article
-                        key={p.id}
-                        className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
-                      >
-                        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{p.institution}</p>
-                        <h2 className="mt-1 text-base font-bold text-slate-900">{p.name}</h2>
-                        <p className="mt-2 text-sm text-slate-600">{p.role}</p>
-                        {p.seriesMergeOrder != null && (
-                          <p className="mt-2 text-xs font-medium text-slate-500">Series merge step: {p.seriesMergeOrder}</p>
-                        )}
-                        <ul className="mt-3 list-disc space-y-1 pl-5 text-xs text-slate-600">
-                          {p.usedFor.map((u) => (
-                            <li key={u}>{u}</li>
-                          ))}
-                        </ul>
-                        {p.notes && <p className="mt-3 text-xs leading-relaxed text-slate-500">{p.notes}</p>}
-                        <a
-                          href={p.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="mt-3 inline-flex items-center text-xs font-semibold text-blue-600 hover:underline"
-                        >
-                          Official site / API
-                          <ExternalIcon />
-                        </a>
-                      </article>
-                    ))}
-                  </div>
+      {dataProviders && (
+        <div className="space-y-4">
+          <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+            <button
+              type="button"
+              onClick={() => setProvidersOpen((o) => !o)}
+              className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-semibold text-slate-900 hover:bg-slate-50"
+            >
+              Provider stack & merge pipeline
+              <ChevronIcon open={providersOpen} />
+            </button>
+            {providersOpen && (
+              <div className="space-y-4 border-t border-slate-200 p-4">
+                <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                    Country time-series merge order
+                  </p>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-700">{dataProviders.seriesMergePipeline}</p>
                 </div>
-              )}
-            </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {dataProviders.providers.map((p) => (
+                    <article
+                      key={p.id}
+                      className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+                    >
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{p.institution}</p>
+                      <h2 className="mt-1 text-base font-bold text-slate-900">{p.name}</h2>
+                      <p className="mt-2 text-sm text-slate-600">{p.role}</p>
+                      {p.seriesMergeOrder != null && (
+                        <p className="mt-2 text-xs font-medium text-slate-500">Series merge step: {p.seriesMergeOrder}</p>
+                      )}
+                      <ul className="mt-3 list-disc space-y-1 pl-5 text-xs text-slate-600">
+                        {p.usedFor.map((u) => (
+                          <li key={u}>{u}</li>
+                        ))}
+                      </ul>
+                      {p.notes && <p className="mt-3 text-xs leading-relaxed text-slate-500">{p.notes}</p>}
+                      <a
+                        href={p.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-3 inline-flex items-center text-xs font-semibold text-blue-600 hover:underline"
+                      >
+                        Official site / API
+                        <ExternalIcon />
+                      </a>
+                    </article>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-        )}
+        </div>
+      )}
 
-        <div className="mt-8 rounded-xl border border-slate-200">
+      <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
           <button
             type="button"
             onClick={() => setAccordionOpen((o) => !o)}
@@ -320,6 +322,28 @@ export default function Sources() {
                   uses ECB daily quotes first, then falls back to World Bank official annual FX
                   (PA.NUS.FCRF) with source/date shown in the UI.
                 </p>
+                <div
+                  id={COUNTRY_COMPARISON_METHODOLOGY_ID}
+                  className="mt-4 scroll-mt-24 rounded-xl border border-slate-200 bg-slate-50/80 p-4"
+                >
+                  <p className="text-sm font-semibold text-slate-900">Country comparison table — how columns are built</p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Values in the dashboard comparison table (your country vs avg country vs global) use these rules at
+                    your selected snapshot year.
+                  </p>
+                  <div className="mt-3 space-y-3">
+                    {COUNTRY_COMPARISON_METHODOLOGY_SECTIONS.map((section) => (
+                      <div key={section.title}>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{section.title}</p>
+                        <ul className="mt-1.5 list-disc space-y-1 pl-5 text-sm text-slate-600">
+                          {section.items.map((item) => (
+                            <li key={item}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
               <div>
                 <p className="font-bold text-slate-900">Global Analytics (Map, Table, Charts)</p>
@@ -370,7 +394,6 @@ export default function Sources() {
               </div>
             </div>
           )}
-        </div>
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">

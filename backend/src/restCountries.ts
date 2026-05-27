@@ -17,8 +17,10 @@ export interface CountrySummary {
   flags: { png?: string; svg?: string };
   timezones: string[];
   currencies: string[];
-  /** Political system label when provided by REST Countries */
+  /** Political system label (REST Countries and/or Wikidata enrichment) */
   government?: string;
+  /** Head-of-government office label (Wikidata), e.g. President */
+  headOfGovernmentTitle?: string;
   /** UN M.49 numeric code (string), used for EEZ lookups */
   ccn3?: string;
   landlocked?: boolean;

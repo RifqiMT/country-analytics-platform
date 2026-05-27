@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
 import { subscribeApiTransport, type ApiTransportEvent } from "../api";
 
 function formatClock(ts: number): string {
@@ -44,21 +45,80 @@ type Props = {
   variant?: ApiTransportPanelVariant;
   /** When `inline`, dock the popover to the end (right) for header placement under the blurb. */
   inlineAlign?: "start" | "end";
+  /** Compact single-row chip inside the unified header tools strip. */
+  embedded?: boolean;
 };
 
-export default function ApiTransportPanel({ variant = "floating", inlineAlign = "start" }: Props) {
+export default function ApiTransportPanel({
+  variant = "floating",
+  inlineAlign = "start",
+  embedded = false,
+}: Props) {
   const [events, setEvents] = useState<ApiTransportEvent[]>([]);
   const [open, setOpen] = useState(false);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
   const [expandedPathIds, setExpandedPathIds] = useState<Set<string>>(() => new Set());
+  const [portalStyle, setPortalStyle] = useState<CSSProperties>({});
+  const toggleRef = useRef<HTMLButtonElement>(null);
   const inline = variant === "inline";
   const inlineEnd = inline && inlineAlign === "end";
+  const usePortal = inline && embedded;
 
   useEffect(() => {
     return subscribeApiTransport((e) => {
       setEvents((prev) => [e, ...prev].slice(0, 100));
     });
   }, []);
+
+  const updatePortalPosition = useCallback(() => {
+    const el = toggleRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const margin = 8;
+    const width = Math.min(448, window.innerWidth - 24);
+    const right = Math.max(12, window.innerWidth - rect.right);
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const openBelow = spaceBelow >= 240 || spaceBelow >= rect.top;
+    setPortalStyle(
+      openBelow
+        ? {
+            position: "fixed",
+            top: rect.bottom + margin,
+            right,
+            width,
+            maxHeight: "min(75vh, 620px)",
+            zIndex: 250,
+          }
+        : {
+            position: "fixed",
+            bottom: window.innerHeight - rect.top + margin,
+            right,
+            width,
+            maxHeight: "min(75vh, 620px)",
+            zIndex: 250,
+          }
+    );
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!usePortal || !open) return;
+    updatePortalPosition();
+    window.addEventListener("scroll", updatePortalPosition, true);
+    window.addEventListener("resize", updatePortalPosition);
+    return () => {
+      window.removeEventListener("scroll", updatePortalPosition, true);
+      window.removeEventListener("resize", updatePortalPosition);
+    };
+  }, [open, usePortal, updatePortalPosition, events.length]);
+
+  useEffect(() => {
+    if (!usePortal || !open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [usePortal, open]);
 
   const toggleExcerpt = useCallback((id: string) => {
     setExpandedIds((prev) => {
@@ -96,9 +156,14 @@ export default function ApiTransportPanel({ variant = "floating", inlineAlign = 
   const panel = open ? (
         <div
           id="api-transport-log-panel"
-          className={`pointer-events-auto z-[200] flex max-h-[min(75vh,620px)] w-[min(100vw-1.25rem,28rem)] max-w-[calc(100vw-1.25rem)] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_25px_50px_-12px_rgba(15,23,42,0.28)] ${
-            inline ? `absolute top-full mt-2 ${inlineEnd ? "right-0 left-auto" : "left-0"}` : "relative"
+          className={`pointer-events-auto flex max-h-[min(75vh,620px)] w-[min(100vw-1.25rem,28rem)] max-w-[calc(100vw-1.25rem)] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_25px_50px_-12px_rgba(15,23,42,0.28)] ${
+            usePortal
+              ? ""
+              : inline
+                ? `absolute z-[200] ${inlineEnd ? "right-0 left-auto" : "left-0"} ${embedded ? "bottom-full mb-2" : "top-full mt-2"}`
+                : "relative"
           }`}
+          style={usePortal ? portalStyle : undefined}
           role="region"
           aria-label="API request log — full detail"
         >
@@ -249,9 +314,16 @@ export default function ApiTransportPanel({ variant = "floating", inlineAlign = 
 
   const toggleButton = inline ? (
     <button
+      ref={toggleRef}
       type="button"
-      onClick={() => setOpen((o) => !o)}
-      className={`pointer-events-auto flex max-w-full items-center gap-2 rounded-lg border px-2.5 py-1.5 text-left shadow-sm transition ${chipStyles}`}
+      onClick={() => {
+        setOpen((o) => !o);
+      }}
+      className={`flex w-full items-center gap-2 text-left transition ${
+        embedded
+          ? `min-h-[2.75rem] px-3 py-2.5 hover:bg-slate-100/80 sm:px-4 ${open ? "bg-slate-100/80" : ""}`
+          : `pointer-events-auto max-w-full rounded-lg border px-2.5 py-1.5 shadow-sm ${chipStyles}`
+      }`}
       aria-expanded={open}
       aria-controls={open ? "api-transport-log-panel" : undefined}
       title={open ? "Hide request log" : "Show API request log"}
@@ -260,11 +332,20 @@ export default function ApiTransportPanel({ variant = "floating", inlineAlign = 
     >
       <span className={tone === "fail" ? "text-red-600" : "text-slate-500"}>{bolt}</span>
       <span className="min-w-0 flex-1">
-        <span className="flex items-center justify-between gap-2">
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">API</span>
-          {chevron}
+        {embedded ? (
+          <span className="flex items-center justify-between gap-2">
+            <span className="truncate text-xs font-semibold uppercase tracking-wide text-slate-600">Request log</span>
+            {chevron}
+          </span>
+        ) : (
+          <span className="flex items-center justify-between gap-2">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">API</span>
+            {chevron}
+          </span>
+        )}
+        <span className={`block truncate font-medium leading-tight text-slate-800 ${embedded ? "mt-0.5 text-xs" : "mt-0.5 text-xs"}`}>
+          {line2}
         </span>
-        <span className="mt-0.5 block text-xs font-medium leading-tight text-slate-800">{line2}</span>
       </span>
     </button>
   ) : (
@@ -294,13 +375,36 @@ export default function ApiTransportPanel({ variant = "floating", inlineAlign = 
   );
 
   if (inline) {
+    const portalBackdrop =
+      usePortal && open
+        ? createPortal(
+            <button
+              type="button"
+              className="fixed inset-0 z-[240] cursor-default bg-transparent"
+              aria-label="Close request log"
+              onClick={() => setOpen(false)}
+            />,
+            document.body
+          )
+        : null;
+
+    const portalPanel = usePortal && panel ? createPortal(panel, document.body) : null;
+
     return (
-      <div
-        className={`pointer-events-none relative z-[170] flex max-w-[min(18rem,calc(100vw-2rem))] flex-col gap-1.5 ${inlineEnd ? "items-end" : "items-start"}`}
-      >
-        {panel}
-        {toggleButton}
-      </div>
+      <>
+        {portalBackdrop}
+        {portalPanel}
+        <div
+          className={
+            embedded
+              ? "relative flex h-full w-full min-w-0 items-stretch"
+              : `pointer-events-none relative z-[170] flex max-w-[min(18rem,calc(100vw-2rem))] flex-col gap-1.5 ${inlineEnd ? "items-end" : "items-start"}`
+          }
+        >
+          {!usePortal ? panel : null}
+          {toggleButton}
+        </div>
+      </>
     );
   }
 
