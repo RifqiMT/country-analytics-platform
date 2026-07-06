@@ -12,6 +12,7 @@ import { getJson, type MetricDef, type SeriesPoint } from "../../api";
 import { metricDisplayLabelFromId } from "../../lib/metricDisplay";
 import { formatCompactNumber } from "../../lib/formatValue";
 import { MIN_DATA_YEAR, maxSelectableYear } from "../../lib/yearBounds";
+import { chunkMetricIds, COUNTRY_SERIES_CHUNK_SIZE } from "../../lib/metricChunks";
 import type { ChartRow } from "../../lib/chartSeries";
 import { labourChartRows, mergeSeriesForLineChart } from "../../lib/chartSeries";
 import {
@@ -194,14 +195,6 @@ const WLD_REQUIRED_METRIC_IDS = [
   "pop_age_65_plus",
 ] as const;
 
-function chunkMetricIds(ids: readonly string[], chunkSize: number): string[][] {
-  const out: string[][] = [];
-  for (let i = 0; i < ids.length; i += chunkSize) {
-    out.push(ids.slice(i, i + chunkSize) as string[]);
-  }
-  return out;
-}
-
 const WLD_VIZ_META = [
   {
     title: "Global GDP & debt (WLD, US$)",
@@ -280,7 +273,7 @@ export default function GlobalWldCharts() {
       return;
     }
 
-    const metricChunks = chunkMetricIds(metricIds, 14);
+    const metricChunks = chunkMetricIds(metricIds, COUNTRY_SERIES_CHUNK_SIZE);
     const run = async () => {
       const merged: Bundle = {};
       let successChunks = 0;

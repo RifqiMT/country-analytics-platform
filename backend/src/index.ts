@@ -31,7 +31,7 @@ import { fetchSeaAroundUsEezAreaKm2 } from "./seaAroundUsEez.js";
 import { EEZ_SQKM_FALLBACK } from "./eezSqKmFallback.js";
 import { fetchCountryBundle, fetchMetricSeriesForCountry, fetchIndicatorSeries, allMetricIds } from "./worldBank.js";
 import type { SeriesPoint } from "./series.js";
-import { fetchGlobalSnapshotWithYearFallback } from "./globalSnapshot.js";
+import { fetchGlobalSnapshotWithYearFallback, fetchGlobalYearSnapshot } from "./globalSnapshot.js";
 import {
   groqChatWithFallbackForUseCase,
   tavilySearch,
@@ -137,18 +137,50 @@ function readRequestApiKey(req: express.Request, kind: "groq" | "tavily"): strin
 }
 
 async function settleWithin<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  const result = await settleWithinResult(promise, ms, fallback);
+  return result.value;
+}
+
+type SettleWithinResult<T> = { value: T; timedOut: boolean; rejected: boolean };
+
+async function settleWithinResult<T>(
+  promise: Promise<T>,
+  ms: number,
+  fallback: T
+): Promise<SettleWithinResult<T>> {
   let timer: NodeJS.Timeout | null = null;
-  const guarded = promise.catch(() => fallback);
+  let timedOut = false;
+  let rejected = false;
+  const guarded = promise.then(
+    (value) => ({ ok: true as const, value }),
+    () => {
+      rejected = true;
+      return { ok: false as const, value: fallback };
+    }
+  );
   try {
-    return await Promise.race<T>([
+    const raced = await Promise.race([
       guarded,
-      new Promise<T>((resolve) => {
-        timer = setTimeout(() => resolve(fallback), ms);
+      new Promise<{ ok: true; value: T }>((resolve) => {
+        timer = setTimeout(() => {
+          timedOut = true;
+          resolve({ ok: true, value: fallback });
+        }, ms);
       }),
     ]);
+    if (!raced.ok) rejected = true;
+    return { value: raced.value, timedOut, rejected };
   } finally {
     if (timer) clearTimeout(timer);
   }
+}
+
+function seriesTimeoutForMetricCount(metricCount: number): number {
+  const perMetricMs = 4_500;
+  const baseMs = 8_000;
+  const desired = baseMs + metricCount * perMetricMs;
+  const ceiling = metricCount >= 40 ? 95_000 : 55_000;
+  return capServerlessTimeout(Math.min(desired, ceiling));
 }
 
 async function fetchCountriesFromWorldBankDirectory(): Promise<CountrySummary[]> {
@@ -734,8 +766,8 @@ app.get("/api/country/:cca3/series", async (req, res) => {
         Array.from({ length: end - start + 1 }, (_, i) => ({ year: start + i, value: null })),
       ])
     );
-    const seriesTimeoutMs = capServerlessTimeout(metricIds.length >= 40 ? 95_000 : 55_000);
-    const bundle = await settleWithin(
+    const seriesTimeoutMs = seriesTimeoutForMetricCount(metricIds.length);
+    const { value: bundle, timedOut } = await settleWithinResult(
       fetchCountryBundle(cca3, metricIds, start, end),
       seriesTimeoutMs,
       fallbackBundle
@@ -743,6 +775,13 @@ app.get("/api/country/:cca3/series", async (req, res) => {
     const allNull = isAllNullBundle(bundle);
     if (!allNull) {
       setCache(cacheKey, bundle, COUNTRY_SERIES_CACHE_TTL_MS);
+    }
+    if (timedOut && allNull) {
+      return res.status(504).json({
+        error: `Country series timed out (${metricIds.length} metrics). Retry or request fewer metrics per call.`,
+        code: "SERIES_TIMEOUT",
+        metricCount: metricIds.length,
+      });
     }
     if (allNull) {
       res.setHeader("x-cap-warning", "country-series-fallback-null-dense");
@@ -761,12 +800,26 @@ app.get("/api/global/snapshot", async (req, res) => {
       : clampYear(currentDataYear() - 1);
     if (!METRIC_BY_ID[metricId]) return res.status(400).json({ error: "Unknown metric" });
     const fallbackRows = [] as Awaited<ReturnType<typeof fetchGlobalSnapshotWithYearFallback>>["rows"];
-    const snap = await settleWithin(
+    const snapshotBudgetMs = capServerlessTimeout(45_000);
+    const { value: snap, timedOut } = await settleWithinResult(
       fetchGlobalSnapshotWithYearFallback(metricId, requestedYear),
-      capServerlessTimeout(120_000),
+      snapshotBudgetMs,
       { dataYear: requestedYear, rows: fallbackRows }
     );
-    const { dataYear, rows } = snap;
+    let { dataYear, rows } = snap;
+    if ((timedOut || rows.length === 0) && !rows.some((r) => r.value !== null && Number.isFinite(r.value))) {
+      const quickYear = resolveGlobalWdiYear(requestedYear);
+      const quickRows = await settleWithin(
+        fetchGlobalYearSnapshot(metricId, quickYear),
+        capServerlessTimeout(20_000),
+        [] as Awaited<ReturnType<typeof fetchGlobalYearSnapshot>>
+      );
+      if (quickRows.length > 0) {
+        dataYear = quickYear;
+        rows = quickRows;
+        res.setHeader("x-cap-warning", "global-snapshot-fast-path");
+      }
+    }
     if (rows.length === 0) res.setHeader("x-cap-warning", "global-snapshot-fallback-empty");
     res.json({ metricId, requestedYear, dataYear, year: dataYear, rows });
   } catch (e) {

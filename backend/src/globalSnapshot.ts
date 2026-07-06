@@ -12,6 +12,7 @@ import {
 } from "./wdiParse.js";
 import { fetchWithRetry } from "./httpClient.js";
 import { fetchUisGlobalRowsForYear } from "./uisApi.js";
+import { isServerlessRuntime } from "./serverlessBudget.js";
 
 export interface GlobalRow {
   countryIso3: string;
@@ -124,7 +125,7 @@ function mergeGlobalRows(primary: GlobalRow[], fallback: GlobalRow[]): GlobalRow
   return [...byIso.values()];
 }
 
-const IMF_ENRICH_CONCURRENCY = 16;
+const IMF_ENRICH_CONCURRENCY = isServerlessRuntime() ? 8 : 16;
 
 /** Fill null cells from IMF WEO DataMapper for the same calendar year (e.g. government debt % GDP). */
 async function enrichGlobalRowsWithImf(
@@ -274,7 +275,8 @@ function countNonNullGlobalRows(rows: GlobalRow[]): number {
 }
 
 const SNAPSHOT_TARGET_MIN_OBS = 50;
-const SNAPSHOT_YEAR_FALLBACK_MAX_STEPS = 14;
+const SNAPSHOT_YEAR_FALLBACK_MAX_STEPS = isServerlessRuntime() ? 4 : 14;
+const SNAPSHOT_FILL_MAX_STEPS = isServerlessRuntime() ? 3 : SNAPSHOT_YEAR_FALLBACK_MAX_STEPS;
 
 /**
  * WDI “all economies” pages are often sparse for the latest calendar year(s).
@@ -333,7 +335,7 @@ async function fillMissingRowsWithCountryLatest(
 
   let y = baseYear - 1;
   let steps = 0;
-  while (y >= MIN_DATA_YEAR && steps < SNAPSHOT_YEAR_FALLBACK_MAX_STEPS && unresolved() > 0) {
+  while (y >= MIN_DATA_YEAR && steps < SNAPSHOT_FILL_MAX_STEPS && unresolved() > 0) {
     const prevRows = await fetchGlobalYearSnapshot(metricId, y);
     for (const prev of prevRows) {
       if (prev.value === null || Number.isNaN(prev.value)) continue;

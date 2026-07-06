@@ -23,6 +23,7 @@ import {
   maxSelectableYear,
 } from "../lib/yearBounds";
 import { labourChartRows, mergeSeriesForLineChart } from "../lib/chartSeries";
+import { chunkMetricIds, COUNTRY_SERIES_CHUNK_SIZE } from "../lib/metricChunks";
 import { readStoredDashboardCountry, writeStoredDashboardCountry } from "../dashboardCountryStorage";
 
 const LINE_CHARTS_NOTE =
@@ -169,6 +170,29 @@ function buildSeriesPath(country: string, start: number, end: number, metricIds:
   return `/api/country/${country}/series?${q}`;
 }
 
+async function fetchCountrySeriesBatched(
+  country: string,
+  start: number,
+  end: number,
+  metricIds: readonly string[],
+  onProgress?: (pct: number) => void
+): Promise<Record<string, SeriesPoint[]>> {
+  const chunks = chunkMetricIds(metricIds, COUNTRY_SERIES_CHUNK_SIZE);
+  const merged: Record<string, SeriesPoint[]> = {};
+  let completed = 0;
+  for (const chunk of chunks) {
+    const part = await withTimeout(
+      getJson<Record<string, SeriesPoint[]>>(buildSeriesPath(country, start, end, chunk)),
+      52_000,
+      `Country metrics batch (${completed + 1}/${chunks.length})`
+    );
+    Object.assign(merged, part);
+    completed += 1;
+    onProgress?.(Math.min(95, Math.round((completed / chunks.length) * 95)));
+  }
+  return merged;
+}
+
 function latest(series: SeriesPoint[]): { year: number; value: number } | null {
   for (let i = series.length - 1; i >= 0; i--) {
     const v = series[i].value;
@@ -267,13 +291,7 @@ export default function Dashboard() {
     try {
       const [m, allSeriesBundle] = await Promise.all([
         getJson<CountrySummary>(`/api/country/${country}`),
-        withTimeout(
-          getJson<Record<string, SeriesPoint[]>>(
-            buildSeriesPath(country, start, end, DASHBOARD_ALL_METRIC_IDS)
-          ),
-          95_000,
-          "Dashboard full metric bundle"
-        ),
+        fetchCountrySeriesBatched(country, start, end, DASHBOARD_ALL_METRIC_IDS, setMainLoadProgress),
       ]);
       setMeta(m);
       setBundle(allSeriesBundle);
