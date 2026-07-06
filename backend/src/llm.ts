@@ -7,7 +7,9 @@ export type Attribution = {
 /** Legacy default when no `GROQ_MODEL` / use-case override (e.g. ad-hoc `groqChat` without model). */
 export const DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile";
 
-/** PESTEL / Porter / Assistant use distinct primary + fallback chains by default (see `resolveGroqModelCandidatesForUseCase`). */
+import { capServerlessTimeout, isServerlessRuntime } from "./serverlessBudget.js";
+
+const DEFAULT_GROQ_TIMEOUT_MS = isServerlessRuntime() ? 25_000 : 120_000;
 export type GroqUseCase = "pestel" | "porter" | "assistant" | "business";
 
 const USE_CASE_DEFAULT_PRIMARY: Record<GroqUseCase, string> = {
@@ -387,8 +389,8 @@ export async function groqChat(
       : 1;
   const timeoutMs =
     typeof options?.timeoutMs === "number" && Number.isFinite(options.timeoutMs) && options.timeoutMs > 0
-      ? Math.min(300_000, options.timeoutMs)
-      : 120_000;
+      ? capServerlessTimeout(Math.min(300_000, options.timeoutMs))
+      : DEFAULT_GROQ_TIMEOUT_MS;
   const maxTokens =
     typeof options?.maxTokens === "number" && Number.isFinite(options.maxTokens) && options.maxTokens >= 256
       ? Math.min(8192, Math.floor(options.maxTokens))
@@ -477,7 +479,8 @@ export async function groqChatWithFallbackForUseCase(
   const tried: string[] = [];
   let lastErr: Error | null = null;
   let lastStatus: number | null = null;
-  const assistantTimeout = useCase === "assistant" ? (options?.timeoutMs ?? 120_000) : options?.timeoutMs;
+  const assistantTimeout =
+    useCase === "assistant" ? (options?.timeoutMs ?? DEFAULT_GROQ_TIMEOUT_MS) : options?.timeoutMs;
 
   for (let i = 0; i < candidates.length; i++) {
     const model = candidates[i]!;

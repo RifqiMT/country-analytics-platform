@@ -4,8 +4,8 @@ import { getJson, postJson } from "../api";
 const SESSION_KEY = "cap-app-bootstrap-v1";
 
 /**
- * Once per browser tab session: prefetch catalogs and ask the backend to warm the full
- * country × metrics × year-range cache (same keys as dashboard series API).
+ * Once per browser tab session: prefetch catalogs. Backend cache warmup is skipped on
+ * Vercel serverless (would exceed invocation limits); local dev still warms in background.
  */
 export function useAppBootstrap() {
   useEffect(() => {

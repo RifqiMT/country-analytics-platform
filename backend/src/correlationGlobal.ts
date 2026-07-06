@@ -2,6 +2,14 @@ import { fetchGlobalYearSnapshot } from "./globalSnapshot.js";
 import { listCountries } from "./restCountries.js";
 import { METRIC_BY_ID } from "./metrics.js";
 import { getCache, setCache } from "./cache.js";
+import { correlationYearConcurrency } from "./serverlessBudget.js";
+
+export class CorrelationBudgetError extends Error {
+  constructor(message = "CORRELATION_BUDGET_EXCEEDED") {
+    super(message);
+    this.name = "CorrelationBudgetError";
+  }
+}
 
 export interface CorrelationPoint {
   countryIso3: string;
@@ -102,7 +110,8 @@ export async function computeCorrelationGlobal(
   startYear: number,
   endYear: number,
   excludeIqrOutliers: boolean,
-  highlightCountry: string
+  highlightCountry: string,
+  opts?: { deadlineAt?: number | null }
 ): Promise<CorrelationGlobalResult> {
   const cacheKey = `corr:global:v2:${metricX}:${metricY}:${startYear}:${endYear}:${excludeIqrOutliers ? 1 : 0}:${highlightCountry || "-"}`;
   const hit = getCache<CorrelationGlobalResult>(cacheKey);
@@ -121,9 +130,13 @@ export async function computeCorrelationGlobal(
   let nMissing = 0;
 
   const years = Array.from({ length: endYear - startYear + 1 }, (_, i) => startYear + i);
-  const YEAR_PAIR_CONCURRENCY = 4;
+  const YEAR_PAIR_CONCURRENCY = correlationYearConcurrency();
+  const deadlineAt = opts?.deadlineAt ?? null;
   const yearPairs: Array<{ year: number; rowsX: Awaited<ReturnType<typeof fetchGlobalYearSnapshot>>; rowsY: Awaited<ReturnType<typeof fetchGlobalYearSnapshot>> }> = [];
   for (let i = 0; i < years.length; i += YEAR_PAIR_CONCURRENCY) {
+    if (deadlineAt !== null && Date.now() >= deadlineAt) {
+      throw new CorrelationBudgetError();
+    }
     const chunk = years.slice(i, i + YEAR_PAIR_CONCURRENCY);
     const resolvedChunk = await Promise.all(
       chunk.map(async (year) => {

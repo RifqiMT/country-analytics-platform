@@ -75,7 +75,7 @@ import {
 } from "./porterAnalysis.js";
 import { fetchPorterTemporalHorizonWeb, PORTER_TEMPORAL_SECTION_MARKER } from "./porterTavily.js";
 import { ILO_ISIC_DIVISIONS } from "./iloIsicDivisions.js";
-import { computeCorrelationGlobal } from "./correlationGlobal.js";
+import { computeCorrelationGlobal, CorrelationBudgetError } from "./correlationGlobal.js";
 import tzLookup from "tz-lookup";
 import { getMetricShortLabel } from "./metricShortLabels.js";
 import {
@@ -109,6 +109,13 @@ import { stripRedundantRankingTablesFromLlmMarkdown } from "./assistantReplyTabl
 import { polishAssistantLlmReply } from "./assistantReplyPolish.js";
 import { compactAssistantRetrievalForLlm } from "./assistantCitationContext.js";
 import { clampAssistantUserForLlm } from "./assistantPromptBudget.js";
+import {
+  capServerlessTimeout,
+  correlationDeadlineFromBudget,
+  createRequestBudget,
+  shouldSkipBootstrapWarmup,
+} from "./serverlessBudget.js";
+import { PESTEL_DIGEST_KEYS } from "./pestelDigestKeys.js";
 
 export const app = express();
 app.use(cors({ origin: true }));
@@ -635,7 +642,7 @@ app.get("/api/dashboard/comparison", async (req, res) => {
       membersCount: 0,
       mode: "fallback",
     };
-    const data = await settleWithin(buildDashboardComparison(cca3, year), 45000, fallback);
+    const data = await settleWithin(buildDashboardComparison(cca3, year), capServerlessTimeout(45_000), fallback);
     if (!Array.isArray(data.rows) || data.rows.length === 0) {
       res.setHeader("x-cap-warning", "dashboard-comparison-fallback-empty");
     }
@@ -657,8 +664,11 @@ app.post("/api/cache/clear", (_req, res) => {
  * work continues in the background. Set DISABLE_BOOTSTRAP_WARMUP=1 to skip.
  */
 app.post("/api/bootstrap/warm", (_req, res) => {
-  if (process.env.DISABLE_BOOTSTRAP_WARMUP === "1") {
-    res.json({ status: "skipped", reason: "DISABLE_BOOTSTRAP_WARMUP" });
+  if (shouldSkipBootstrapWarmup()) {
+    res.json({
+      status: "skipped",
+      reason: process.env.DISABLE_BOOTSTRAP_WARMUP === "1" ? "DISABLE_BOOTSTRAP_WARMUP" : "SERVERLESS_RUNTIME",
+    });
     return;
   }
   res.status(202).json({
@@ -678,6 +688,22 @@ const COUNTRY_SERIES_CACHE_TTL_MS = 1000 * 60 * 20;
 function makeNullSeries(start: number, end: number): SeriesPoint[] {
   return Array.from({ length: end - start + 1 }, (_, i) => ({ year: start + i, value: null }));
 }
+
+function makeNullBundle(metricIds: string[], start: number, end: number): Record<string, SeriesPoint[]> {
+  return Object.fromEntries(metricIds.map((id) => [id, makeNullSeries(start, end)]));
+}
+
+const PORTER_DIGEST_METRIC_IDS: string[] = [
+  "gdp_growth",
+  "inflation",
+  "gov_debt_pct_gdp",
+  "life_expectancy",
+  "gdp_per_capita",
+  "gni_per_capita_atlas",
+  "population",
+  "literacy_adult",
+  "unemployment_ilo",
+];
 
 app.get("/api/country/:cca3/series", async (req, res) => {
   try {
@@ -708,7 +734,7 @@ app.get("/api/country/:cca3/series", async (req, res) => {
         Array.from({ length: end - start + 1 }, (_, i) => ({ year: start + i, value: null })),
       ])
     );
-    const seriesTimeoutMs = metricIds.length >= 40 ? 95000 : 55000;
+    const seriesTimeoutMs = capServerlessTimeout(metricIds.length >= 40 ? 95_000 : 55_000);
     const bundle = await settleWithin(
       fetchCountryBundle(cca3, metricIds, start, end),
       seriesTimeoutMs,
@@ -737,7 +763,7 @@ app.get("/api/global/snapshot", async (req, res) => {
     const fallbackRows = [] as Awaited<ReturnType<typeof fetchGlobalSnapshotWithYearFallback>>["rows"];
     const snap = await settleWithin(
       fetchGlobalSnapshotWithYearFallback(metricId, requestedYear),
-      120000,
+      capServerlessTimeout(120_000),
       { dataYear: requestedYear, rows: fallbackRows }
     );
     const { dataYear, rows } = snap;
@@ -766,7 +792,7 @@ app.get("/api/global/table", async (req, res) => {
       rows: [],
       wdiLookbackYears: 0,
     };
-    const data = await settleWithin(buildGlobalTable(year, region, category), 30000, fallbackTable);
+    const data = await settleWithin(buildGlobalTable(year, region, category), capServerlessTimeout(30_000), fallbackTable);
     if (!Array.isArray(data) || data.length === 0) {
       res.setHeader("x-cap-warning", "global-table-fallback-empty");
     }
@@ -794,7 +820,7 @@ app.get("/api/global/wld-series", async (req, res) => {
     const wldFallback: Record<string, SeriesPoint[]> = Object.fromEntries(
       metricIds.map((id) => [id, makeNullSeries(start, end)])
     );
-    const wldTimeoutMs = metricIds.length >= 30 ? 95000 : 45000;
+    const wldTimeoutMs = capServerlessTimeout(metricIds.length >= 30 ? 95_000 : 45_000);
     const bundle = await settleWithin(fetchCountryBundle("WLD", metricIds, start, end), wldTimeoutMs, wldFallback);
     const allNull = Object.values(bundle).every((s) => s.every((p) => p.value === null));
     if (allNull) res.setHeader("x-cap-warning", "global-wld-series-fallback-null");
@@ -821,7 +847,7 @@ app.get("/api/compare", async (req, res) => {
     await Promise.all(
       countries.map(async (iso) => {
         const fallback = { [metricId]: makeNullSeries(start, end) } as Record<string, SeriesPoint[]>;
-        const b = await settleWithin(fetchCountryBundle(iso, [metricId], start, end), 40000, fallback);
+        const b = await settleWithin(fetchCountryBundle(iso, [metricId], start, end), capServerlessTimeout(40_000), fallback);
         series[iso] = b[metricId] ?? makeNullSeries(start, end);
       })
     );
@@ -1639,7 +1665,11 @@ app.post("/api/assistant/chat", async (req, res) => {
         if (!cca3 || !/^[A-Z]{3}$/.test(cca3)) return { block: "" };
         const [metaMaybe, bundle] = await Promise.all([
           getCountry(cca3),
-          fetchCountryBundle(cca3, requestedFocusMetricIdsForFetch, MIN_DATA_YEAR, currentDataYear()),
+          settleWithin(
+            fetchCountryBundle(cca3, requestedFocusMetricIdsForFetch, MIN_DATA_YEAR, currentDataYear()),
+            capServerlessTimeout(22_000),
+            makeNullBundle(requestedFocusMetricIdsForFetch, MIN_DATA_YEAR, currentDataYear())
+          ),
         ]);
         const meta: CountrySummary =
           metaMaybe ??
@@ -1675,7 +1705,11 @@ app.post("/api/assistant/chat", async (req, res) => {
             .map(async (code) => {
               const [meta, bundle] = await Promise.all([
                 getCountry(code),
-                fetchCountryBundle(code, comparisonMetricIdsForFetch, MIN_DATA_YEAR, currentDataYear()),
+                settleWithin(
+                  fetchCountryBundle(code, comparisonMetricIdsForFetch, MIN_DATA_YEAR, currentDataYear()),
+                  capServerlessTimeout(22_000),
+                  makeNullBundle(comparisonMetricIdsForFetch, MIN_DATA_YEAR, currentDataYear())
+                ),
               ]);
               return meta ? buildAssistantPrimaryDataBlock(meta, bundle, comparisonMetricIdsForFetch) : null;
             })
@@ -2350,17 +2384,7 @@ function buildDataDigest(
   countryName: string,
   bundle: Record<string, { year: number; value: number | null }[]>
 ): string {
-  const keys = [
-    "gdp_growth",
-    "inflation",
-    "gov_debt_pct_gdp",
-    "life_expectancy",
-    "gdp_per_capita",
-    "gni_per_capita_atlas",
-    "population",
-    "literacy_adult",
-    "unemployment_ilo",
-  ];
+  const keys = PORTER_DIGEST_METRIC_IDS;
   const lines: string[] = [`Country: ${countryName}`];
   for (const k of keys) {
     const lv = latestValue(bundle[k] ?? []);
@@ -2378,9 +2402,16 @@ app.post("/api/analysis/pestel", async (req, res) => {
       ? clampYear(parseInt(String(req.body.year), 10))
       : clampYear(currentDataYear() - 1);
     if (!/^[A-Z]{3}$/.test(cca3)) return res.status(400).json({ error: "countryCode (ISO3) required" });
+    const pestelMetricIds = [...PESTEL_DIGEST_KEYS];
+    const seriesSpan = { start: MIN_DATA_YEAR, end: currentDataYear() };
+    const pestelBundleFallback = makeNullBundle(pestelMetricIds, seriesSpan.start, seriesSpan.end);
     const [meta, bundle, profile] = await Promise.all([
       fetchEnrichedCountryMeta(cca3),
-      fetchCountryBundle(cca3, allMetricIds(), MIN_DATA_YEAR, currentDataYear()),
+      settleWithin(
+        fetchCountryBundle(cca3, pestelMetricIds, seriesSpan.start, seriesSpan.end),
+        capServerlessTimeout(35_000),
+        pestelBundleFallback
+      ),
       fetchWbCountryProfile(cca3),
     ]);
     const digest = buildPestelLlmDigest(meta?.name ?? cca3, bundle);
@@ -2617,9 +2648,16 @@ app.post("/api/analysis/porter", async (req, res) => {
     const industrySector = String(req.body?.industrySector ?? "10 - Manufacture of food products").trim();
     if (!/^[A-Z]{3}$/.test(cca3)) return res.status(400).json({ error: "countryCode (ISO3) required" });
 
+    const porterMetricIds = PORTER_DIGEST_METRIC_IDS;
+    const seriesSpan = { start: MIN_DATA_YEAR, end: currentDataYear() };
+    const porterBundleFallback = makeNullBundle(porterMetricIds, seriesSpan.start, seriesSpan.end);
     const [meta, bundle, profile] = await Promise.all([
       fetchEnrichedCountryMeta(cca3),
-      fetchCountryBundle(cca3, allMetricIds(), MIN_DATA_YEAR, currentDataYear()),
+      settleWithin(
+        fetchCountryBundle(cca3, porterMetricIds, seriesSpan.start, seriesSpan.end),
+        capServerlessTimeout(30_000),
+        porterBundleFallback
+      ),
       fetchWbCountryProfile(cca3),
     ]);
     const digest = buildDataDigest(meta?.name ?? cca3, bundle);
@@ -2911,13 +2949,15 @@ app.get("/api/analysis/correlation-global", async (req, res) => {
     if (!METRIC_BY_ID[metricX] || !METRIC_BY_ID[metricY]) {
       return res.status(400).json({ error: "Unknown metricX or metricY" });
     }
+    const budget = createRequestBudget();
     const result = await computeCorrelationGlobal(
       metricX,
       metricY,
       startYear,
       endYear,
       excludeIqr,
-      highlightCountry
+      highlightCountry,
+      { deadlineAt: correlationDeadlineFromBudget(budget) }
     );
     res.json({
       ...result,
@@ -2929,6 +2969,12 @@ app.get("/api/analysis/correlation-global", async (req, res) => {
       endYear,
     });
   } catch (e) {
+    if (e instanceof CorrelationBudgetError) {
+      return res.status(504).json({
+        error: "Correlation analysis timed out. Try a shorter year range or retry in a moment.",
+        code: "CORRELATION_TIMEOUT",
+      });
+    }
     res.status(500).json({ error: String(e) });
   }
 });
@@ -3461,7 +3507,11 @@ app.post("/api/analysis/correlation", async (req, res) => {
     if (!/^[A-Z]{3}$/.test(cca3)) return res.status(400).json({ error: "countryCode required" });
     if (!METRIC_BY_ID[xId] || !METRIC_BY_ID[yId]) return res.status(400).json({ error: "Unknown metric" });
     const { start, end } = clampYearRange(MIN_DATA_YEAR, currentDataYear());
-    const pairBundle = await fetchCountryBundle(cca3, [xId, yId], start, end);
+    const pairBundle = await settleWithin(
+      fetchCountryBundle(cca3, [xId, yId], start, end),
+      capServerlessTimeout(35_000),
+      { [xId]: makeNullSeries(start, end), [yId]: makeNullSeries(start, end) }
+    );
     const xs = pairBundle[xId] ?? [];
     const ys = pairBundle[yId] ?? [];
     const byYear = new Map<number, { x: number; y: number }>();

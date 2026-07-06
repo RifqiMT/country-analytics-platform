@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { setCache } from "./cache.js";
 import { listCountries } from "./restCountries.js";
 import { fetchCountryBundle, allMetricIds } from "./worldBank.js";
+import { shouldSkipBootstrapWarmup } from "./serverlessBudget.js";
 import { MIN_DATA_YEAR, currentDataYear } from "./yearBounds.js";
 
 /** Align with `countrySeriesCacheKey` in `index.ts` so warmed entries match GET `/api/country/:cca3/series`. */
@@ -27,7 +28,7 @@ export function resetDataWarmupGate(): void {
  * as `/api/country/:cca3/series` (all metrics, MIN_DATA_YEAR–current). Runs best-effort in the background.
  */
 export function startDataWarmup(): Promise<{ warmed: number; failed: number; skipped: boolean }> {
-  if (process.env.DISABLE_BOOTSTRAP_WARMUP === "1") {
+  if (shouldSkipBootstrapWarmup()) {
     return Promise.resolve({ warmed: 0, failed: 0, skipped: true });
   }
   if (warmupPromise) return warmupPromise;
