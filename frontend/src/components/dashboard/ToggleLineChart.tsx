@@ -35,6 +35,9 @@ export type SeriesSpec = {
   tooltipFormat?: "compact" | "percent";
   /** Use basis points for tooltip growth badge on rate-like metrics. */
   changePreferBps?: boolean;
+  /** SVG stroke dash pattern, e.g. `"6 4"` for dashed lines. */
+  strokeDasharray?: string;
+  strokeWidth?: number;
 };
 
 type Props = {
@@ -207,7 +210,13 @@ export default function ToggleLineChart({
                   : "border-transparent bg-transparent text-slate-400 line-through opacity-60"
               }`}
             >
-              <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: s.color }} />
+              <span
+                className="h-0 w-4 shrink-0"
+                style={{
+                  borderTop: `${s.strokeWidth ?? 2}px ${s.strokeDasharray ? "dashed" : "solid"} ${active ? s.color : "#cbd5e1"}`,
+                }}
+                aria-hidden
+              />
               <span className="truncate">{s.label}</span>
             </button>
           );
@@ -275,8 +284,10 @@ export default function ToggleLineChart({
                       dataKey={s.key}
                       name={s.label}
                       stroke={s.color}
-                      strokeWidth={2}
+                      strokeWidth={s.strokeWidth ?? 2}
+                      strokeDasharray={s.strokeDasharray}
                       dot={false}
+                      activeDot={{ r: 4, strokeWidth: 2, fill: s.color }}
                       connectNulls={connectNulls}
                     />
                   ) : null

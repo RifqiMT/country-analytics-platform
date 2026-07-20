@@ -33,9 +33,9 @@ export default function CollapsibleToolbar({ title, summary, children, className
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
         </summary>
-        <div className="border-t border-slate-100 px-2 py-2 sm:px-3 md:border-0 md:p-0">{children}</div>
+        <div className="border-t border-slate-100 px-3 py-3 sm:px-4 md:border-0 md:p-0 overflow-visible">{children}</div>
       </details>
-      <div className={`hidden rounded-2xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm md:block ${className}`}>
+      <div className={`hidden overflow-visible rounded-2xl border border-slate-200/90 bg-white px-4 py-3 shadow-sm md:block ${className}`}>
         {children}
       </div>
     </>

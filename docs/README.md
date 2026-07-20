@@ -63,6 +63,7 @@ The documentation set must enable readers to:
 - `DEPLOYMENT_VERCEL.md`: production deployment setup and validation checklist for Vercel
 - `RELEASE_READINESS_CHECKLIST.md`: release gate checklist (quality, guardrails, docs sync, deployment)
 - `EXECUTIVE_DOCUMENTATION_SUMMARY.md`: leadership-level product/documentation status snapshot
+- `DOCUMENTATION_AUDIT_REPORT.md`: formal audit verification report (code ↔ docs alignment)
 
 ## Minimum update protocol
 

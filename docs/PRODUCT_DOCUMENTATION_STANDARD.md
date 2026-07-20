@@ -136,24 +136,7 @@ A documentation change is complete only when:
 **Practical effect:** (what users/engineers observe)  
 **Validation:** (how to verify compliance)
 
-## Quality gates for documentation completeness
-
-Before marking a documentation update complete, verify:
-
-- [ ] All affected metric IDs appear in `METRIC_CATALOG.md` with correct units and sources
-- [ ] Request/response variables documented in `VARIABLES.md` with examples
-- [ ] PRD scope section reflects new/changed capabilities
-- [ ] At least one user story with acceptance criteria exists for new user-facing features
-- [ ] Traceability matrix has FR/NFR rows for new requirements
-- [ ] Guardrails updated if data interpretation or AI behavior boundaries change
-- [ ] Design guidelines updated if new UI patterns, colors, or components are introduced
-- [ ] `CHANGELOG.md` entry with date and scope
-- [ ] `docs/README.md` sync checkpoint updated for major releases
-- [ ] Root `README.md` highlights section updated for user-visible changes
-
----
-
-## Complete document registry (22 files)
+## Complete document registry (23 files)
 
 | # | Document | Canonical purpose | Update trigger |
 | --- | --- | --- | --- |
@@ -179,4 +162,21 @@ Before marking a documentation update complete, verify:
 | 20 | `docs/EXECUTIVE_DOCUMENTATION_SUMMARY.md` | Leadership status snapshot | Major release milestones |
 | 21 | `docs/CHANGELOG.md` | Versioned development history | Every documentation/product sync |
 | 22 | `docs/PRODUCT_DOCUMENTATION_STANDARD.md` | This governance document | Documentation process changes |
+| 23 | `docs/DOCUMENTATION_AUDIT_REPORT.md` | Formal code ↔ docs audit verification | Major release or comprehensive audit |
+
+## Quality gates for documentation completeness
+
+Before marking a documentation update complete, verify:
+
+- [ ] All affected metric IDs appear in `METRIC_CATALOG.md` with correct units and sources
+- [ ] Request/response variables documented in `VARIABLES.md` with examples
+- [ ] PRD scope section reflects new/changed capabilities
+- [ ] At least one user story with acceptance criteria exists for new user-facing features
+- [ ] Traceability matrix has FR/NFR rows for new requirements
+- [ ] Guardrails updated if data interpretation or AI behavior boundaries change
+- [ ] Design guidelines updated if new UI patterns, colors, or components are introduced
+- [ ] `CHANGELOG.md` entry with date and scope
+- [ ] `docs/README.md` sync checkpoint updated for major releases
+- [ ] Root `README.md` highlights section updated for user-visible changes
+- [ ] `DOCUMENTATION_AUDIT_REPORT.md` updated for major comprehensive audits
 

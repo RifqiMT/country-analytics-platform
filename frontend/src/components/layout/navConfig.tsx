@@ -31,6 +31,12 @@ const SparkIcon = () => (
   </svg>
 );
 
+const CompareIcon = () => (
+  <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12M8 12h12M8 17h12M4 7h.01M4 12h.01M4 17h.01" />
+  </svg>
+);
+
 export type NavItem = {
   to: string;
   end?: boolean;
@@ -43,6 +49,7 @@ export type NavItem = {
 
 export const APP_NAV: NavItem[] = [
   { to: "/", end: true, label: "Country Dashboard", shortLabel: "Dashboard", tabLabel: "Home", icon: PinIcon },
+  { to: "/compare", label: "Compare Countries", shortLabel: "Compare", tabLabel: "Compare", icon: CompareIcon },
   { to: "/global", label: "Global Analytics", shortLabel: "Global", tabLabel: "Global", icon: GlobeIcon },
   { to: "/pestel", label: "PESTEL", shortLabel: "PESTEL", tabLabel: "PESTEL", icon: DocIcon },
   { to: "/porter", label: "Porter 5 Forces", shortLabel: "Porter", tabLabel: "Porter", icon: GridIcon },
@@ -54,13 +61,13 @@ export const APP_NAV: NavItem[] = [
 /** Primary destinations in the mobile/tablet bottom tab bar. */
 export const MOBILE_PRIMARY_NAV: NavItem[] = [
   APP_NAV[0]!,
-  APP_NAV[1]!,
-  APP_NAV[4]!,
+  APP_NAV[2]!,
   APP_NAV[5]!,
+  APP_NAV[6]!,
 ];
 
 /** Secondary destinations opened from the “More” tab. */
-export const MOBILE_MORE_NAV: NavItem[] = [APP_NAV[2]!, APP_NAV[3]!, APP_NAV[6]!];
+export const MOBILE_MORE_NAV: NavItem[] = [APP_NAV[1]!, APP_NAV[3]!, APP_NAV[4]!, APP_NAV[7]!];
 
 export const APP_TAGLINE =
   "Analyst-grade financial, demographic, and health metrics for every country (2000 – latest), powered by World Bank, UN, UNESCO, WHO, and IMF data.";

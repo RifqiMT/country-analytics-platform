@@ -172,6 +172,7 @@ Start with [`docs/README.md`](docs/README.md) for role-based reading paths.
 | [`docs/ASSISTANT_BEHAVIOR.md`](docs/ASSISTANT_BEHAVIOR.md) | Routing, grounding, response controls |
 | [`docs/ANALYSIS_METHODS.md`](docs/ANALYSIS_METHODS.md) | Correlation, PESTEL, Porter methodology |
 | [`docs/TESTING_STRATEGY.md`](docs/TESTING_STRATEGY.md) | Manual QA scope and automation roadmap |
+| [`docs/DOCUMENTATION_AUDIT_REPORT.md`](docs/DOCUMENTATION_AUDIT_REPORT.md) | Formal audit verification report |
 
 ### Design, metrics & governance
 | Document | Purpose |
@@ -214,6 +215,8 @@ Full contracts: [`docs/API_REFERENCE.md`](docs/API_REFERENCE.md)
 ---
 
 ## Latest implementation highlights
+
+> **Documentation status:** Synchronized with codebase as of **2026-07-20**. See [`docs/DOCUMENTATION_AUDIT_REPORT.md`](docs/DOCUMENTATION_AUDIT_REPORT.md) for full audit verification.
 
 ### 2026-07-20 — Crime & public safety metrics
 - Added **9 crime & public safety metrics** (UNODC, UN/WHO, IDMC, UCDP, World Bank WGI)

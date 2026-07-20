@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import CollapsibleToolbar from "../components/layout/CollapsibleToolbar";
+import FilterToolbarLayout, {
+  FilterToolbarActions,
+  FilterToolbarPrimaryAction,
+  FilterToolbarRangeGroup,
+  FilterToolbarSecondaryAction,
+  FilterToolbarYearInputs,
+  TOOLBAR_COUNTRY_SELECT_CLASS,
+} from "../components/layout/FilterToolbarLayout";
 import CountrySelect from "../components/CountrySelect";
 import AccordionSection from "../components/dashboard/AccordionSection";
 import DashboardComparisonTable, {
@@ -27,8 +35,14 @@ import {
   maxSelectableYear,
 } from "../lib/yearBounds";
 import { labourChartRows, mergeSeriesForLineChart } from "../lib/chartSeries";
-import { chunkMetricIds, COUNTRY_SERIES_CHUNK_SIZE } from "../lib/metricChunks";
-import { chunkLoadProgress, startSimulatedLoadProgress } from "../lib/loadProgress";
+import { startSimulatedLoadProgress } from "../lib/loadProgress";
+import {
+  fetchCountrySeriesBatched,
+  latest,
+  withTimeout,
+  yoyBpsRate,
+  yoyPct,
+} from "../lib/countrySeriesFetch";
 import { readStoredDashboardCountry, writeStoredDashboardCountry } from "../dashboardCountryStorage";
 
 const DASHBOARD_SECTION_IDS = {
@@ -212,59 +226,6 @@ const DASHBOARD_ALL_METRIC_IDS: readonly string[] = Array.from(
   ])
 );
 
-function buildSeriesPath(country: string, start: number, end: number, metricIds: readonly string[]): string {
-  const q = new URLSearchParams({ start: String(start), end: String(end) });
-  q.set("metrics", metricIds.join(","));
-  return `/api/country/${country}/series?${q}`;
-}
-
-async function fetchCountrySeriesBatched(
-  country: string,
-  start: number,
-  end: number,
-  metricIds: readonly string[],
-  onProgress?: (pct: number) => void
-): Promise<Record<string, SeriesPoint[]>> {
-  const chunks = chunkMetricIds(metricIds, COUNTRY_SERIES_CHUNK_SIZE);
-  const merged: Record<string, SeriesPoint[]> = {};
-  let completed = 0;
-  for (const chunk of chunks) {
-    const part = await withTimeout(
-      getJson<Record<string, SeriesPoint[]>>(buildSeriesPath(country, start, end, chunk)),
-      52_000,
-      `Country metrics batch (${completed + 1}/${chunks.length})`
-    );
-    Object.assign(merged, part);
-    completed += 1;
-    onProgress?.(chunkLoadProgress(completed, chunks.length));
-  }
-  return merged;
-}
-
-function latest(series: SeriesPoint[]): { year: number; value: number } | null {
-  for (let i = series.length - 1; i >= 0; i--) {
-    const v = series[i].value;
-    if (v !== null && !Number.isNaN(v)) return { year: series[i].year, value: v };
-  }
-  return null;
-}
-
-function yoyPct(series: SeriesPoint[]): number | null {
-  const l = latest(series);
-  if (!l) return null;
-  const prev = series.find((p) => p.year === l.year - 1 && p.value !== null);
-  if (!prev || prev.value === null || prev.value === 0) return null;
-  return ((l.value - prev.value) / Math.abs(prev.value)) * 100;
-}
-
-function yoyBpsRate(series: SeriesPoint[]): number | null {
-  const l = latest(series);
-  if (!l) return null;
-  const prev = series.find((p) => p.year === l.year - 1 && p.value !== null);
-  if (prev?.value === null || prev?.value === undefined) return null;
-  return (l.value - prev.value) * 100;
-}
-
 function headOfGovernment(gov?: string): string {
   if (!gov) return "—";
   const s = gov.toLowerCase();
@@ -273,24 +234,6 @@ function headOfGovernment(gov?: string): string {
   if (s.includes("republic") || s.includes("presidential")) return "President";
   if (s.includes("federation") || s.includes("federal")) return "Head of government";
   return "—";
-}
-
-function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timer = window.setTimeout(() => {
-      reject(new Error(`${label} timed out after ${timeoutMs}ms`));
-    }, timeoutMs);
-    promise.then(
-      (v) => {
-        window.clearTimeout(timer);
-        resolve(v);
-      },
-      (e) => {
-        window.clearTimeout(timer);
-        reject(e);
-      }
-    );
-  });
 }
 
 export default function Dashboard() {
@@ -1001,94 +944,59 @@ export default function Dashboard() {
         forceOpen={loading || loadingExtras}
         className="border-slate-200/80 shadow-sm"
       >
-        <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto sm:gap-2 md:gap-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <div className="min-w-[6.5rem] flex-1 shrink basis-0 sm:min-w-[8rem] md:max-w-md lg:max-w-lg">
+        <FilterToolbarLayout
+          countries={
             <CountrySelect
               value={country}
               onChange={setCountry}
               variant="light"
               showLabel={false}
-              className="gap-0 [&_input]:h-9 [&_input]:truncate [&_input]:rounded-lg [&_input]:border-slate-200 [&_input]:py-1.5 [&_input]:pl-2.5 [&_input]:pr-8 [&_input]:text-xs sm:[&_input]:pl-3 sm:[&_input]:pr-10 sm:[&_input]:text-sm"
+              displayMode="compact"
+              className={TOOLBAR_COUNTRY_SELECT_CLASS}
             />
-          </div>
-
-          <div className="hidden h-9 w-px shrink-0 bg-slate-200 sm:block" aria-hidden />
-
-          <div
-            className="flex shrink-0 items-center gap-1 sm:gap-1.5"
-            title={`Default span is 2000–${maxYear}. Typical WDI/IMF releases lag slightly; the API may extend sparse series from the last observation.`}
-          >
-            <span className="sr-only">Years</span>
-            <div className="inline-flex h-9 shrink-0 items-center rounded-lg border border-slate-200 bg-slate-50/90 px-1 shadow-sm sm:px-1.5">
-              <label className="sr-only" htmlFor="dashboard-year-from">
-                From year
-              </label>
-              <input
-                id="dashboard-year-from"
-                type="number"
-                className="w-[4rem] min-w-[4rem] border-0 bg-transparent px-0.5 text-center text-xs font-medium tabular-nums text-slate-800 [appearance:textfield] focus:outline-none focus:ring-0 sm:w-[4.5rem] sm:min-w-[4.5rem] sm:px-1 sm:text-sm [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                value={start}
-                min={MIN_DATA_YEAR}
-                max={Math.min(end, maxYear)}
-                onChange={(e) => setStart(clampSpanStart(Number(e.target.value), end))}
+          }
+          range={
+            <FilterToolbarRangeGroup>
+              <FilterToolbarYearInputs
+                start={start}
+                end={end}
+                minStart={MIN_DATA_YEAR}
+                maxEnd={maxYear}
+                onStartChange={(y) => setStart(clampSpanStart(y, end))}
+                onEndChange={(y) => setEnd(clampSpanEnd(y, start))}
+                startId="dashboard-year-from"
+                endId="dashboard-year-to"
               />
-              <span className="select-none px-0.5 text-[10px] text-slate-300 sm:text-xs" aria-hidden>
-                –
-              </span>
-              <label className="sr-only" htmlFor="dashboard-year-to">
-                To year
-              </label>
-              <input
-                id="dashboard-year-to"
-                type="number"
-                className="w-[4rem] min-w-[4rem] border-0 bg-transparent px-0.5 text-center text-xs font-medium tabular-nums text-slate-800 [appearance:textfield] focus:outline-none focus:ring-0 sm:w-[4.5rem] sm:min-w-[4.5rem] sm:px-1 sm:text-sm [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                value={end}
-                min={Math.max(start, MIN_DATA_YEAR)}
-                max={maxYear}
-                onChange={(e) => setEnd(clampSpanEnd(Number(e.target.value), start))}
-              />
-            </div>
-            <YearRangePresetDropdown start={start} end={end} maxYear={maxYear} onSelect={setPreset} compact />
-          </div>
-
-          <div className="hidden h-9 w-px shrink-0 bg-slate-200 sm:block" aria-hidden />
-
-          <div className="flex shrink-0 items-center gap-1 sm:gap-2 md:ml-auto">
-            <button
-              type="button"
-              onClick={refreshAll}
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-900 text-white shadow-sm transition hover:bg-slate-800 active:scale-[0.98] sm:w-auto sm:gap-1.5 sm:px-3"
-              title="Refresh all data"
-            >
-              <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 4v5h5M20 20v-5h-5M5 9a7 7 0 0114 0M19 15a7 7 0 01-14 0"
-                />
-              </svg>
-              <span className="hidden text-sm font-semibold md:inline">Refresh</span>
-            </button>
-            <button
-              type="button"
-              onClick={exportAll}
-              disabled={loading}
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50 active:scale-[0.98] disabled:opacity-40 sm:w-auto sm:gap-1.5 sm:px-3"
-              title="Export dashboard CSV"
-            >
-              <svg className="h-4 w-4 shrink-0 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                />
-              </svg>
-              <span className="hidden text-sm font-semibold md:inline">Export CSV</span>
-            </button>
-          </div>
-        </div>
+              <YearRangePresetDropdown start={start} end={end} maxYear={maxYear} onSelect={setPreset} compact embedded />
+            </FilterToolbarRangeGroup>
+          }
+          actions={
+            <FilterToolbarActions>
+              <FilterToolbarPrimaryAction onClick={refreshAll} title="Refresh all data">
+                <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 4v5h5M20 20v-5h-5M5 9a7 7 0 0114 0M19 15a7 7 0 01-14 0"
+                  />
+                </svg>
+                Refresh
+              </FilterToolbarPrimaryAction>
+              <FilterToolbarSecondaryAction onClick={exportAll} disabled={loading} title="Export dashboard CSV">
+                <svg className="h-4 w-4 shrink-0 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                  />
+                </svg>
+                Export CSV
+              </FilterToolbarSecondaryAction>
+            </FilterToolbarActions>
+          }
+        />
       </CollapsibleToolbar>
 
       {err ? (

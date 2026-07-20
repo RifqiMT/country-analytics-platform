@@ -19,6 +19,8 @@ type Props = {
   onSelect: (kind: YearPresetKind) => void;
   /** Single-line trigger for dense toolbars (e.g. dashboard control row). */
   compact?: boolean;
+  /** Inside a grouped range bar — lighter chrome, no outer border. */
+  embedded?: boolean;
 };
 
 function spanStart(maxYear: number, spanYears: number): number {
@@ -87,7 +89,7 @@ const ROWS: readonly { kind: YearPresetKind; title: string; sub: (max: number) =
   { kind: "full", title: "Full range", sub: (max) => `${MIN_DATA_YEAR}–${max}` },
 ];
 
-export default function YearRangePresetDropdown({ start, end, maxYear, onSelect, compact = false }: Props) {
+export default function YearRangePresetDropdown({ start, end, maxYear, onSelect, compact = false, embedded = false }: Props) {
   const active = activePreset(start, end, maxYear);
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -130,9 +132,11 @@ export default function YearRangePresetDropdown({ start, end, maxYear, onSelect,
 
   const headline = active === "custom" ? "Custom range" : LABELS[active];
 
-  const triggerClass = compact
-    ? "inline-flex h-9 shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 text-xs font-medium tabular-nums text-slate-800 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 sm:gap-1.5 sm:px-2.5 sm:text-sm"
-    : "flex w-full items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-left shadow-sm transition hover:border-slate-300 hover:bg-slate-50";
+  const triggerClass = embedded
+    ? "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-white px-2.5 text-sm font-medium text-slate-800 shadow-sm ring-1 ring-slate-200/80 transition hover:bg-slate-50 sm:px-3"
+    : compact
+      ? "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-sm font-medium text-slate-800 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 sm:px-3"
+      : "flex w-full items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-left shadow-sm transition hover:border-slate-300 hover:bg-slate-50";
 
   return (
     <div ref={rootRef} className={compact ? "relative shrink-0" : "relative w-full min-w-[10rem] sm:w-auto sm:min-w-[12rem]"}>
@@ -147,7 +151,7 @@ export default function YearRangePresetDropdown({ start, end, maxYear, onSelect,
       >
         {compact ? (
           <>
-            <span className="hidden max-w-[5.5rem] truncate sm:inline sm:max-w-[7rem]">{summary}</span>
+            <span className="whitespace-nowrap">{headline}</span>
             <svg
               className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`}
               fill="none"
@@ -182,7 +186,7 @@ export default function YearRangePresetDropdown({ start, end, maxYear, onSelect,
           id={listId}
           role="listbox"
           aria-label="Year range presets"
-          className={`absolute z-30 mt-1 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg ring-1 ring-black/5 ${
+          className={`absolute z-[120] mt-1 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg ring-1 ring-black/5 ${
             compact ? "right-0 min-w-[14rem]" : "left-0 right-0"
           }`}
         >

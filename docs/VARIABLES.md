@@ -316,6 +316,31 @@ These keys are not environment variables but are part of the application's varia
 | `cap_porter_analysis_v1` | Porter Session Cache | Last generated Porter analysis payload | Stored in `sessionStorage` until regenerate | `frontend/src/lib/porterAnalysisCache.ts` | `{ countryCode: "IDN", industrySector: "10", ... }` |
 | `cap_business_correlation_v1` | Business Analysis Cache | Last correlation + narrative result | Stored in `sessionStorage` until regenerate | `frontend/src/lib/businessCorrelationCache.ts` | `{ metricX: "gdp_per_capita", correlation: 0.62, ... }` |
 
+### 4.8 Time-series point variables (`SeriesPoint`)
+
+Each metric time-series point in API responses follows the `SeriesPoint` shape from `backend/src/series.ts`.
+
+| Variable Name | Friendly Name | Definition | Formula / Rule | Location in the apps | Example |
+| --- | --- | --- | --- | --- | --- |
+| `year` | Data Year | Calendar year for the observation | Integer within platform bounds (2000–current) | All series payloads (`/api/country/:cca3/series`, FX series, WLD series) | `2023` |
+| `value` | Observed Value | Numeric metric or FX value for the year | May be `null` when data is unavailable | Chart/table rendering, correlation points | `4200.5` |
+| `provenance` | Data Provenance | Audit label describing how the value was produced | One of: `reported`, `wb_alternate_code`, `imf_weo`, `uis`, `derived_cross_metric`, `carried_short`, `interpolated`, `filled_range`, `wld_proxy` | Optional field on series points; omitted when null or legacy cache | `imf_weo` |
+
+### 4.9 Dashboard comparison table variables
+
+Response fields from `GET /api/dashboard/comparison` used in the dashboard comparison table.
+
+| Variable Name | Friendly Name | Definition | Formula / Rule | Location in the apps | Example |
+| --- | --- | --- | --- | --- | --- |
+| `rows[].id` | Metric ID | Canonical metric identifier for the row | Must exist in metric catalog | Dashboard comparison table | `gdp_per_capita` |
+| `rows[].label` | Metric Label | Human-readable metric name | From metric catalog | Comparison table header | `GDP per capita (Nominal, US$)` |
+| `country.value` | Country Value | Focus country's value for the metric/year | Direct from series at resolved data year | Comparison table country column | `4200` |
+| `country.yoyPct` | Country YoY % | Year-over-year percentage change | `((latest − prior) / abs(prior)) × 100`; null if prior missing or zero | Comparison table delta badge | `+4.3` |
+| `country.yoyBps` | Country YoY bps | Year-over-year change in basis points | Used for rate/index metrics where bps is meaningful; null otherwise | Comparison table delta badge | `+120` |
+| `avgCountry.value` | Regional Average | Geography-aware regional aggregate | Computed via `geographyComparison.ts` for peer countries | Comparison table avg column | `3800` |
+| `global.value` | Global Benchmark | World or cross-country aggregate benchmark | From WLD proxy or global aggregation logic | Comparison table global column | `5100` |
+| `year` | Resolved Data Year | Actual year used for comparison values | May differ from user-requested year | Comparison table header/context | `2023` |
+
 ## 5) Relationship Chart (Where variables connect)
 
 ```mermaid

@@ -128,7 +128,7 @@ Core value:
 | Data categories | 6 metric categories + 1 UI-only global table grouping (`general`) |
 | Application modules | 7 routes |
 | API endpoints | 20+ |
-| Documentation files | 22 |
+| Documentation files | 23 |
 | Functional requirements (traceability) | FR-01 through FR-28 |
 | User personas | 7 |
 | Year range | 2000 – current |

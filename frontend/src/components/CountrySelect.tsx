@@ -5,6 +5,11 @@ function formatCountryLine(c: CountrySummary): string {
   return `${c.name} (${c.cca3}) — ${c.region}`;
 }
 
+function formatCountryDisplay(c: CountrySummary, mode: "full" | "compact"): string {
+  if (mode === "compact") return `${c.name} (${c.cca3})`;
+  return formatCountryLine(c);
+}
+
 type Props = {
   value: string;
   onChange: (cca3: string) => void;
@@ -17,6 +22,8 @@ type Props = {
   /** `below` = link under field; `inline` = × inside field (for single-row toolbars). */
   clearPlacement?: "below" | "inline";
   placeholder?: string;
+  /** Closed-field label: compact omits region to avoid truncation in toolbars. */
+  displayMode?: "full" | "compact";
 };
 
 const DEFAULT_PLACEHOLDER = "Search name, ISO3, or region…";
@@ -30,6 +37,7 @@ export default function CountrySelect({
   allowClear = false,
   clearPlacement = "below",
   placeholder = DEFAULT_PLACEHOLDER,
+  displayMode = "full",
 }: Props) {
   const [countries, setCountries] = useState<CountrySummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -120,8 +128,8 @@ export default function CountrySelect({
 
   const listPanelCls =
     variant === "light"
-      ? "absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-xl border border-slate-200 bg-white py-1 shadow-lg"
-      : "absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-xl border border-white/10 bg-ink-900 py-1 shadow-lg";
+      ? "absolute z-[120] mt-1 max-h-60 w-full min-w-[16rem] overflow-auto rounded-xl border border-slate-200 bg-white py-1 shadow-lg"
+      : "absolute z-[120] mt-1 max-h-60 w-full min-w-[16rem] overflow-auto rounded-xl border border-white/10 bg-ink-900 py-1 shadow-lg";
 
   const itemCls = (active: boolean, isSel: boolean) =>
     variant === "light"
@@ -133,7 +141,8 @@ export default function CountrySelect({
         }`;
 
   const hintCls = variant === "light" ? "text-slate-500" : "text-slate-500";
-  const displayValue = open ? query : selected ? formatCountryLine(selected) : "";
+  const displayValue = open ? query : selected ? formatCountryDisplay(selected, displayMode) : "";
+  const fullSelectedTitle = selected ? formatCountryLine(selected) : undefined;
 
   const onInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setQuery(e.target.value);
@@ -225,6 +234,7 @@ export default function CountrySelect({
           disabled={disabled}
           placeholder={!selected ? placeholder : open ? placeholder : undefined}
           value={displayValue}
+          title={!open && displayMode === "compact" ? fullSelectedTitle : undefined}
           onChange={onInputChange}
           onFocus={onInputFocus}
           onKeyDown={onKeyDown}
@@ -311,7 +321,7 @@ export default function CountrySelect({
 
         {open && query.trim() && listSlice.length === 0 && (
           <div
-            className={`absolute z-50 mt-1 w-full rounded-xl border px-3 py-4 text-center text-sm shadow-lg ${
+            className={`absolute z-[120] mt-1 w-full min-w-[16rem] rounded-xl border px-3 py-4 text-center text-sm shadow-lg ${
               variant === "light"
                 ? "border-slate-200 bg-white text-slate-500"
                 : "border-white/10 bg-ink-900 text-slate-400"
