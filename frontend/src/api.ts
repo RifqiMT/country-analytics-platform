@@ -286,6 +286,8 @@ export type CountrySummary = {
   government?: string;
   /** Wikidata office label shortened (e.g. President), when REST Countries omits government. */
   headOfGovernmentTitle?: string;
+  /** Current officeholder name (Wikidata P6 and/or Tavily+Groq web grounding). */
+  headOfGovernmentName?: string;
   /** Exclusive economic zone area (km²); null if landlocked or unknown. */
   eezSqKm?: number | null;
   ccn3?: string;

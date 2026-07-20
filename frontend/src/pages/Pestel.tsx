@@ -1,40 +1,32 @@
-import { useEffect, useRef, useState } from "react";
-import CollapsibleToolbar from "../components/layout/CollapsibleToolbar";
+import { useEffect, useState } from "react";
 import PageIntro from "../components/layout/PageIntro";
-import CountrySelect from "../components/CountrySelect";
+import { PAGE_INTRO } from "../lib/platformCopy";
 import LoadingProgressSection from "../components/ui/LoadingProgressSection";
 import { postJson } from "../api";
 import { startSimulatedLoadProgress } from "../lib/loadProgress";
 import type { PestelAnalysis } from "../types/pestel";
 import { loadPestelFromCache, savePestelToCache } from "../lib/pestelAnalysisCache";
-import PestelDimensionCard from "../components/pestel/PestelDimensionCard";
+import PestelAnalysisToolbar from "../components/pestel/PestelAnalysisToolbar";
+import PestelDimensionsHub from "../components/pestel/PestelDimensionsHub";
 import PestelSwotGrid from "../components/pestel/PestelSwotGrid";
 import PestelComprehensiveCard from "../components/pestel/PestelComprehensiveCard";
 import PestelStrategicCard from "../components/pestel/PestelStrategicCard";
-import PestelBulletCard from "../components/pestel/PestelBulletCard";
+import PestelInsightsPanel from "../components/pestel/PestelInsightsPanel";
 import { maxSelectableYear } from "../lib/yearBounds";
-import ExportPngButton from "../components/ExportPngButton";
-
-const WandIcon = () => (
-  <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.5 4.5L19 12l-5.5 3L10 19l-2.5-4L2 12l5.5-3L10 5z"
-    />
-  </svg>
-);
+import { readStoredDashboardCountry } from "../dashboardCountryStorage";
 
 export default function Pestel() {
-  const [country, setCountry] = useState("IDN");
+  const [country, setCountry] = useState(() => readStoredDashboardCountry() ?? "IDN");
   const year = maxSelectableYear();
-  const [analysis, setAnalysis] = useState<PestelAnalysis | null>(() => loadPestelFromCache("IDN")?.analysis ?? null);
-  const [attr, setAttr] = useState<string[]>(() => loadPestelFromCache("IDN")?.attribution ?? []);
+  const [analysis, setAnalysis] = useState<PestelAnalysis | null>(
+    () => loadPestelFromCache(readStoredDashboardCountry() ?? "IDN")?.analysis ?? null
+  );
+  const [attr, setAttr] = useState<string[]>(
+    () => loadPestelFromCache(readStoredDashboardCountry() ?? "IDN")?.attribution ?? []
+  );
   const [loading, setLoading] = useState(false);
   const [loadProgress, setLoadProgress] = useState(0);
   const [err, setErr] = useState<string | null>(null);
-  const pestelChartRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const cached = loadPestelFromCache(country);
@@ -72,97 +64,60 @@ export default function Pestel() {
   };
 
   return (
-    <div className="space-y-6 lg:space-y-8">
-      <PageIntro title="PESTEL Analysis">
-        <p>
-          Comprehensive macro-environmental analysis (Political, Economic, Social, Technological, Environmental,
-          Legal) with PESTEL-SWOT matrix, new market analysis, key takeaways, and actionable recommendations.
-          Uses platform data (World Bank, UN, WHO, IMF; 2000 – latest) and supplements with web search where
-          dashboard data is limited.
-        </p>
-      </PageIntro>
+    <div className="space-y-5 lg:space-y-6">
+      <PageIntro {...PAGE_INTRO.pestel} />
 
-      <CollapsibleToolbar title="Run analysis" summary={country || "Select country"} forceOpen={loading}>
-        <div className="overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <div className="flex w-max min-w-full flex-nowrap items-center gap-2 sm:gap-3">
-            <div className="min-w-[10rem] flex-1 shrink-0 sm:min-w-[12rem] md:max-w-sm">
-              <label className="sr-only">Country</label>
-              <CountrySelect
-                value={country}
-                onChange={setCountry}
-                variant="light"
-                showLabel={false}
-                className="gap-0 [&_input]:h-9 [&_input]:truncate [&_input]:py-1.5 [&_input]:pl-2.5 [&_input]:pr-8 [&_input]:text-xs sm:[&_input]:pl-3 sm:[&_input]:pr-10 sm:[&_input]:text-sm"
+      <PestelAnalysisToolbar
+        country={country}
+        onCountryChange={setCountry}
+        year={year}
+        loading={loading}
+        onGenerate={run}
+      />
+
+      {err ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">
+          {err.replace(/^Error:\s*/i, "")}
+        </div>
+      ) : null}
+
+      {loading ? <LoadingProgressSection label="Generating PESTEL analysis…" progress={loadProgress} /> : null}
+
+      {!loading && !analysis && !err ? (
+        <div className="flex min-h-[220px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 px-4 text-center">
+          <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-teal-50 text-teal-700 ring-1 ring-teal-100">
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.75}
+                d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1 3m8.5-3l1 3m0 0l.5 1.5m-.5-1.5h-9.5m0 0l-.5 1.5"
               />
-            </div>
-            <button
-              type="button"
-              onClick={run}
-              disabled={!country || loading}
-              className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-red-600 px-3 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 sm:ml-auto"
-              title="Generate PESTEL analysis"
-            >
-              <WandIcon />
-              {loading ? (
-                <span className="whitespace-nowrap">…</span>
-              ) : (
-                <>
-                  <span className="hidden whitespace-nowrap sm:inline">Generate PESTEL</span>
-                  <span className="sr-only sm:hidden">Generate PESTEL analysis</span>
-                </>
-              )}
-            </button>
+            </svg>
           </div>
+          <p className="text-sm font-semibold text-slate-900">Ready when you are</p>
+          <p className="mt-1 max-w-sm text-sm text-slate-500">
+            Select a country, then generate a PESTEL report with SWOT, strategic implications, and recommendations.
+          </p>
         </div>
-      </CollapsibleToolbar>
+      ) : null}
 
-      {err && (
-        <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{err}</p>
-      )}
-
-      {loading && (
-        <LoadingProgressSection label="Generating PESTEL analysis…" progress={loadProgress} />
-      )}
-
-      {attr.length > 0 && (
-        <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-500 shadow-sm">
-          <span className="font-semibold text-slate-600">Sources · </span>
-          {attr.join(" · ")}
-        </div>
-      )}
-
-      {analysis && (
-        <div className="space-y-10">
-          <div>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-slate-900">PESTEL Analysis</h2>
-                <p className="mt-1 text-sm text-slate-500">Summarized bullet points by macro-environmental factor.</p>
-              </div>
-              <div className="sm:self-end">
-                <ExportPngButton
-                  getTarget={() => pestelChartRef.current}
-                  filename="pestel_analysis.png"
-                  size="md"
-                  title="Export PESTEL Analysis (PNG)"
-                />
-              </div>
-            </div>
-            <div ref={(n) => (pestelChartRef.current = n)} className="mt-6 space-y-4">
-              {analysis.pestelDimensions.map((dim) => (
-                <PestelDimensionCard key={`${dim.label}-${dim.letter}`} dim={dim} />
-              ))}
-            </div>
-          </div>
-
+      {analysis && !loading ? (
+        <div className="space-y-6 lg:space-y-8">
+          {attr.length > 0 ? (
+            <p className="rounded-lg border border-slate-100 bg-white px-3 py-2 text-xs text-slate-500">
+              <span className="font-semibold text-slate-600">Sources</span>
+              <span className="mx-1.5 text-slate-300">·</span>
+              {attr.join(" · ")}
+            </p>
+          ) : null}
+          <PestelDimensionsHub dimensions={analysis.pestelDimensions} />
           <PestelSwotGrid swot={analysis.swot} />
           <PestelComprehensiveCard sections={analysis.comprehensiveSections} />
           <PestelStrategicCard sections={analysis.strategicBusiness} />
-          <PestelBulletCard title="New Market Analysis" items={analysis.newMarketAnalysis} />
-          <PestelBulletCard title="Key Takeaways" items={analysis.keyTakeaways} />
-          <PestelBulletCard title="Key recommendations" items={analysis.recommendations} />
+          <PestelInsightsPanel analysis={analysis} />
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

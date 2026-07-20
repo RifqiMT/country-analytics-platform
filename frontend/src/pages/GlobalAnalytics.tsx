@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import CollapsibleToolbar from "../components/layout/CollapsibleToolbar";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import PageIntro from "../components/layout/PageIntro";
+import { PAGE_INTRO } from "../lib/platformCopy";
 import ChartTableToggle from "../components/charts/ChartTableToggle";
-import AccordionSection from "../components/dashboard/AccordionSection";
 import GlobalChoropleth from "../components/global/GlobalChoropleth";
 import GlobalWldCharts from "../components/global/GlobalWldCharts";
+import GlobalAnalyticsToolbar from "../components/global/GlobalAnalyticsToolbar";
 import SortableTh from "../components/ui/SortableTh";
 import LoadingProgressSection from "../components/ui/LoadingProgressSection";
 import { startSimulatedLoadProgress } from "../lib/loadProgress";
@@ -12,7 +12,7 @@ import { getJson, type CountrySummary, type MetricDef } from "../api";
 import { metricDisplayLabel } from "../lib/metricDisplay";
 import { downloadCsv } from "../lib/csv";
 import { formatCompactNumber, formatYoY, yoYClass } from "../lib/formatValue";
-import { MIN_DATA_YEAR, clampPickerYear, maxSelectableYear } from "../lib/yearBounds";
+import { maxSelectableYear } from "../lib/yearBounds";
 import { buildGeoNameToIso3Lookup } from "../lib/geoNameToIso3";
 import { flagEmojiFromAlpha2 } from "../lib/flagEmoji";
 import { cmpNullableNumber, cmpString, toggleColumnSort, type SortDir } from "../lib/tableSort";
@@ -332,8 +332,6 @@ export default function GlobalAnalytics() {
     };
   }, [mapMetric, metrics]);
 
-  const mapSelectOptions = mapMetricOptions.length > 0 ? mapMetricOptions : null;
-
   const mapMetricDef = useMemo(() => metrics.find((m) => m.id === mapMetric), [metrics, mapMetric]);
   const mapValueFormat =
     MAP_METRIC_VALUE_PERCENT.has(mapMetric) || mapMetricDef?.unit.includes("%")
@@ -471,190 +469,93 @@ export default function GlobalAnalytics() {
     snapshot && (snapshot.requestedYear ?? year) !== mapDataYear
   );
 
-  const viewBtn = (mode: ViewMode, label: string, shortLabel: string, icon: ReactNode) => (
-    <button
-      type="button"
-      onClick={() => setView(mode)}
-      aria-pressed={view === mode}
-      title={label}
-      className={`inline-flex h-9 shrink-0 items-center gap-1 rounded-lg px-2 text-xs font-semibold transition sm:gap-1.5 sm:px-2.5 sm:text-sm ${
-        view === mode ? "bg-red-600 text-white shadow-sm" : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-      }`}
-    >
-      {icon}
-      <span className="sm:hidden">{shortLabel}</span>
-      <span className="hidden sm:inline">{label}</span>
-    </button>
-  );
-
-  const viewSummary =
-    view === "map" ? "Map" : view === "table" ? "Global table" : "Global charts";
-
   return (
-    <div className="space-y-4">
-      <PageIntro title="Global view">
-        <p>
-          Analyst-grade financial, demographic, and health metrics for every country (2000 – latest),
-          powered by World Bank, UN, WHO, and IMF data. Switch between an interactive world map, a full
-          global country table, and global macro charts for cross-country comparison.
-        </p>
-      </PageIntro>
+    <div className="space-y-5 lg:space-y-6">
+      <PageIntro {...PAGE_INTRO.global} />
 
-      <CollapsibleToolbar
-        title="View controls"
-        summary={`${viewSummary} · ${year} · ${region}`}
-        forceOpen={loading}
-      >
-        <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto sm:gap-2 md:gap-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <div className="shrink-0">
-            <label htmlFor="global-year" className="sr-only">
-              Year
-            </label>
-            <input
-              id="global-year"
-              type="number"
-              className="h-9 w-[4.5rem] min-w-[4.5rem] rounded-lg border border-slate-200 bg-white px-2 text-center text-sm font-medium tabular-nums text-slate-900 shadow-sm [appearance:textfield] focus:border-red-300 focus:outline-none focus:ring-1 focus:ring-red-300 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-              value={year}
-              min={MIN_DATA_YEAR}
-              max={maxYear}
-              onChange={(e) => setYear(clampPickerYear(Number(e.target.value)))}
-            />
-          </div>
+      <GlobalAnalyticsToolbar
+        year={year}
+        maxYear={maxYear}
+        onYearChange={setYear}
+        region={region}
+        regions={regions}
+        onRegionChange={setRegion}
+        view={view}
+        onViewChange={setView}
+        mapMetric={mapMetric}
+        mapMetricOptions={mapMetricOptions}
+        mapMetricFallbackIds={MAP_METRIC_FALLBACK_ORDER}
+        onMapMetricChange={setMapMetric}
+      />
 
-          <div className="min-w-[5.5rem] flex-1 shrink basis-0 sm:max-w-[10rem] md:max-w-xs">
-            <label htmlFor="global-region" className="sr-only">
-              Region
-            </label>
-            <select
-              id="global-region"
-              className="h-9 w-full truncate rounded-lg border border-slate-200 bg-white px-2.5 text-sm text-slate-900 shadow-sm focus:border-red-300 focus:outline-none focus:ring-1 focus:ring-red-300 sm:px-3"
-              value={region}
-              onChange={(e) => setRegion(e.target.value)}
-            >
-              {regions.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="hidden h-9 w-px shrink-0 bg-slate-200 sm:block" aria-hidden />
-
-          {view === "map" ? (
-            <div className="min-w-[7rem] flex-1 shrink basis-0 sm:max-w-[11rem] md:max-w-sm lg:max-w-md">
-              <label htmlFor="global-map-metric" className="sr-only">
-                Metric on map
-              </label>
-              <select
-                id="global-map-metric"
-                className="h-9 w-full truncate rounded-lg border border-slate-200 bg-white px-2.5 text-sm text-slate-900 shadow-sm focus:border-red-300 focus:outline-none focus:ring-1 focus:ring-red-300 sm:px-3"
-                value={mapMetric}
-                onChange={(e) => setMapMetric(e.target.value)}
-              >
-                {(mapSelectOptions
-                  ? mapSelectOptions.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {metricDisplayLabel(m)}
-                      </option>
-                    ))
-                  : [...MAP_METRIC_FALLBACK_ORDER].map((id) => (
-                      <option key={id} value={id}>
-                        {id}
-                      </option>
-                    )))}
-              </select>
-            </div>
-          ) : null}
-
-          <div className="hidden h-9 w-px shrink-0 bg-slate-200 sm:block" aria-hidden />
-
-          <div className="flex shrink-0 items-center gap-1" role="group" aria-label="Global view mode">
-            {viewBtn(
-              "map",
-              "Map",
-              "Map",
-              <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-              </svg>
-            )}
-            {viewBtn(
-              "table",
-              "Global table",
-              "Table",
-              <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-              </svg>
-            )}
-            {viewBtn(
-              "charts",
-              "Global charts",
-              "Charts",
-              <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 19V5m4 14V9m4 10V7m4 12v-8" />
-              </svg>
-            )}
-          </div>
+      {err ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">
+          {err.replace(/^Error:\s*/i, "")}
         </div>
-      </CollapsibleToolbar>
-
-      {err && <p className="text-sm text-red-600">{err}</p>}
+      ) : null}
 
       {view === "map" && loading ? (
         <LoadingProgressSection label="Loading global map data…" progress={mapLoadProgress} />
       ) : null}
 
-      {view === "map" && !loading && snapshot && (
-        <AccordionSection title="Geographic snapshot · map & metric table" defaultOpen>
-          <p className="text-sm text-slate-600">
-            Hover for country name, flag emoji, metric value, and—when available—a flag image inside the shape (REST
-            Countries PNG). Default fill follows the metric scale; outline thickens on hover. Data use World Bank WDI and
-            configured fallbacks (e.g. IMF for debt %). The API may use an earlier year than selected when the latest
-            global release is still sparse, and if a country is still missing in that year it automatically falls back to
-            that country's latest available historical value.
-            <strong className="text-slate-800"> Data year: {mapDataYear}</strong>
-            {mapYearMismatch ? (
-              <span className="text-slate-500">
-                {" "}
-                (you selected {snapshot?.requestedYear ?? year}; values are from the best recent WDI year with enough
-                coverage).
-              </span>
-            ) : null}
-          </p>
-          <div className="cap-map-shell mt-4 flex h-[min(55vh,520px)] min-h-[320px] w-full flex-col">
-            <ChartTableToggle
-              chartLabel="Map"
-              tableLabel="Table"
-              className="flex h-full min-h-0 w-full flex-1 flex-col"
-              vizTitle={`Map · ${mapMeta.label}`}
-              chart={
-                <GlobalChoropleth
-                  valueByIso3={valueByIso3}
-                  geoNameToIso3={geoNameToIso3}
-                  flagByIso3={flagByIso3}
-                  regionFilter={region}
-                  allowedIso3={allowedIso3}
-                  metricLabel={mapMeta.label}
-                  metricDescription={mapMeta.description}
-                  year={mapDataYear}
-                  valueFormat={mapValueFormat}
-                />
-              }
-              table={
-                <GlobalMapMetricTable
-                  rows={snapshot.rows}
-                  allowedIso3={allowedIso3}
-                  metricLabel={mapMeta.label}
-                  year={mapDataYear}
-                />
-              }
-            />
+      {view === "map" && !loading && snapshot ? (
+        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-100 px-4 py-3 sm:px-5">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
+              <div>
+                <h2 className="text-base font-semibold text-slate-900 sm:text-lg">{mapMeta.label}</h2>
+                <p className="mt-0.5 text-sm text-slate-500">
+                  Choropleth and sortable table for {region === "All" ? "all countries" : region}. Data year{" "}
+                  <span className="font-semibold text-slate-700">{mapDataYear}</span>
+                  {mapYearMismatch ? (
+                    <span className="text-slate-400">
+                      {" "}
+                      (selected {snapshot.requestedYear ?? year}; using best coverage year)
+                    </span>
+                  ) : null}
+                  .
+                </p>
+              </div>
+            </div>
           </div>
-        </AccordionSection>
-      )}
+          <div className="p-4 sm:p-5">
+            <div className="cap-map-shell flex h-[min(55vh,520px)] min-h-[320px] w-full flex-col">
+              <ChartTableToggle
+                chartLabel="Map"
+                tableLabel="Table"
+                className="flex h-full min-h-0 w-full flex-1 flex-col"
+                vizTitle={`Map · ${mapMeta.label}`}
+                chart={
+                  <GlobalChoropleth
+                    valueByIso3={valueByIso3}
+                    geoNameToIso3={geoNameToIso3}
+                    flagByIso3={flagByIso3}
+                    regionFilter={region}
+                    allowedIso3={allowedIso3}
+                    metricLabel={mapMeta.label}
+                    metricDescription={mapMeta.description}
+                    year={mapDataYear}
+                    valueFormat={mapValueFormat}
+                  />
+                }
+                table={
+                  <GlobalMapMetricTable
+                    rows={snapshot.rows}
+                    allowedIso3={allowedIso3}
+                    metricLabel={mapMeta.label}
+                    year={mapDataYear}
+                  />
+                }
+              />
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       {view === "map" && !loading && !snapshot && !err ? (
-        <p className="text-sm text-slate-500">Map data is unavailable for now. Please retry.</p>
+        <div className="flex min-h-[200px] items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 px-4 text-center">
+          <p className="text-sm text-slate-500">Map data is unavailable for this selection. Try another year or metric.</p>
+        </div>
       ) : null}
 
       {view === "table" && loading ? (
@@ -694,124 +595,82 @@ export default function GlobalAnalytics() {
               </div>
             ) : null}
             <div className="flex flex-col gap-3 border-b border-slate-100 p-4 sm:flex-row sm:items-center sm:justify-between">
-            {!tableFullscreen ? (
-            <div>
-              <h2 className="text-lg font-bold uppercase tracking-wide text-slate-900">Global country table</h2>
-              <p className="mt-1 text-sm text-slate-600">
-                Primary WDI year <strong>{tableDataYear}</strong>.
-                {" "}
-                If a country is missing in that year, the API falls back to that country's latest available historical
-                value for the selected metric.
-                {tableCat === "financial" ? (
-                  <>
-                    {" "}
-                    Financial columns scan <strong>every year from {MIN_DATA_YEAR}</strong> through {tableDataYear} until a
-                    value is found. Where direct series are still empty, the API fills{" "}
-                    <strong>GDP per capita</strong> and <strong>GDP per capita (PPP)</strong> from GDP ÷ population and{" "}
-                    <strong>gov. debt (US$)</strong> from (debt % of GDP × nominal GDP) when both inputs exist in the
-                    same ladder year. YoY uses the next older non-null step in that ladder.
-                  </>
-                ) : tableCat === "general" ? (
-                  <> Non-numeric columns use REST Countries, Wikidata, and reference EEZ data.</>
-                ) : tableCat === "health" ? (
-                  <>
-                    {" "}
-                    Health &amp; demographics columns scan <strong>every year from {MIN_DATA_YEAR}</strong> through{" "}
-                    {tableDataYear} until a value is found. Missing <strong>age-band shares</strong> (0–14, 15–64, 65+) are
-                    filled as <strong>100% minus the other two</strong> when WDI reports exactly two of the three in the
-                    same ladder year. <strong>Life expectancy</strong> and <strong>under-five mortality</strong> may use
-                    the mean of male and female WDI series when the total is missing. YoY uses the next older non-null
-                    step in that ladder.
-                  </>
-                ) : tableCat === "crime" ? (
-                  <>
-                    {" "}
-                    Crime &amp; safety columns scan <strong>every year from {MIN_DATA_YEAR}</strong> through{" "}
-                    {tableDataYear} until a value is found. Homicide rates are sourced from <strong>UNODC</strong> via WDI;
-                    gender-based violence from UN/WHO surveys; conflict displacement from <strong>IDMC</strong>; battle
-                    deaths from <strong>UCDP</strong>; governance scores from World Bank <strong>WGI</strong>. Coverage
-                    varies by country and indicator — many economies report homicide sporadically.
-                  </>
-                ) : (
-                  <>
-                    {" "}
-                    Education columns scan <strong>every year from {MIN_DATA_YEAR}</strong> through {tableDataYear} until a
-                    value is found. WDI plus UNESCO UIS still fill many gaps. Remaining <strong>out-of-school</strong> cells
-                    may use <strong>100% minus enrollment</strong> (adjusted net primary / secondary; gross tertiary capped
-                    at 100%) from WDI in the same ladder year. YoY uses the next older non-null step in that ladder.
-                  </>
-                )}
-                {tableYearMismatch ? (
-                  <span className="block text-slate-500">
-                    You selected {tableData.requestedYear}; the API uses the latest publishable WDI year.
-                  </span>
-                ) : null}
-              </p>
-            </div>
-            ) : (
-              <p className="text-xs text-slate-500 sm:max-w-xl">
-                Primary WDI year <strong>{tableDataYear}</strong>. Category: <strong>{tableCat}</strong>.
-                {tableYearMismatch ? (
-                  <span className="block text-slate-400">Requested {tableData.requestedYear}; API used best publishable year.</span>
-                ) : null}
-              </p>
-            )}
-            <div className="flex flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-2">
               {!tableFullscreen ? (
-                <button
-                  type="button"
-                  onClick={() => setTableFullscreen(true)}
-                  className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm transition hover:bg-slate-50"
-                  aria-label="Open table full screen"
-                  title="Full screen"
-                >
-                  <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"
-                    />
-                  </svg>
-                  <span className="hidden sm:inline">Full screen</span>
-                </button>
-              ) : null}
-              <div className="flex flex-col items-end gap-1">
-                <span className="text-xs font-semibold uppercase text-red-600">Export</span>
+                <div>
+                  <h2 className="text-base font-semibold text-slate-900 sm:text-lg">Country table</h2>
+                  <p className="mt-0.5 text-sm text-slate-500">
+                    Primary year <span className="font-semibold text-slate-700">{tableDataYear}</span>
+                    {tableYearMismatch ? (
+                      <span className="text-slate-400">
+                        {" "}
+                        (requested {tableData.requestedYear}; using best publishable year)
+                      </span>
+                    ) : null}
+                    . Missing cells fall back to each country&apos;s latest available value.
+                  </p>
+                </div>
+              ) : (
+                <p className="text-xs text-slate-500 sm:max-w-xl">
+                  Category: <span className="font-semibold text-slate-700">{tableCat}</span> · Year{" "}
+                  <span className="font-semibold text-slate-700">{tableDataYear}</span>
+                </p>
+              )}
+              <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                {!tableFullscreen ? (
+                  <button
+                    type="button"
+                    onClick={() => setTableFullscreen(true)}
+                    className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm transition hover:bg-slate-50"
+                    aria-label="Open table full screen"
+                    title="Full screen"
+                  >
+                    <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"
+                      />
+                    </svg>
+                    <span className="hidden sm:inline">Full screen</span>
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   onClick={exportTable}
-                  className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
                   title="Export CSV"
                 >
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" />
                   </svg>
+                  Export CSV
                 </button>
               </div>
             </div>
-          </div>
-          <div className="flex flex-wrap gap-2 border-b border-slate-100 px-4 py-2.5">
-            {(
-              [
-                ["general", "General"],
-                ["financial", "Financial"],
-                ["health", "Health & demographics"],
-                ["education", "Education"],
-                ["crime", "Crime & safety"],
-              ] as const
-            ).map(([id, label]) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => setTableCat(id)}
-                className={`rounded-full px-4 py-1.5 text-sm font-semibold ${
-                  tableCat === id ? "bg-red-600 text-white" : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+            <div className="flex flex-wrap gap-1.5 border-b border-slate-100 px-4 py-2.5">
+              {(
+                [
+                  ["general", "General"],
+                  ["financial", "Financial"],
+                  ["health", "Health"],
+                  ["education", "Education"],
+                  ["crime", "Crime"],
+                ] as const
+              ).map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setTableCat(id)}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition sm:text-sm ${
+                    tableCat === id
+                      ? "bg-teal-700 text-white shadow-sm"
+                      : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           <div
             className={
               tableFullscreen
@@ -941,19 +800,19 @@ export default function GlobalAnalytics() {
         </div>
       )}
 
-      {view === "charts" && (
-        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-          <h2 className="text-lg font-bold uppercase tracking-wide text-slate-900">Global aggregate charts (WLD)</h2>
-          <p className="mt-1 text-sm text-slate-600">
-            World series grouped like the country dashboard (Financial, Health &amp; demographics, Education, Labour). Open{" "}
-            <span className="font-semibold text-slate-800">Full screen</span> on any chart or table to use the full
-            viewport; plots and the map resize with the window.
-          </p>
-          <div className="mt-6">
+      {view === "charts" ? (
+        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-100 px-4 py-3 sm:px-5">
+            <h2 className="text-base font-semibold text-slate-900 sm:text-lg">World aggregate charts</h2>
+            <p className="mt-0.5 text-sm text-slate-500">
+              World (WLD) series grouped like the country dashboard. Use full screen on any chart for a larger view.
+            </p>
+          </div>
+          <div className="p-4 sm:p-5">
             <GlobalWldCharts />
           </div>
         </section>
-      )}
+      ) : null}
     </div>
   );
 }

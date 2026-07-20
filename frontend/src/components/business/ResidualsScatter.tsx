@@ -46,7 +46,7 @@ function ResidualsTooltip({ active, payload }: TooltipProps<number, string>) {
         <ChartTooltipSeriesRow
           label="Residual"
           value={formatCompactNumber(Number(p.residual), { maxFrac: 2 })}
-          color="#ef4444"
+          color="#0d9488"
         />
       </ChartTooltipSeriesList>
     </ChartTooltipShell>
@@ -124,7 +124,7 @@ export default function ResidualsScatter({ points }: { points: Point[] }) {
               <Scatter
                 data={data}
                 dataKey="y"
-                fill="#ef4444"
+                fill="#14b8a6"
                 fillOpacity={0.55}
                 line={false}
                 isAnimationActive={false}

@@ -1,9 +1,32 @@
 import { useCallback, useMemo, useState } from "react";
+import { downloadCsv } from "../../lib/csv";
 import { formatCompactNumber } from "../../lib/formatValue";
 import { cmpNullableNumber, cmpString, toggleColumnSort, type SortDir } from "../../lib/tableSort";
 import SortableTh from "../ui/SortableTh";
 
 export type SeriesTableColumn = { key: string; label: string; format?: "compact" | "percent" };
+
+/** Download the visible series table as CSV (raw numeric values). */
+export function exportSeriesTableCsv(
+  filename: string,
+  rows: Record<string, unknown>[],
+  columns: SeriesTableColumn[]
+) {
+  const headers = ["Period", ...columns.map((c) => c.label)];
+  const csvRows = rows.map((row) => {
+    const period = periodLabel(row);
+    return [
+      period,
+      ...columns.map((c) => {
+        const v = row[c.key];
+        if (v === null || v === undefined) return null;
+        const n = typeof v === "number" ? v : Number(v);
+        return Number.isFinite(n) ? n : null;
+      }),
+    ];
+  });
+  downloadCsv(filename, headers, csvRows);
+}
 
 function formatCell(col: SeriesTableColumn, raw: unknown): string {
   if (raw === null || raw === undefined) return "—";

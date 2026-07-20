@@ -25,7 +25,8 @@ import cors from "cors";
 import express from "express";
 import { METRICS, METRIC_BY_ID } from "./metrics.js";
 import { listCountries, getCountry, fetchCountryByIso3Direct, type CountrySummary } from "./restCountries.js";
-import { fetchEnrichedCountryMeta } from "./countryMetaEnrichment.js";
+import { fetchEnrichedCountryMeta, inferHeadOfGovernmentFromGovernmentType } from "./countryMetaEnrichment.js";
+import { resolveHeadOfGovernmentName } from "./headOfGovernmentLookup.js";
 import { fetchWikidataCountryEnrichment } from "./wikidataCountryProfile.js";
 import { fetchSeaAroundUsEezAreaKm2 } from "./seaAroundUsEez.js";
 import { EEZ_SQKM_FALLBACK } from "./eezSqKmFallback.js";
@@ -174,11 +175,29 @@ async function settleWithinResult<T>(
 }
 
 function seriesTimeoutForMetricCount(metricCount: number): number {
-  const perMetricMs = 4_500;
-  const baseMs = 8_000;
+  const perMetricMs = 5_500;
+  const baseMs = 14_000;
   const desired = baseMs + metricCount * perMetricMs;
-  const ceiling = metricCount >= 40 ? 95_000 : 55_000;
+  const ceiling =
+    metricCount >= 40 ? 95_000 : metricCount <= 4 ? 68_000 : metricCount <= 8 ? 62_000 : 58_000;
   return capServerlessTimeout(Math.min(desired, ceiling));
+}
+
+async function fetchCountrySeriesBundlePart(
+  cca3: string,
+  metricIds: string[],
+  start: number,
+  end: number,
+  opts?: { skipWldFallback?: boolean }
+): Promise<{ bundle: Record<string, SeriesPoint[]>; timedOut: boolean }> {
+  const fallbackBundle = makeNullBundle(metricIds, start, end);
+  const seriesTimeoutMs = seriesTimeoutForMetricCount(metricIds.length);
+  const { value: bundle, timedOut } = await settleWithinResult(
+    fetchCountryBundle(cca3, metricIds, start, end, opts),
+    seriesTimeoutMs,
+    fallbackBundle
+  );
+  return { bundle, timedOut };
 }
 
 async function fetchCountriesFromWorldBankDirectory(): Promise<CountrySummary[]> {
@@ -717,7 +736,8 @@ app.get("/api/country/:cca3", async (req, res) => {
         ? mergedCountry.area
         : (totalAreaKm2 ?? landAreaKm2 ?? mergedCountry.area);
     const government = resolvedCountry.government ?? wd?.government;
-    const headOfGovernmentTitle = wd?.headOfGovernmentTitle;
+    const headOfGovernmentTitle =
+      wd?.headOfGovernmentTitle?.trim() || inferHeadOfGovernmentFromGovernmentType(government);
     const eezSqKm = mergedCountry.landlocked ? null : eezApi ?? EEZ_SQKM_FALLBACK[iso] ?? null;
     const directCurrencyFallback =
       mergedCountry.cca2 && /^[A-Z]{2}$/.test(mergedCountry.cca2)
@@ -744,10 +764,22 @@ app.get("/api/country/:cca3", async (req, res) => {
       (typeof mergedCountry.currencyDisplay === "string" && mergedCountry.currencyDisplay.trim()
         ? mergedCountry.currencyDisplay.trim()
         : "") || currencyCodes[0];
-    const [usdFxRate, eurFxRate] = await Promise.all([
+    const [usdFxRate, eurFxRate, headGovResolved] = await Promise.all([
       settleWithin(fetchBestUsdFxSnapshot(fxCurrencyCandidates, iso), 14000, null),
       settleWithin(fetchBestEurFxSnapshot(fxCurrencyCandidates, iso), 14000, null),
+      settleWithin(
+        resolveHeadOfGovernmentName({
+          cca3: iso,
+          countryName: mergedCountry.name,
+          roleTitle: headOfGovernmentTitle,
+          tavilyApiKey: readRequestApiKey(req, "tavily"),
+          groqApiKey: readRequestApiKey(req, "groq"),
+        }),
+        14_000,
+        null
+      ),
     ]);
+    const headOfGovernmentName = headGovResolved?.name ?? wd?.headOfGovernmentName ?? undefined;
     res.json({
       ...mergedCountry,
       currencies: currencyCodes,
@@ -766,6 +798,7 @@ app.get("/api/country/:cca3", async (req, res) => {
       ianaTimezone,
       government,
       headOfGovernmentTitle,
+      headOfGovernmentName,
       eezSqKm,
       worldBankProfile,
     });
@@ -922,31 +955,43 @@ app.get("/api/country/:cca3/series", async (req, res) => {
       res.json(cached);
       return;
     }
-    const fallbackBundle: Record<string, SeriesPoint[]> = Object.fromEntries(
-      metricIds.map((id) => [
-        id,
-        Array.from({ length: end - start + 1 }, (_, i) => ({ year: start + i, value: null })),
-      ])
+    const batchedClientRequest = Boolean(idsParam?.trim());
+    const bundleOpts = batchedClientRequest ? { skipWldFallback: true as const } : undefined;
+
+    let { bundle, timedOut } = await fetchCountrySeriesBundlePart(
+      cca3,
+      metricIds,
+      start,
+      end,
+      bundleOpts
     );
-    const seriesTimeoutMs = seriesTimeoutForMetricCount(metricIds.length);
-    const { value: bundle, timedOut } = await settleWithinResult(
-      fetchCountryBundle(cca3, metricIds, start, end),
-      seriesTimeoutMs,
-      fallbackBundle
-    );
+
+    if (timedOut && isAllNullBundle(bundle) && metricIds.length > 1) {
+      const mid = Math.ceil(metricIds.length / 2);
+      const [left, right] = await Promise.all([
+        fetchCountrySeriesBundlePart(cca3, metricIds.slice(0, mid), start, end, { skipWldFallback: true }),
+        fetchCountrySeriesBundlePart(cca3, metricIds.slice(mid), start, end, { skipWldFallback: true }),
+      ]);
+      bundle = { ...left.bundle, ...right.bundle };
+      timedOut = left.timedOut || right.timedOut;
+    }
+
     const allNull = isAllNullBundle(bundle);
     if (!allNull) {
       setCache(cacheKey, bundle, COUNTRY_SERIES_CACHE_TTL_MS);
     }
     if (timedOut && allNull) {
       return res.status(504).json({
-        error: `Country series timed out (${metricIds.length} metrics). Retry or request fewer metrics per call.`,
+        error: `Country metrics are taking longer than usual (${metricIds.length} indicators). Please retry — the client loads data in smaller batches automatically.`,
         code: "SERIES_TIMEOUT",
         metricCount: metricIds.length,
       });
     }
     if (allNull) {
       res.setHeader("x-cap-warning", "country-series-fallback-null-dense");
+    }
+    if (timedOut && !allNull) {
+      res.setHeader("x-cap-warning", "country-series-partial-timeout");
     }
     res.json(bundle);
   } catch (e) {
@@ -3055,6 +3100,17 @@ app.get("/api/analysis/correlation-global", async (req, res) => {
       highlightCountry,
       { deadlineAt: correlationDeadlineFromBudget(budget) }
     );
+    if (result.n === 0) {
+      return res.status(503).json({
+        error:
+          "No overlapping country-year points were available for this metric pair and year range. Try a shorter range or different metrics, then retry.",
+        code: "CORRELATION_EMPTY",
+        metricX,
+        metricY,
+        startYear,
+        endYear,
+      });
+    }
     res.json({
       ...result,
       metricX,

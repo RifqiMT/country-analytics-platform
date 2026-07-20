@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { SeriesProvenance } from "../../api";
 import { CHART_POINT_PROVENANCE_KEY, type ChartRow } from "../../lib/chartSeries";
@@ -23,7 +23,10 @@ import {
 } from "../charts/ChartTooltipShell";
 import ChartGranularityToggle from "../charts/ChartGranularityToggle";
 import ChartTableToggle from "../charts/ChartTableToggle";
-import SeriesLineDataTable, { type SeriesTableColumn } from "../charts/SeriesLineDataTable";
+import SeriesLineDataTable, {
+  exportSeriesTableCsv,
+  type SeriesTableColumn,
+} from "../charts/SeriesLineDataTable";
 
 export type SeriesSpec = {
   key: string;
@@ -190,6 +193,19 @@ export default function ToggleLineChart({
     [series, on]
   );
 
+  const exportTableCsv = useCallback(() => {
+    const base = title
+      .replace(/[^a-z0-9]+/gi, "_")
+      .replace(/^_+|_+$/g, "")
+      .toLowerCase()
+      .slice(0, 80);
+    exportSeriesTableCsv(
+      `${base || "metrics"}_table.csv`,
+      chartData as Record<string, unknown>[],
+      tableColumns
+    );
+  }, [title, chartData, tableColumns]);
+
   return (
     <div className="cap-line-chart-root rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
       <div className="mb-3 flex flex-col gap-2 border-b border-slate-100 pb-3 sm:flex-row sm:items-center sm:justify-between">
@@ -226,6 +242,7 @@ export default function ToggleLineChart({
         <ChartTableToggle
           className="h-full w-full"
           vizTitle={title}
+          onExportCsv={exportTableCsv}
           chart={
             <div ref={chartAnchorRef} className="h-full w-full min-h-0 min-w-0">
               <ResponsiveContainer width="100%" height="100%">

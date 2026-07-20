@@ -161,15 +161,15 @@ Each persona describes:
 
 ## Persona-to-module matrix
 
-| Persona | Dashboard | Global | Assistant | PESTEL | Porter | Business | Sources |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| Policy Analyst | **Primary** | Secondary | Secondary | — | — | Secondary | Reference |
-| Strategy Manager | Secondary | Secondary | Secondary | **Primary** | **Primary** | Secondary | Reference |
-| Research Associate | **Primary** | **Primary** | Secondary | — | — | **Primary** | **Primary** |
-| Product / Ops Leader | Review | Review | Review | Review | Review | Review | Review |
-| BYOK Power User | — | — | **Primary** | **Primary** | **Primary** | **Primary** | — |
-| Executive Reviewer | — | — | — | Secondary | Secondary | **Primary** | — |
-| Security & Risk Analyst | **Primary** | **Primary** | Secondary | Secondary | — | Secondary | Reference |
+| Persona | Dashboard | Compare | Global | Assistant | PESTEL | Porter | Business | Sources |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Policy Analyst | **Primary** | **Primary** | Secondary | Secondary | — | — | Secondary | Reference |
+| Strategy Manager | Secondary | Secondary | Secondary | Secondary | **Primary** | **Primary** | Secondary | Reference |
+| Research Associate | **Primary** | **Primary** | **Primary** | Secondary | — | — | **Primary** | **Primary** |
+| Product / Ops Leader | Review | Review | Review | Review | Review | Review | Review | Review |
+| BYOK Power User | — | — | — | **Primary** | **Primary** | **Primary** | **Primary** | — |
+| Executive Reviewer | — | Secondary | — | — | Secondary | Secondary | **Primary** | — |
+| Security & Risk Analyst | **Primary** | Secondary | **Primary** | Secondary | Secondary | — | Secondary | Reference |
 
 **Legend:** Primary = main daily workflow; Secondary = supporting use; Reference = lookup/audit; Review = governance oversight.
 

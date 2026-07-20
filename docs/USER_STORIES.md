@@ -8,10 +8,11 @@ Stories are written in user language, but each acceptance section is specific en
 
 | Epic | Stories | Traceability (FR) | Primary persona |
 | --- | --- | --- | --- |
-| Dashboard & Global Analytics | D1–D5 | FR-01, FR-02, FR-22, FR-29, FR-30 | Policy Analyst, Research Associate |
+| Dashboard & Global Analytics | D1–D5 | FR-01, FR-02, FR-22, FR-29–FR-32 | Policy Analyst, Research Associate |
+| Compare Countries | CP1–CP2 | FR-36, FR-32, FR-33 | Policy Analyst, Research Associate |
 | Analytics Assistant | A1–A4 | FR-04–FR-08, FR-18, FR-19 | Strategy Manager, BYOK User |
-| Strategy Modules | S1–S3 | FR-09–FR-12, FR-20, FR-21 | Strategy Manager |
-| Business Analytics | B1–B4 | FR-13–FR-15, FR-23, FR-24 | Research Associate, Executive Reviewer |
+| Strategy Modules | S1–S3 | FR-09–FR-12, FR-20, FR-21, FR-34 | Strategy Manager |
+| Business Analytics | B1–B4 | FR-13–FR-15, FR-23, FR-24, FR-35 | Research Associate, Executive Reviewer |
 | Crime & Public Safety | C1–C4 | FR-26–FR-28 | Security & Risk Analyst |
 
 ---
@@ -62,6 +63,35 @@ Stories are written in user language, but each acceptance section is specific en
 - Comparison table loads via `/api/dashboard/comparison` with country, regional avg, and global columns.
 - YoY percentage and basis-point deltas display where prior-year data exists.
 - Table is sortable and reflects the actual data year returned by the backend.
+
+### Story D6: Head of government context
+
+**Story:** As a policy analyst, I want to see the current head of government name and office title on the country dashboard so I can orient briefings without leaving the app.
+
+**Acceptance criteria:**
+- Dashboard shows a dedicated head-of-government card with name (when available) and role/title badge.
+- When name is unavailable, UI shows a clear “Not reported” (or equivalent) state—not a blank card.
+- Values come from `GET /api/country/:cca3` (`headOfGovernmentName`, `headOfGovernmentTitle`).
+
+## 1.1) Compare Countries
+
+### Story CP1: Dual-country trend comparison
+
+**Story:** As a researcher, I want to compare two countries on the same metrics over time so I can prepare peer benchmarks quickly.
+
+**Acceptance criteria:**
+- Users can select Country A and Country B on `/compare`.
+- Dual-line charts and pair tables render with distinct A/B colors (`#1d4ed8` / `#c2410c`).
+- KPI deltas use unit-correct formatting (including bps where applicable).
+- Country pair selection persists for the browser tab (`sessionStorage`).
+
+### Story CP2: Export compare outputs
+
+**Story:** As a decision-maker, I want export-ready compare charts and tables for stakeholder packs.
+
+**Acceptance criteria:**
+- PNG export works for chart mode; CSV export works for table mode.
+- Exports respect current country pair, year window, and metric selection.
 
 ## 2) Analytics Assistant
 

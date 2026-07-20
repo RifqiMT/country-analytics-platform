@@ -12,52 +12,55 @@ export default function PestelSwotGrid({ swot }: { swot: PestelSwot }) {
 
   return (
     <section ref={(n) => (swotRef.current = n)} className="space-y-4">
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-xl font-bold text-slate-900">SWOT Analysis</h2>
-          <p className="text-sm text-slate-500">Internal vs external, helpful vs harmful.</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Positioning</p>
+          <h2 className="text-lg font-semibold text-slate-900 sm:text-xl">SWOT matrix</h2>
+          <p className="mt-0.5 text-sm text-slate-500">Internal vs external, helpful vs harmful.</p>
         </div>
-        <div className="flex items-center gap-2 sm:self-end">
-          <p className="text-[11px] font-medium uppercase tracking-wider text-slate-400 sm:text-right">
-            internal · external · helpful · harmful
-          </p>
-          <ExportPngButton
-            getTarget={() => swotRef.current}
-            filename="pestel_swot_analysis.png"
-            size="md"
-            title="Export SWOT Analysis (PNG)"
-          />
-        </div>
+        <ExportPngButton
+          getTarget={() => swotRef.current}
+          filename="pestel_swot_analysis.png"
+          size="md"
+          title="Export SWOT analysis (PNG)"
+        />
       </div>
-      <div className="grid gap-4 sm:grid-cols-2 sm:auto-rows-fr">
+      <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
         {keys.map((k) => {
           const cfg = SWOT_STYLES[k];
-          const items = swot[k];
+          const items = swot[k]
+            .map((line) => String(line).replace(/\s+/g, " ").trim())
+            .filter(Boolean)
+            .slice(0, MAX_ITEMS_PER_CARD);
           return (
-            <div
+            <article
               key={k}
-              className="flex h-full overflow-hidden flex-col rounded-xl border border-slate-200 shadow-sm"
+              className="flex h-full flex-col overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-sm"
             >
               <div
-                className="px-4 py-2.5 text-center text-sm font-semibold text-white"
+                className="flex items-center justify-between gap-2 px-4 py-2.5 text-sm font-semibold text-white"
                 style={{ backgroundColor: cfg.header }}
               >
-                {cfg.title}
+                <span>{cfg.title}</span>
+                <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold tabular-nums">
+                  {items.length}
+                </span>
               </div>
-              <div className="flex-1 p-4 sm:p-5" style={{ backgroundColor: cfg.tint }}>
-                <ul className="list-disc space-y-2 pl-4 text-sm leading-relaxed text-slate-800">
-                  {items
-                    .map((line) => String(line).replace(/\s+/g, " ").trim())
-                    .filter(Boolean)
-                    .slice(0, MAX_ITEMS_PER_CARD)
-                    .map((bullet, i) => (
-                      <li key={`${k}-b-${i}`}>
-                        {bullet}
-                      </li>
-                    ))}
+              <div className="flex-1 p-4" style={{ backgroundColor: cfg.tint }}>
+                <ul className="space-y-2">
+                  {items.map((bullet, i) => (
+                    <li key={`${k}-b-${i}`} className="flex gap-2 text-sm leading-relaxed text-slate-700">
+                      <span
+                        className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full"
+                        style={{ backgroundColor: cfg.header }}
+                        aria-hidden
+                      />
+                      <span>{bullet}</span>
+                    </li>
+                  ))}
                 </ul>
               </div>
-            </div>
+            </article>
           );
         })}
       </div>

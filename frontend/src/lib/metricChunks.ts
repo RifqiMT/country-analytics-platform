@@ -9,4 +9,4 @@ export function chunkMetricIds(ids: readonly string[], chunkSize: number): strin
 }
 
 /** Recommended batch size for GET /api/country/:cca3/series on serverless (~60s cap). */
-export const COUNTRY_SERIES_CHUNK_SIZE = 8;
+export const COUNTRY_SERIES_CHUNK_SIZE = 4;

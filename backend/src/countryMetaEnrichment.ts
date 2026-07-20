@@ -39,6 +39,7 @@ export async function fetchEnrichedCountryMeta(cca3: string): Promise<CountrySum
   const government = pickGovernment(base?.government, direct?.government, wd?.government);
   const headOfGovernmentTitle =
     wd?.headOfGovernmentTitle?.trim() || inferHeadOfGovernmentFromGovernmentType(government);
+  const headOfGovernmentName = wd?.headOfGovernmentName?.trim() || undefined;
 
   if (!seed) {
     return {
@@ -55,6 +56,7 @@ export async function fetchEnrichedCountryMeta(cca3: string): Promise<CountrySum
       currencies: direct?.currencies ?? [],
       government,
       headOfGovernmentTitle,
+      headOfGovernmentName,
     };
   }
 
@@ -62,5 +64,6 @@ export async function fetchEnrichedCountryMeta(cca3: string): Promise<CountrySum
     ...seed,
     government,
     headOfGovernmentTitle,
+    headOfGovernmentName,
   };
 }

@@ -57,7 +57,7 @@ function CorrelationTooltip({
         <ChartTooltipSeriesRow
           label={labelX}
           value={formatCompactNumber(p.x, { maxFrac: 2 })}
-          color="#ef4444"
+          color="#0d9488"
         />
         <ChartTooltipSeriesRow
           label={labelY}
@@ -181,16 +181,25 @@ export default function CorrelationScatter({
 
   return (
     <div className="min-h-[400px] w-full">
+      {points.length === 0 ? (
+        <div className="flex h-[360px] flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 text-center">
+          <p className="text-sm font-semibold text-slate-800">No overlapping country-year points</p>
+          <p className="max-w-md text-sm text-slate-500">
+            Try a different metric pair or a shorter year range, then generate again.
+          </p>
+        </div>
+      ) : (
       <ChartTableToggle
         className="h-[400px] w-full"
         vizTitle={`${labelX} vs ${labelY}`}
         chart={
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" minHeight={320}>
             <ComposedChart margin={{ top: 8, right: 12, bottom: 28, left: 12 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
               <XAxis
                 type="number"
                 dataKey="x"
+                name={labelX}
                 domain={xDomain}
                 tickFormatter={(v) => formatCompactNumber(Number(v), { maxFrac: 1 })}
                 stroke="#94a3b8"
@@ -199,6 +208,7 @@ export default function CorrelationScatter({
               <YAxis
                 type="number"
                 dataKey="y"
+                name={labelY}
                 domain={yDomain}
                 tickFormatter={(v) => formatCompactNumber(Number(v), { maxFrac: 1 })}
                 stroke="#94a3b8"
@@ -260,7 +270,7 @@ export default function CorrelationScatter({
                 name={`Countries (highlight: ${highlightName})`}
                 data={scatterData}
                 dataKey="y"
-                fill="#ef4444"
+                fill="#14b8a6"
                 line={false}
                 isAnimationActive={false}
                 legendType="circle"
@@ -269,9 +279,9 @@ export default function CorrelationScatter({
                 {scatterData.map((entry) => (
                   <Cell
                     key={entry.__key}
-                    fill={entry.isHighlight ? "#ca8a04" : "#ef4444"}
+                    fill={entry.isHighlight ? "#ca8a04" : "#14b8a6"}
                     fillOpacity={entry.isHighlight ? 1 : 0.55}
-                    stroke={entry.isHighlight ? "#a16207" : "#b91c1c"}
+                    stroke={entry.isHighlight ? "#a16207" : "#0f766e"}
                     strokeWidth={entry.isHighlight ? 2 : 0.5}
                   />
                 ))}
@@ -355,9 +365,12 @@ export default function CorrelationScatter({
           </table>
         }
       />
-      <p className="mt-2 text-center text-sm font-medium text-slate-600">
-        Scatter plot: {labelX} vs {labelY} | Corr = {corrStr} | Highlight = {highlightStr}
-      </p>
+      )}
+      {points.length > 0 ? (
+        <p className="mt-2 text-center text-sm font-medium text-slate-600">
+          Scatter plot: {labelX} vs {labelY} | Corr = {corrStr} | Highlight = {highlightStr} | n = {points.length}
+        </p>
+      ) : null}
     </div>
   );
 }

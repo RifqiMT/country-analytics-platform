@@ -1,8 +1,7 @@
-import { fetchGlobalYearSnapshot } from "./globalSnapshot.js";
+import { fetchGlobalYearSnapshotsForRange } from "./globalSnapshot.js";
 import { listCountries } from "./restCountries.js";
 import { METRIC_BY_ID } from "./metrics.js";
 import { getCache, setCache } from "./cache.js";
-import { correlationYearConcurrency } from "./serverlessBudget.js";
 
 export class CorrelationBudgetError extends Error {
   constructor(message = "CORRELATION_BUDGET_EXCEEDED") {
@@ -64,14 +63,18 @@ function isOutlier(v: number, q1: number, q3: number): boolean {
 
 function pearsonPValue(r: number, n: number): string {
   if (n < 3 || Math.abs(r) >= 1) return "—";
-  const t = r * Math.sqrt(n - 2) / Math.sqrt(Math.max(1e-20, 1 - r * r));
+  const t = (r * Math.sqrt(n - 2)) / Math.sqrt(Math.max(1e-20, 1 - r * r));
   const p = 2 * (1 - normalCdf(Math.abs(t)));
   if (p < 0.001) return "<0.001";
   return p.toFixed(3);
 }
 
 function normalCdf(x: number): number {
-  const a1 = 0.254829592, a2 = -0.284496736, a3 = 1.421413741, a4 = -1.453152027, a5 = 1.061405429;
+  const a1 = 0.254829592,
+    a2 = -0.284496736,
+    a3 = 1.421413741,
+    a4 = -1.453152027,
+    a5 = 1.061405429;
   const p = 0.3275911;
   const t = 1 / (1 + p * Math.abs(x));
   const y = 1 - ((((a5 * t + a4) * t + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
@@ -110,15 +113,21 @@ export async function computeCorrelationGlobal(
   startYear: number,
   endYear: number,
   excludeIqrOutliers: boolean,
-  highlightCountry: string,
+  _highlightCountry: string,
   opts?: { deadlineAt?: number | null }
 ): Promise<CorrelationGlobalResult> {
-  const cacheKey = `corr:global:v2:${metricX}:${metricY}:${startYear}:${endYear}:${excludeIqrOutliers ? 1 : 0}:${highlightCountry || "-"}`;
+  // Highlight is UI-only; omit from cache key so results are shared across focus countries.
+  const cacheKey = `corr:global:v4:${metricX}:${metricY}:${startYear}:${endYear}:${excludeIqrOutliers ? 1 : 0}`;
   const hit = getCache<CorrelationGlobalResult>(cacheKey);
-  if (hit) return hit;
+  if (hit && hit.n > 0) return hit;
 
   if (!METRIC_BY_ID[metricX] || !METRIC_BY_ID[metricY]) {
     throw new Error("Unknown metric");
+  }
+
+  const deadlineAt = opts?.deadlineAt ?? null;
+  if (deadlineAt !== null && Date.now() >= deadlineAt) {
+    throw new CorrelationBudgetError();
   }
 
   const countries = await listCountries();
@@ -126,35 +135,29 @@ export async function computeCorrelationGlobal(
   const regionByIso = new Map(countries.map((c) => [c.cca3, c.region || "Unknown"]));
   const nameByIso = new Map(countries.map((c) => [c.cca3, c.name]));
 
-  const rawPoints: { countryIso3: string; countryName: string; region: string; year: number; x: number; y: number }[] = [];
+  // Two range fetches (X and Y) replace dozens of per-year snapshot round-trips.
+  const [byYearX, byYearY] = await Promise.all([
+    fetchGlobalYearSnapshotsForRange(metricX, startYear, endYear),
+    fetchGlobalYearSnapshotsForRange(metricY, startYear, endYear),
+  ]);
+
+  if (deadlineAt !== null && Date.now() >= deadlineAt) {
+    throw new CorrelationBudgetError();
+  }
+
+  const rawPoints: {
+    countryIso3: string;
+    countryName: string;
+    region: string;
+    year: number;
+    x: number;
+    y: number;
+  }[] = [];
   let nMissing = 0;
 
-  const years = Array.from({ length: endYear - startYear + 1 }, (_, i) => startYear + i);
-  const YEAR_PAIR_CONCURRENCY = correlationYearConcurrency();
-  const deadlineAt = opts?.deadlineAt ?? null;
-  const yearPairs: Array<{ year: number; rowsX: Awaited<ReturnType<typeof fetchGlobalYearSnapshot>>; rowsY: Awaited<ReturnType<typeof fetchGlobalYearSnapshot>> }> = [];
-  for (let i = 0; i < years.length; i += YEAR_PAIR_CONCURRENCY) {
-    if (deadlineAt !== null && Date.now() >= deadlineAt) {
-      throw new CorrelationBudgetError();
-    }
-    const chunk = years.slice(i, i + YEAR_PAIR_CONCURRENCY);
-    const resolvedChunk = await Promise.all(
-      chunk.map(async (year) => {
-        try {
-          const [rowsX, rowsY] = await Promise.all([
-            fetchGlobalYearSnapshot(metricX, year),
-            fetchGlobalYearSnapshot(metricY, year),
-          ]);
-          return { year, rowsX, rowsY };
-        } catch {
-          // Keep analysis resilient: a single bad year should not fail the whole request.
-          return { year, rowsX: [], rowsY: [] };
-        }
-      })
-    );
-    yearPairs.push(...resolvedChunk);
-  }
-  for (const { year, rowsX, rowsY } of yearPairs) {
+  for (let year = startYear; year <= endYear; year++) {
+    const rowsX = byYearX.get(year) ?? [];
+    const rowsY = byYearY.get(year) ?? [];
     const byCountryX = new Map(rowsX.map((r) => [r.countryIso3, r.value]));
     const byCountryY = new Map(rowsY.map((r) => [r.countryIso3, r.value]));
     const allIso = new Set([...byCountryX.keys(), ...byCountryY.keys()]);
@@ -164,7 +167,14 @@ export async function computeCorrelationGlobal(
       if (!members.has(up)) continue;
       const vx = byCountryX.get(iso);
       const vy = byCountryY.get(iso);
-      if (vx === null || vx === undefined || Number.isNaN(vx) || vy === null || vy === undefined || Number.isNaN(vy)) {
+      if (
+        vx === null ||
+        vx === undefined ||
+        Number.isNaN(vx) ||
+        vy === null ||
+        vy === undefined ||
+        Number.isNaN(vy)
+      ) {
         nMissing++;
         continue;
       }
@@ -194,7 +204,9 @@ export async function computeCorrelationGlobal(
     filtered = rawPoints.filter((p) => !iqrSet.has(`${p.countryIso3}-${p.year}`));
   }
 
-  const { r, pValue, rSquared, slope, intercept } = pearsonAndRegression(filtered.map((p) => ({ x: p.x, y: p.y })));
+  const { r, pValue, rSquared, slope, intercept } = pearsonAndRegression(
+    filtered.map((p) => ({ x: p.x, y: p.y }))
+  );
 
   const iqrSet = new Set(iqrFlagged.map((p) => `${p.countryIso3}-${p.year}`));
   const points: CorrelationPoint[] = filtered.map((p) => {
@@ -257,6 +269,9 @@ export async function computeCorrelationGlobal(
     subgroups,
     ciBand,
   };
-  setCache(cacheKey, out, 1000 * 60 * 15);
+  // Never cache empty failures — they poison the UI until TTL expires.
+  if (out.n > 0) {
+    setCache(cacheKey, out, 1000 * 60 * 30);
+  }
   return out;
 }

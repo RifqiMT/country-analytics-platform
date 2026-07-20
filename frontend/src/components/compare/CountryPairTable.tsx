@@ -11,6 +11,7 @@ import {
   yoyAtSnapshot,
   yoyBpsAtSnapshot,
 } from "../../lib/countrySeriesFetch";
+import { downloadCsv } from "../../lib/csv";
 import { formatYoY, yoYClass } from "../../lib/formatValue";
 import { cmpNullableNumber, cmpString, toggleColumnSort, type SortDir } from "../../lib/tableSort";
 import SortableTh from "../ui/SortableTh";
@@ -51,7 +52,6 @@ type Props = {
   countryAName: string;
   countryBName: string;
   rows: PairComparisonRow[];
-  onExport: () => void;
 };
 
 type SortCol = "metric" | "countryA" | "countryB" | "comparison";
@@ -145,7 +145,6 @@ export default function CountryPairTable({
   countryAName,
   countryBName,
   rows,
-  onExport,
 }: Props) {
   const [sortKey, setSortKey] = useState<SortCol | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>("asc");
@@ -215,6 +214,40 @@ export default function CountryPairTable({
     },
     [sortKey, sortDir]
   );
+
+  const exportCsv = useCallback(() => {
+    const safe = (s: string) =>
+      s
+        .replace(/[^a-z0-9]+/gi, "_")
+        .replace(/^_+|_+$/g, "")
+        .toLowerCase()
+        .slice(0, 40);
+    const headers = [
+      "metric",
+      "category",
+      countryAName,
+      `${countryAName}_year`,
+      countryBName,
+      `${countryBName}_year`,
+      "delta",
+      "delta_pct",
+    ];
+    const csvRows = sorted.map((r) => [
+      r.label,
+      r.category,
+      r.countryA.value,
+      r.countryA.dataYear,
+      r.countryB.value,
+      r.countryB.dataYear,
+      r.delta,
+      r.deltaPct,
+    ]);
+    downloadCsv(
+      `compare_${safe(countryAName)}_vs_${safe(countryBName)}_${snapshotYear}.csv`,
+      headers,
+      csvRows
+    );
+  }, [sorted, countryAName, countryBName, snapshotYear]);
 
   const table = (
     <div className="overflow-x-auto">
@@ -337,27 +370,62 @@ export default function CountryPairTable({
             <p className="text-sm text-slate-500">
               Snapshot year {snapshotYear} · showing {sorted.length} of {rows.length} indicators
             </p>
-            <div className="flex shrink-0 items-center gap-2 sm:ml-auto">
+            <div className="flex shrink-0 items-center gap-1.5 sm:ml-auto">
               {!fullscreen ? (
-                <button
-                  type="button"
-                  onClick={() => setFullscreen(true)}
-                  className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm transition hover:bg-slate-50"
-                >
-                  Full screen
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setFullscreen(true)}
+                    className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[10px] font-semibold text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 sm:px-3 sm:py-1.5 sm:text-xs"
+                    title="Full screen"
+                  >
+                    <svg className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"
+                      />
+                    </svg>
+                    <span className="hidden sm:inline">Full screen</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={exportCsv}
+                    className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[10px] font-semibold text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 sm:px-3 sm:py-1.5 sm:text-xs"
+                    title="Export table as CSV"
+                    aria-label="Export table as CSV"
+                  >
+                    <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v10m0 0l-4-4m4 4l4-4" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 15v4a2 2 0 002 2h12a2 2 0 002-2v-4" />
+                    </svg>
+                    <span className="hidden sm:inline">Export</span>
+                  </button>
+                </>
               ) : (
-                <button
-                  type="button"
-                  onClick={exitFullscreen}
-                  className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
-                >
-                  Close
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={exportCsv}
+                    className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[10px] font-semibold text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 sm:px-3 sm:py-1.5 sm:text-xs"
+                    title="Export table as CSV"
+                    aria-label="Export table as CSV"
+                  >
+                    <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v10m0 0l-4-4m4 4l4-4" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 15v4a2 2 0 002 2h12a2 2 0 002-2v-4" />
+                    </svg>
+                    <span className="hidden sm:inline">Export</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={exitFullscreen}
+                    className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+                  >
+                    Close
+                  </button>
+                </>
               )}
-              <button type="button" onClick={onExport} className="text-sm font-semibold text-red-600 hover:text-red-700">
-                Export
-              </button>
             </div>
           </div>
           <CompareCountryLegend nameA={countryAName} nameB={countryBName} />

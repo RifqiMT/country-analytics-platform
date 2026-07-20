@@ -95,6 +95,14 @@ If implementation or behavior changes, update affected docs in the same PR and v
 - Corrected category terminology: 6 data categories + UI-only `general` grouping
 - Updated `.env.example` with business model vars and serverless budget
 
+### 2026-07-20 fifth pass — UX modularization & resilience sync:
+
+- Documented Compare Countries (`/compare`) as module #2 of eight
+- Documented head-of-government enrichment and resilient series loading
+- Updated PESTEL/Porter/SWOT/Compare palettes and motion tokens
+- Extended FR-31–FR-36, NFR-09; stories D6 / CP1–CP2
+- Synchronized API, variables, analysis methods, release checklist, and audit report
+
 ### 2026-07-20 third pass — elaboration and cross-reference expansion:
 
 - Rewrote `ASSISTANT_BEHAVIOR.md` and `ANALYSIS_METHODS.md` as full enterprise specifications

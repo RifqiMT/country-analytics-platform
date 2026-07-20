@@ -182,6 +182,8 @@ Request variables are the fields you send to endpoints. Backend validation rules
 | `ianaTimezone` | IANA Timezone | Capital-city timezone for clock card | Derived from lat/lng via tz-lookup | Dashboard timezone card | `Asia/Jakarta` |
 | `eezSqKm` | EEZ Area | Exclusive economic zone in km² | Sea Around Us API with static fallback table | Dashboard hero profile | `6150000` |
 | `worldBankProfile` | WB Country Profile | Income level, lending type, region metadata | World Bank Country API enrichment | Dashboard hero, comparison context | `{ incomeLevel: "Upper middle income" }` |
+| `headOfGovernmentTitle` | Office Title | Formal title of head of government / state | Wikidata P1313, else inferred from government type string | Dashboard `HeadOfGovernmentCard` | `President` |
+| `headOfGovernmentName` | Officeholder Name | Current person holding the office | Prefer Tavily+Groq when both keys present; else Wikidata P6; 14s settle; 6h cache | Dashboard `HeadOfGovernmentCard` | `Prabowo Subianto` |
 
 #### `GET /api/country/:cca3/fx-series`
 
@@ -201,7 +203,7 @@ Request variables are the fields you send to endpoints. Backend validation rules
 
 | Variable Name | Friendly Name | Definition | Formula / Rule | Location in the apps | Example |
 | --- | --- | --- | --- | --- | --- |
-| `x-cap-warning` | Upstream Warning | Non-fatal upstream degradation notice | Set when country list enrichment uses fallback path | `GET /api/countries` response header | `REST Countries partial fallback` |
+| `x-cap-warning` | Upstream Warning | Non-fatal upstream degradation notice | Examples: REST Countries partial fallback; `country-series-partial-timeout` when series timed out but partial data returned | Response header on selected routes | `country-series-partial-timeout` |
 
 #### `POST /api/analysis/correlation`
 
@@ -314,7 +316,8 @@ These keys are not environment variables but are part of the application's varia
 | `cap-app-bootstrap-v1` | Bootstrap Flag | One-shot per-tab flag after initial data warmup | Stored in `sessionStorage` | `frontend/src/hooks/useAppBootstrap.ts` | `"1"` |
 | `cap_pestel_analysis_v1` | PESTEL Session Cache | Last generated PESTEL analysis payload | Stored in `sessionStorage` until regenerate | `frontend/src/lib/pestelAnalysisCache.ts` | `{ countryCode: "IDN", year: 2025, ... }` |
 | `cap_porter_analysis_v1` | Porter Session Cache | Last generated Porter analysis payload | Stored in `sessionStorage` until regenerate | `frontend/src/lib/porterAnalysisCache.ts` | `{ countryCode: "IDN", industrySector: "10", ... }` |
-| `cap_business_correlation_v1` | Business Analysis Cache | Last correlation + narrative result | Stored in `sessionStorage` until regenerate | `frontend/src/lib/businessCorrelationCache.ts` | `{ metricX: "gdp_per_capita", correlation: 0.62, ... }` |
+| `cap_business_correlation_v2` | Business Analysis Cache | Last correlation + narrative result | Stored in `sessionStorage` until regenerate; rejects empty `points`; key version bumped from `v1` | `frontend/src/lib/businessCorrelationCache.ts` | `{ metricX: "gdp_per_capita", correlation: 0.62, ... }` |
+| `cap-compare-country-a` / `cap-compare-country-b` | Compare pair countries | Last selected ISO3 pair for Compare Countries | Stored in `sessionStorage` via `compareCountryStorage.ts` | Compare page | `IDN` / `BRA` |
 
 ### 4.8 Time-series point variables (`SeriesPoint`)
 

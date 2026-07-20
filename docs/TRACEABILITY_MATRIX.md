@@ -47,6 +47,12 @@ It is not meant to replace testing. Instead, it provides a release-ready mapping
 | FR-28 | Crime metrics documented in Sources with institutional source attribution | `frontend/src/pages/Sources.tsx` | `GET /api/metrics`, `GET /api/data-providers` | Verify crime category shows UNODC/IDMC/UCDP/WGI source chips and metric definitions match catalog |
 | FR-29 | Dashboard FX trend chart loads USD/EUR exchange-rate time series | `frontend/src/pages/Dashboard.tsx` | `GET /api/country/:cca3/fx-series`, `backend/src/fxSeries.ts` | Select country with FX data; verify chart renders dual-series USD/EUR lines with source labels |
 | FR-30 | Country profile returns USD/EUR snapshot quotes with source transparency | `backend/src/index.ts` (`fetchUsdFxSnapshot`, `fetchBestUsdFxSnapshot`) | `frontend/src/api.ts` `CountrySummary` | Verify hero FX card shows rate, currency, as-of date, and source institution |
+| FR-31 | Country profile returns current head-of-government name with title fallback | `backend/src/headOfGovernmentLookup.ts`, `backend/src/wikidataCountryProfile.ts`, `GET /api/country/:cca3` | `frontend/src/components/dashboard/HeadOfGovernmentCard.tsx` | Verify name/title render; “Not reported” when absent; Tavily+Groq path when keys present |
+| FR-32 | Country/Compare series load is resilient (chunk 4, parallel 2, retries, server bisect) | `frontend/src/lib/countrySeriesFetch.ts`, `frontend/src/lib/metricChunks.ts` | Series route in `backend/src/index.ts` (`skipWldFallback`, bisect) | Force slow network / large metric set; confirm retry UX and eventual partial/full load without crash |
+| FR-33 | Chart/table visualizations expose mode-aware Export (PNG chart / CSV table), including fullscreen | `frontend/src/components/charts/ChartTableToggle.tsx` | `CountryPairTable.tsx`, `DashboardComparisonTable.tsx`, `SeriesLineDataTable.tsx` | Toggle chart↔table; export PNG then CSV; repeat in fullscreen |
+| FR-34 | Modules share structured PageIntro copy from `platformCopy` | `frontend/src/lib/platformCopy.ts`, `frontend/src/components/layout/PageIntro.tsx` | Global, PESTEL, Porter, Business, Assistant, Sources pages | Confirm eyebrow/lead/detail/highlights render consistently |
+| FR-35 | Global correlation uses year-range WDI snapshots; empty results return `CORRELATION_EMPTY` and are not cached | `backend/src/globalSnapshot.ts`, `backend/src/correlationGlobal.ts` | Correlation-global route in `backend/src/index.ts` | Pair metrics with no overlap; expect 503 + code; retry with valid pair succeeds |
+| FR-36 | Compare Countries dual-country analysis with pair charts and tables | `frontend/src/pages/CountryCompare.tsx` | `frontend/src/components/compare/*`, `GET /api/compare` / series routes | Select two countries; verify dual series, deltas, export |
 
 ### Legacy / internal endpoints
 
@@ -65,7 +71,8 @@ It is not meant to replace testing. Instead, it provides a release-ready mapping
 | NFR-05 | Maintainability through documented APIs and variables | docs set + metric catalog alignment | Doc drift review + catalog sync checks |
 | NFR-06 | Accessibility in UI states (focus, keyboard, contrast) | consistent component styling | Accessibility review (keyboard + contrast) |
 | NFR-07 | PESTEL hallucination containment through snippet-only retrieval + strict grounding QA | `backend/src/pestelTavily.ts`, `backend/src/pestelGrounding.ts`, `backend/src/index.ts` | Controlled prompt set shows grounded output or deterministic fallback with attribution signal |
-| NFR-08 | Business analytics timeout resilience for large year windows | `backend/src/correlationGlobal.ts` (batched year processing + per-year tolerance), `frontend/src/pages/BusinessAnalytics.tsx` (retry/fallback delivery logic) | Long-window regression checks: successful completion under reliability mode with explicit fallback disclosure |
+| NFR-08 | Business analytics timeout resilience for large year windows | `backend/src/correlationGlobal.ts` (year-range WDI snapshots + `correlationDeadlineFromBudget`), `frontend/src/pages/BusinessAnalytics.tsx` | Long-window regression: completion under reliability mode with delivery note; empty `n` → `CORRELATION_EMPTY` |
+| NFR-09 | Observability UX for API transport and toasts | `frontend/src/lib/toastPresentation.ts`, `ApiToastStack.tsx`, `ApiTransportPanel.tsx`, `apiTransportStats.ts` | Visual QA: progress bar pause on hover; tools pulse; readable request log |
 
 ## 3) Governance controls and release rule
 
@@ -80,10 +87,11 @@ Release changes that affect any assistant/analysis output behavior must be accom
 
 | PRD Journey (§8) | Related FR IDs | Primary modules |
 | --- | --- | --- |
-| Journey A: Dashboard → Comparison → Evidence | FR-01, FR-03, FR-22, FR-29, FR-30 | Dashboard |
+| Journey A: Dashboard → Comparison → Evidence | FR-01, FR-03, FR-22, FR-29, FR-30, FR-31, FR-32 | Dashboard |
+| Journey A2: Compare Countries pair analysis | FR-36, FR-32, FR-33 | Compare |
 | Journey B: Assistant → Ranking → Citations | FR-04, FR-05, FR-06, FR-07, FR-08, FR-18, FR-19 | Assistant |
-| Journey C: Strategy module output | FR-09, FR-10, FR-11, FR-12, FR-20, FR-21 | PESTEL, Porter |
-| Journey D: Business Analytics correlation | FR-13, FR-14, FR-15, FR-23, FR-24 | Business Analytics |
+| Journey C: Strategy module output | FR-09, FR-10, FR-11, FR-12, FR-20, FR-21, FR-34 | PESTEL, Porter |
+| Journey D: Business Analytics correlation | FR-13, FR-14, FR-15, FR-23, FR-24, FR-35 | Business Analytics |
 | Journey E: Crime & safety assessment | FR-26, FR-27, FR-28 | Dashboard, Global, Sources |
 
 ---

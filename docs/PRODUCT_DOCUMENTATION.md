@@ -62,6 +62,7 @@ Deliver analyst-grade country analytics and strategic interpretation tools that 
 
 **Capabilities:**
 - Hero profile card: flag, region, income group, capital, population, land area, EEZ, government metadata
+- **Head of government card:** current officeholder name + office title (Wikidata / optional Tavily+Groq)
 - FX rate card: `1 USD = local currency` with source label (ECB/Frankfurter or World Bank) and as-of date
 - Timezone clock card for capital city
 - Accordion sections by domain:
@@ -72,13 +73,27 @@ Deliver analyst-grade country analytics and strategic interpretation tools that 
   - Labour (unemployment, participation, labour force)
   - **Crime & public safety** (homicide, GBV, displacement, battle deaths, WGI governance)
 - KPI metric cards with YoY delta badges
-- Toggle line charts with chart/table view and PNG export
+- Toggle line charts with chart/table view and PNG/CSV export
 - Dashboard comparison table: country vs regional average vs global benchmark
 
 **Business logic:**
-- Metric series fetched via `GET /api/country/:cca3/series`
+- Metric series fetched via `GET /api/country/:cca3/series` with resilient chunked client loading
 - Year range clamped to 2000–current
 - Comparison table uses geography-aware regional aggregation
+
+### 4.1.1 Compare Countries (`/compare`)
+
+**Purpose:** Side-by-side dual-country analysis for peer benchmarking.
+
+**Capabilities:**
+- Select Country A and Country B (persisted selection)
+- Dual-line trend charts with distinct A/B colors (`#1d4ed8` / `#c2410c`)
+- Pair tables and KPI deltas with unit-aware formatting
+- Mode-aware PNG/CSV export
+
+**Business logic:**
+- Reuses the same country series pipeline and resilience rules as the Dashboard
+- Compare formatting helpers live in `frontend/src/lib/compareMetricFormat.ts`
 
 ### 4.2 Global Analytics (`/global`)
 

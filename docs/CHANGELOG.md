@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-07-20 (Fifth pass — sync docs to uncommitted UX/resilience release)
+
+### Product & implementation alignment
+- Documented **Compare Countries** (`/compare`) as a first-class module (8 modules total)
+- Documented **head-of-government** name/title enrichment (`headOfGovernmentLookup.ts`, Dashboard card)
+- Documented resilient country series loading (client chunk 4 + server bisect; `SERIES_TIMEOUT` / `x-cap-warning`)
+- Documented Business Analytics year-range WDI snapshots + `CORRELATION_EMPTY` empty-result governance
+- Updated PESTEL / Porter / SWOT / Compare color palettes in `DESIGN_GUIDELINES.md`
+- Added motion tokens (toast progress, tools pulse, assistant thinking dots)
+- Extended traceability with **FR-31–FR-36** and **NFR-09**
+- Added user stories **D6**, **CP1–CP2**; updated personas module matrix
+- Updated PRD journeys, API reference, variables dictionary, release checklist, analysis methods
+
 ## 2026-07-20 (Fourth pass — verification audit & final variable completion)
 
 - Created **`docs/DOCUMENTATION_AUDIT_REPORT.md`** — formal audit report confirming 68 metrics, 23 routes, 23 doc files synchronized

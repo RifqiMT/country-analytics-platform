@@ -32,7 +32,14 @@ import CountryPairTable, {
 import { VisualizationStepperFromChildren } from "../components/charts/VisualizationStepper";
 import { getJson, postJson, type CountrySummary, type MetricDef, type SeriesPoint } from "../api";
 import { writeStoredCompareCountries, readStoredCompareCountryA, readStoredCompareCountryB } from "../lib/compareCountryStorage";
-import { fetchCountrySeriesBatched, latestAtOrBefore, yoyAtSnapshot, yoyBpsAtSnapshot } from "../lib/countrySeriesFetch";
+import {
+  fetchCountrySeriesBatched,
+  formatSeriesLoadError,
+  latestAtOrBefore,
+  yoyAtSnapshot,
+  yoyBpsAtSnapshot,
+} from "../lib/countrySeriesFetch";
+import LoadErrorBanner from "../components/layout/LoadErrorBanner";
 import { downloadCsv } from "../lib/csv";
 import { metricDisplayLabelFromId } from "../lib/metricDisplay";
 import { formatYoY } from "../lib/formatValue";
@@ -212,7 +219,7 @@ export default function CountryCompare() {
       setBundleB(seriesB);
       setProgress(100);
     } catch (e) {
-      setErr(String(e));
+      setErr(formatSeriesLoadError(e));
       setProgress(0);
     } finally {
       setLoading(false);
@@ -423,9 +430,7 @@ export default function CountryCompare() {
       </CollapsibleToolbar>
 
       {err ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">
-          {err}
-        </div>
+        <LoadErrorBanner message={err} onRetry={() => setTick((t) => t + 1)} />
       ) : null}
 
       {loading ? (
@@ -467,14 +472,12 @@ export default function CountryCompare() {
               subtitle={`Full snapshot table · ${comparisonRows.length} indicators at ${end}`}
               accent="slate"
               defaultOpen={false}
-              onDownload={exportComparison}
             >
               <CountryPairTable
                 snapshotYear={end}
                 countryAName={nameA}
                 countryBName={nameB}
                 rows={comparisonRows}
-                onExport={exportComparison}
               />
             </AccordionSection>
 

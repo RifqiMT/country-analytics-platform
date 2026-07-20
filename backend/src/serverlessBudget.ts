@@ -58,11 +58,6 @@ export function shouldSkipBootstrapWarmup(): boolean {
   return process.env.DISABLE_BOOTSTRAP_WARMUP === "1" || isServerlessRuntime();
 }
 
-/** Recommended year-batch concurrency for global correlation on serverless. */
-export function correlationYearConcurrency(): number {
-  return isServerlessRuntime() ? 8 : 4;
-}
-
 /** Hard deadline (epoch ms) for correlation year loops, or null when unbounded. */
 export function correlationDeadlineFromBudget(budget: RequestBudget, reserveMs = 2_000): number | null {
   if (!isServerlessRuntime()) return null;

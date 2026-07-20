@@ -60,37 +60,46 @@ Defined in `frontend/tailwind.config.js`:
 
 ### 2.4 PESTEL dimension theme colors
 
-Defined in `frontend/src/components/pestel/pestelTheme.ts`:
+Defined in `frontend/src/components/pestel/pestelTheme.ts` (professional, non-purple palette):
 
 | Dimension | Header color | Tint (content background) |
 | --- | --- | --- |
-| POLITICAL | `#1e3a5f` | `#e8eef5` |
-| ECONOMIC | `#2d5a4c` | `#e9f2ef` |
-| SOCIOCULTURAL | `#9a7340` | `#f4efe6` |
-| TECHNOLOGICAL | `#b8573a` | `#f7ece8` |
-| ENVIRONMENTAL | `#6b2d38` | `#f0e8ea` |
-| LEGAL | `#4a4568` | `#ebeaf2` |
+| POLITICAL | `#0f766e` | `#f0fdfa` |
+| ECONOMIC | `#334155` | `#f8fafc` |
+| SOCIOCULTURAL | `#b45309` | `#fffbeb` |
+| TECHNOLOGICAL | `#0369a1` | `#f0f9ff` |
+| ENVIRONMENTAL | `#15803d` | `#f0fdf4` |
+| LEGAL | `#57534e` | `#fafaf9` |
 
 ### 2.5 SWOT quadrant theme colors
 
 | Quadrant | Header color | Tint | Title |
 | --- | --- | --- | --- |
-| Strengths | `#2D5A4C` | `#E9F2EF` | Strengths |
-| Weaknesses | `#A04A26` | `#F7EEEA` | Weaknesses |
-| Opportunities | `#1D6391` | `#E8F1F6` | Opportunities |
-| Threats | `#B01E43` | `#F6E8EB` | Threats |
+| Strengths | `#0f766e` | `#f0fdfa` | Strengths |
+| Weaknesses | `#b45309` | `#fffbeb` | Weaknesses |
+| Opportunities | `#0369a1` | `#f0f9ff` | Opportunities |
+| Threats | `#b91c1c` | `#fef2f2` | Threats |
 
 ### 2.6 Porter Five Forces accent colors
 
 Defined in `frontend/src/components/porter/porterTheme.ts`:
 
-| Force | Accent color |
-| --- | --- |
-| Threat of new entry | `#dc2626` (red-600) |
-| Supplier power | `#2563eb` (blue-600) |
-| Buyer power | `#2563eb` (blue-600) |
-| Threat of substitutes | `#0ea5e9` (sky-500) |
-| Competitive rivalry | `#64748b` (slate-500) |
+| Force | Accent color | Short label (`PORTER_FORCE_SHORT`) |
+| --- | --- | --- |
+| Threat of new entry | `#0f766e` | New entrants |
+| Supplier power | `#334155` | Suppliers |
+| Buyer power | `#0369a1` | Buyers |
+| Threat of substitutes | `#b45309` | Substitutes |
+| Competitive rivalry | `#115e59` | Rivalry |
+
+### 2.6.1 Compare Countries pair colors
+
+Defined in `frontend/src/lib/compareChartMerge.ts`:
+
+| Role | Hex | Usage |
+| --- | --- | --- |
+| Country A | `#1d4ed8` | Solid series / legend for first country |
+| Country B | `#c2410c` | Distinct series / legend for second country |
 
 ### 2.7 Crime & safety dashboard section
 
@@ -126,6 +135,21 @@ Defined in `frontend/src/components/global/GlobalChoropleth.tsx`:
 - No-data fill: `#e2e8f0` (slate-200)
 - Data range: light `#fef3c7` → dark `#c2410c` (amber-to-orange sequential scale)
 - Highlighted country border: `#0f172a` (slate-900)
+
+### 2.10 Motion and feedback tokens (`frontend/src/index.css`)
+
+| Class / animation | Purpose | Behavior |
+| --- | --- | --- |
+| `.toast-slide-in` / `cap-toast-in` | Toast entrance | 0.32s cubic-bezier; opacity + scale 0.98→1 |
+| `.toast-progress` / `cap-toast-progress` | Auto-dismiss progress bar | Linear width 100%→0%; pauses on `.group:hover` |
+| `.tools-live-pulse` / `cap-tools-pulse` | Header tools activity pulse | Emerald ring pulse (~1.2s) |
+| `.assistant-thinking-dot` / `assistant-thinking-bounce` | Assistant “thinking” indicator | Three staggered dots (0 / 0.15s / 0.3s delay) |
+
+### 2.11 PageIntro and Sources chrome
+
+- Top accent bar: `from-teal-500/70 via-slate-200 to-red-500/50`
+- Eyebrow text: `text-teal-700`
+- Shared copy source: `frontend/src/lib/platformCopy.ts` (`PAGE_INTRO`, `APP_TAGLINE_*`, `PLATFORM_DATA_SOURCES`)
 
 ## 3) Component standards
 

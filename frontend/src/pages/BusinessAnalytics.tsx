@@ -1,22 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getJson, postJson, type MetricDef } from "../api";
 import { metricDisplayLabel } from "../lib/metricDisplay";
-import { formatCompactCount } from "../lib/formatValue";
 import { cmpNullableNumber, cmpString, toggleColumnSort, type SortDir } from "../lib/tableSort";
-import SortableTh from "../components/ui/SortableTh";
-import LoadingProgressSection from "../components/ui/LoadingProgressSection";
 import { startSimulatedLoadProgress } from "../lib/loadProgress";
-import {
-  MIN_DATA_YEAR,
-  clampSpanEnd,
-  clampSpanStart,
-  maxSelectableYear,
-} from "../lib/yearBounds";
-import CollapsibleToolbar from "../components/layout/CollapsibleToolbar";
+import { MIN_DATA_YEAR, maxSelectableYear } from "../lib/yearBounds";
 import PageIntro from "../components/layout/PageIntro";
-import HighlightCountrySelect from "../components/HighlightCountrySelect";
-import CorrelationScatter from "../components/business/CorrelationScatter";
-import ResidualsScatter from "../components/business/ResidualsScatter";
+import { PAGE_INTRO } from "../lib/platformCopy";
+import { strengthLabel, parsePValueSort } from "../lib/businessCorrelationUi";
+import BusinessAnalysisToolbar from "../components/business/BusinessAnalysisToolbar";
+import BusinessScatterPanel from "../components/business/BusinessScatterPanel";
+import BusinessAnalysisResults from "../components/business/BusinessAnalysisResults";
 import {
   loadBusinessCorrelationFromCache,
   saveBusinessCorrelationToCache,
@@ -59,21 +52,6 @@ type CorrResult = {
   endYear: number;
 };
 
-function strengthLabel(r: number): string {
-  const a = Math.abs(r);
-  if (a >= 0.7) return "strong";
-  if (a >= 0.4) return "moderate";
-  if (a >= 0.2) return "weak";
-  return "negligible";
-}
-
-function parsePValueSort(s: string | null): number | null {
-  if (!s || s === "—") return null;
-  if (s.startsWith("<")) return 0;
-  const n = Number(s);
-  return Number.isFinite(n) ? n : null;
-}
-
 function mean(values: number[]): number | null {
   if (!values.length) return null;
   const s = values.reduce((acc, v) => acc + v, 0);
@@ -112,11 +90,10 @@ export default function BusinessAnalytics() {
     }
   };
 
-  const maxY = maxSelectableYear();
   const [metrics, setMetrics] = useState<MetricDef[]>([]);
   const [startYear, setStartYear] = useState(MIN_DATA_YEAR);
   const [endYear, setEndYear] = useState(() => maxSelectableYear());
-  const [strictSelectedRange, setStrictSelectedRange] = useState(true);
+  const [strictSelectedRange, setStrictSelectedRange] = useState(false);
   const [excludeIqr, setExcludeIqr] = useState(false);
   const [highlight, setHighlight] = useState("IDN");
   const [xId, setXId] = useState("gdp_per_capita");
@@ -133,12 +110,6 @@ export default function BusinessAnalytics() {
   const [loading, setLoading] = useState(false);
   const [analysisLoadProgress, setAnalysisLoadProgress] = useState(0);
   const [narrativeLoadProgress, setNarrativeLoadProgress] = useState(0);
-  const [analysisDiag, setAnalysisDiag] = useState<{ status: "idle" | "running" | "ok" | "error"; ms?: number }>({
-    status: "idle",
-  });
-  const [narrativeDiag, setNarrativeDiag] = useState<{ status: "idle" | "running" | "ok" | "error"; ms?: number }>({
-    status: "idle",
-  });
   const [presentationMode, setPresentationMode] = useState(false);
   const [analysisDeliveryNote, setAnalysisDeliveryNote] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -202,34 +173,33 @@ export default function BusinessAnalytics() {
 
   const fetchData = useCallback(async () => {
     const reqSeq = ++analysisReqSeqRef.current;
-    const startedAt = performance.now();
     setLoading(true);
     setAnalysisLoadProgress(8);
-    setAnalysisDiag({ status: "running" });
     setAnalysisDeliveryNote(null);
     setErr(null);
     const stopAnalysisProgress = startSimulatedLoadProgress(setAnalysisLoadProgress);
     try {
       const attemptRanges: Array<{ start: number; end: number; timeoutMs: number; note?: string }> = [
-        { start: startYear, end: endYear, timeoutMs: 55_000 },
+        { start: startYear, end: endYear, timeoutMs: 90_000 },
       ];
       const selectedSpan = endYear - startYear + 1;
       const y12Start = Math.max(MIN_DATA_YEAR, endYear - 11);
       const y6Start = Math.max(MIN_DATA_YEAR, endYear - 5);
+      // Auto-narrow on timeout unless the user locked the exact year span.
       if (!strictSelectedRange && selectedSpan > 12) {
         attemptRanges.push({
           start: y12Start,
           end: endYear,
-          timeoutMs: 40_000,
-          note: `Primary request timed out; automatically using last ${endYear - y12Start + 1} years.`,
+          timeoutMs: 60_000,
+          note: `Primary request timed out; using the last ${endYear - y12Start + 1} years instead.`,
         });
       }
       if (!strictSelectedRange && selectedSpan > 6 && y6Start > startYear) {
         attemptRanges.push({
           start: y6Start,
           end: endYear,
-          timeoutMs: 30_000,
-          note: `Still slow; automatically using last ${endYear - y6Start + 1} years for a reliable result.`,
+          timeoutMs: 45_000,
+          note: `Still slow; using the last ${endYear - y6Start + 1} years for a reliable result.`,
         });
       }
 
@@ -260,16 +230,23 @@ export default function BusinessAnalytics() {
         }
       }
       if (!delivered) {
-        throw lastErr instanceof Error ? lastErr : new Error(String(lastErr ?? "Correlation analysis failed"));
+        const raw = lastErr instanceof Error ? lastErr.message : String(lastErr ?? "Correlation analysis failed");
+        const cleaned = raw.replace(/^Error:\s*/i, "");
+        if (/timed?\s*out|CORRELATION_TIMEOUT/i.test(cleaned)) {
+          throw new Error(
+            strictSelectedRange
+              ? "Correlation analysis timed out. Uncheck Strict year range, or shorten the years and try again."
+              : "Correlation analysis timed out. Shorten the year range and try again."
+          );
+        }
+        throw new Error(cleaned);
       }
       setAnalysisLoadProgress(100);
-      setAnalysisDiag({ status: "ok", ms: Math.round(performance.now() - startedAt) });
     } catch (e) {
       if (reqSeq !== analysisReqSeqRef.current) return;
       setErr(String(e));
       setRes(null);
       setAnalysisLoadProgress(0);
-      setAnalysisDiag({ status: "error", ms: Math.round(performance.now() - startedAt) });
     } finally {
       stopAnalysisProgress();
       if (reqSeq !== analysisReqSeqRef.current) return;
@@ -487,10 +464,8 @@ export default function BusinessAnalytics() {
   useEffect(() => {
     if (!res || loading || bizNarrative) return;
     const reqSeq = ++narrativeReqSeqRef.current;
-    const startedAt = performance.now();
     setBizNarrativeLoading(true);
     setNarrativeLoadProgress(8);
-    setNarrativeDiag({ status: "running" });
     setBizNarrativeErr(null);
     const stopNarrativeProgress = startSimulatedLoadProgress(setNarrativeLoadProgress);
 
@@ -528,12 +503,10 @@ export default function BusinessAnalytics() {
         if (reqSeq !== narrativeReqSeqRef.current) return;
         setBizNarrative(r.narrative);
         setNarrativeLoadProgress(100);
-        setNarrativeDiag({ status: "ok", ms: Math.round(performance.now() - startedAt) });
       } catch (e) {
         if (reqSeq !== narrativeReqSeqRef.current) return;
         setBizNarrativeErr(e instanceof Error ? e.message : String(e));
         setNarrativeLoadProgress(0);
-        setNarrativeDiag({ status: "error", ms: Math.round(performance.now() - startedAt) });
       } finally {
         stopNarrativeProgress();
         if (reqSeq !== narrativeReqSeqRef.current) return;
@@ -562,7 +535,7 @@ export default function BusinessAnalytics() {
   useEffect(() => {
     if (!res || !analysisConfig) return;
     saveBusinessCorrelationToCache({
-      v: 1,
+      v: 2,
       config: analysisConfig,
       res,
       narrative: bizNarrative ?? null,
@@ -570,9 +543,9 @@ export default function BusinessAnalytics() {
   }, [res, bizNarrative, analysisConfig]);
 
   return (
-    <div className="space-y-6 lg:space-y-8">
+    <div className="space-y-5 lg:space-y-6">
       <PageIntro
-        title="Business Analytics"
+        {...PAGE_INTRO.business}
         actions={
           <button
             type="button"
@@ -582,602 +555,95 @@ export default function BusinessAnalytics() {
                 ? "bg-slate-900 text-white hover:bg-slate-800"
                 : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
             }`}
+            title="Toggle presentation mode (P)"
           >
             {presentationMode ? "Exit presentation" : "Presentation"}
           </button>
         }
-      >
-        <p>
-          Multi-metric correlation analysis: compare countries across two metrics to explore market
-          positioning and correlations. Uses the same analyst-grade data as the platform (World Bank,
-          UN, WHO, IMF; 2000 – latest). Each country–year in the range is a scatter point.
-        </p>
-      </PageIntro>
+      />
 
-      {!presentationMode && (
-        <>
-          <div className="flex flex-wrap gap-2 md:hidden">
-            <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] text-slate-600">
-              Analysis: <span className="font-semibold text-slate-800">{analysisDiag.status}</span>
-              {typeof analysisDiag.ms === "number" ? ` · ${analysisDiag.ms}ms` : ""}
-            </span>
-            <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] text-slate-600">
-              Narrative: <span className="font-semibold text-slate-800">{narrativeDiag.status}</span>
-              {typeof narrativeDiag.ms === "number" ? ` · ${narrativeDiag.ms}ms` : ""}
-            </span>
-          </div>
+      {!presentationMode ? (
+        <BusinessAnalysisToolbar
+          metrics={metrics}
+          startYear={startYear}
+          endYear={endYear}
+          onStartYearChange={setStartYear}
+          onEndYearChange={setEndYear}
+          excludeIqr={excludeIqr}
+          onExcludeIqrChange={setExcludeIqr}
+          strictSelectedRange={strictSelectedRange}
+          onStrictSelectedRangeChange={setStrictSelectedRange}
+          highlight={highlight}
+          onHighlightChange={setHighlight}
+          xId={xId}
+          yId={yId}
+          onXIdChange={setXId}
+          onYIdChange={setYId}
+          loading={loading}
+          onGenerate={onGenerateAnalysis}
+          labelX={labelX}
+          labelY={labelY}
+        />
+      ) : null}
 
-          <CollapsibleToolbar
-            title="Analysis filters"
-            summary={`${labelX} vs ${labelY} · ${yearCount}y (${startYear}–${endYear})`}
-            forceOpen={loading}
-          >
-            <div className="overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <div className="flex w-max min-w-full flex-nowrap items-center gap-1.5 sm:gap-2 md:gap-3">
-              <div
-                className="inline-flex h-9 shrink-0 items-center rounded-lg border border-slate-200 bg-slate-50/90 px-1 shadow-sm sm:px-1.5"
-                title={`Coverage ${MIN_DATA_YEAR}–${maxY}`}
-              >
-                <label className="sr-only" htmlFor="business-year-from">
-                  From year
-                </label>
-                <input
-                  id="business-year-from"
-                  type="number"
-                  value={startYear}
-                  min={MIN_DATA_YEAR}
-                  max={Math.min(endYear, maxY)}
-                  onChange={(e) => setStartYear(clampSpanStart(Number(e.target.value), endYear))}
-                  className="w-[4.25rem] min-w-[4.25rem] border-0 bg-transparent px-0.5 text-center text-xs font-medium tabular-nums text-slate-900 [appearance:textfield] focus:outline-none sm:w-[4.5rem] sm:min-w-[4.5rem] sm:px-1 sm:text-sm [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                />
-                <span className="select-none px-0.5 text-[10px] text-slate-300 sm:text-xs" aria-hidden>
-                  –
-                </span>
-                <label className="sr-only" htmlFor="business-year-to">
-                  To year
-                </label>
-                <input
-                  id="business-year-to"
-                  type="number"
-                  value={endYear}
-                  min={Math.max(startYear, MIN_DATA_YEAR)}
-                  max={maxY}
-                  onChange={(e) => setEndYear(clampSpanEnd(Number(e.target.value), startYear))}
-                  className="w-[4.25rem] min-w-[4.25rem] border-0 bg-transparent px-0.5 text-center text-xs font-medium tabular-nums text-slate-900 [appearance:textfield] focus:outline-none sm:w-[4.5rem] sm:min-w-[4.5rem] sm:px-1 sm:text-sm [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                />
-              </div>
+      <BusinessScatterPanel
+        loading={loading}
+        loadProgress={analysisLoadProgress}
+        yearCount={yearCount}
+        err={err}
+        onRetry={onGenerateAnalysis}
+        hasResult={Boolean(res)}
+        analysisRestoredFromCache={analysisRestoredFromCache}
+        analysisDeliveryNote={analysisDeliveryNote}
+        highlightName={highlightName}
+        highlight={highlight}
+        labelX={labelX}
+        labelY={labelY}
+        scatterPoints={scatterPoints}
+        ciBand={res?.ciBand ?? []}
+        slope={res?.slope ?? null}
+        intercept={res?.intercept ?? null}
+        correlation={res?.correlation ?? null}
+      />
 
-              <label
-                className="inline-flex h-9 shrink-0 cursor-pointer items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 has-[:checked]:border-red-200 has-[:checked]:bg-red-50 has-[:checked]:text-red-900"
-                title="Exclude IQR outliers — removes points outside 1.5×IQR on both variables"
-              >
-                <input
-                  type="checkbox"
-                  checked={excludeIqr}
-                  onChange={(e) => setExcludeIqr(e.target.checked)}
-                  className="rounded border-slate-300 text-red-600 focus:ring-red-500"
-                />
-                <span className="whitespace-nowrap">IQR</span>
-              </label>
-
-              <label
-                className="inline-flex h-9 shrink-0 cursor-pointer items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 has-[:checked]:border-red-200 has-[:checked]:bg-red-50 has-[:checked]:text-red-900"
-                title="Strict selected range only — disables automatic fallback to shorter windows on timeout"
-              >
-                <input
-                  type="checkbox"
-                  checked={strictSelectedRange}
-                  onChange={(e) => setStrictSelectedRange(e.target.checked)}
-                  className="rounded border-slate-300 text-red-600 focus:ring-red-500"
-                />
-                <span className="whitespace-nowrap">Strict</span>
-              </label>
-
-              <div className="hidden h-9 w-px shrink-0 bg-slate-200 md:block" aria-hidden />
-
-              <div className="w-[min(100%,11rem)] shrink-0 sm:w-[12rem] md:w-[14rem]">
-                <label className="sr-only">Focus country</label>
-                <HighlightCountrySelect
-                  value={highlight}
-                  onChange={setHighlight}
-                  clearPlacement="inline"
-                  className="gap-0 [&_input]:h-9 [&_input]:truncate [&_input]:py-1.5 [&_input]:pl-2.5 [&_input]:text-xs sm:[&_input]:pl-3 sm:[&_input]:text-sm"
-                />
-              </div>
-
-              <div className="hidden h-9 w-px shrink-0 bg-slate-200 md:block" aria-hidden />
-
-              <div className="w-[min(100%,9.5rem)] shrink-0 sm:w-[10.5rem] md:w-[12rem]">
-                <label htmlFor="business-var-x" className="sr-only">
-                  Variable 1
-                </label>
-                <select
-                  id="business-var-x"
-                  value={xId}
-                  onChange={(e) => setXId(e.target.value)}
-                  title={labelX}
-                  className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-xs text-slate-900 shadow-sm focus:border-red-300 focus:outline-none focus:ring-1 focus:ring-red-300 sm:px-3 sm:text-sm"
-                >
-                  {metrics.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {metricDisplayLabel(m)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="w-[min(100%,9.5rem)] shrink-0 sm:w-[10.5rem] md:w-[12rem]">
-                <label htmlFor="business-var-y" className="sr-only">
-                  Variable 2
-                </label>
-                <select
-                  id="business-var-y"
-                  value={yId}
-                  onChange={(e) => setYId(e.target.value)}
-                  title={labelY}
-                  className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-xs text-slate-900 shadow-sm focus:border-red-300 focus:outline-none focus:ring-1 focus:ring-red-300 sm:px-3 sm:text-sm"
-                >
-                  {metrics.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {metricDisplayLabel(m)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <button
-                type="button"
-                onClick={onGenerateAnalysis}
-                disabled={loading}
-                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-900 text-white shadow-sm transition hover:bg-slate-800 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:gap-1.5 sm:px-3 md:ml-auto"
-                title="Generate correlation analysis"
-              >
-                {loading ? (
-                  <span className="text-sm font-semibold">…</span>
-                ) : (
-                  <>
-                    <svg
-                      className="h-4 w-4 shrink-0 sm:hidden"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      aria-hidden
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.5 4.5L19 12l-5.5 3L10 19l-2.5-4L2 12l5.5-3L10 5z"
-                      />
-                    </svg>
-                    <span className="hidden whitespace-nowrap text-sm font-semibold sm:inline">Generate</span>
-                  </>
-                )}
-              </button>
-            </div>
-            </div>
-          </CollapsibleToolbar>
-
-          <div className="hidden flex-wrap gap-2 md:flex">
-            <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] text-slate-600">
-              Analysis request: <span className="font-semibold text-slate-800">{analysisDiag.status}</span>
-              {typeof analysisDiag.ms === "number" ? ` · ${analysisDiag.ms} ms` : ""}
-            </span>
-            <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] text-slate-600">
-              Narrative request: <span className="font-semibold text-slate-800">{narrativeDiag.status}</span>
-              {typeof narrativeDiag.ms === "number" ? ` · ${narrativeDiag.ms} ms` : ""}
-            </span>
-          </div>
-        </>
-      )}
-
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-        <h2 className="text-lg font-bold text-slate-900">Multi-metric correlation analysis</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          Compare countries across two metrics to explore market positioning and correlations. The
-          selected country is highlighted in gold on the scatter.
-        </p>
-        <div className="mt-6 rounded-xl border border-slate-100 bg-slate-50/50 p-4">
-          {loading ? (
-            <div className="flex h-[420px] items-center justify-center">
-              <LoadingProgressSection
-                className="w-full max-w-xl"
-                variant="card"
-                label={`Loading global metrics for ${yearCount} years…`}
-                progress={analysisLoadProgress}
-              />
-            </div>
-          ) : err ? (
-            <div className="space-y-3 py-8 text-center">
-              <p className="text-sm text-red-600">{err}</p>
-              <button
-                type="button"
-                onClick={onGenerateAnalysis}
-                className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-              >
-                Retry analysis
-              </button>
-            </div>
-          ) : res ? (
-            <div className="space-y-3">
-              {analysisRestoredFromCache ? (
-                <div className="rounded-xl border border-amber-200 bg-amber-50/60 px-4 py-2 text-sm text-slate-700">
-                  Showing <span className="font-semibold text-slate-900">last generated</span> analysis (it stays visible until you click{" "}
-                  <span className="font-semibold">Generate analysis</span> again).
-                </div>
-              ) : null}
-              {analysisDeliveryNote ? (
-                <div className="rounded-xl border border-blue-200 bg-blue-50/70 px-4 py-2 text-sm text-blue-900">
-                  {analysisDeliveryNote}
-                </div>
-              ) : null}
-              <div className="rounded-xl border border-amber-200 bg-amber-50/60 px-4 py-2 text-sm text-slate-700">
-                <span className="font-semibold text-amber-900">Highlighted country:</span>{" "}
-                <span className="font-semibold text-slate-900">{highlightName}</span>{" "}
-                <span className="font-mono text-amber-900/80">({highlight || "—"})</span>
-              </div>
-              <CorrelationScatter
-                points={scatterPoints}
-                ciBand={res.ciBand}
-                slope={res.slope}
-                intercept={res.intercept}
-                labelX={labelX}
-                labelY={labelY}
-                highlightName={highlightName}
-                correlation={res.correlation}
-              />
-            </div>
-          ) : (
-            <p className="flex h-[420px] items-center justify-center text-sm text-slate-500">
-              Select variables and filters above, then click{" "}
-              <span className="font-semibold">Generate analysis</span> to view the correlation plot.
-            </p>
-          )}
-        </div>
-      </div>
-
-      {res && !loading && (
-        <>
-          <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-white to-slate-50/70 p-4 shadow-sm sm:p-5">
-            <h2 className="text-lg font-bold text-slate-900">
-              Correlation &amp; causation analysis
-            </h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Statistical summary and interpretation for the selected pair: {labelX} (Variable 1) vs{" "}
-              {labelY} (Variable 2). Years: {analysisStartYear}–{analysisEndYear} ({analysisYearCount} years, each country–year is a point).
-            </p>
-            <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
-                <p className="text-[11px] uppercase tracking-wide text-slate-500">Points used</p>
-                <p className="mt-1 text-sm font-semibold text-slate-900">{formatCompactCount(res.n)}</p>
-              </div>
-              <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
-                <p className="text-[11px] uppercase tracking-wide text-slate-500">Pearson r</p>
-                <p className="mt-1 text-sm font-semibold text-slate-900">
-                  {res.correlation !== null ? res.correlation.toFixed(3) : "—"}
-                </p>
-              </div>
-              <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
-                <p className="text-[11px] uppercase tracking-wide text-slate-500">P-value</p>
-                <p className="mt-1 text-sm font-semibold text-slate-900">{res.pValue ?? "—"}</p>
-              </div>
-              <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
-                <p className="text-[11px] uppercase tracking-wide text-slate-500">R²</p>
-                <p className="mt-1 text-sm font-semibold text-slate-900">
-                  {res.rSquared !== null ? res.rSquared.toFixed(3) : "—"}
-                </p>
-              </div>
-            </div>
-            <div className="mt-6 rounded-xl border-l-4 border-red-400 bg-red-50/80 px-4 py-3 text-sm text-slate-700">
-              <strong>Correlation does NOT imply causation.</strong> The following describes
-              association and strength of linear relationship. Causal claims require additional
-              evidence (e.g. temporality, experiments).
-            </div>
-            <div className="mt-6">
-              <h3 className="font-bold text-slate-900">Data preparation</h3>
-              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600">
-                <li>Missing: {res.nMissing} point(s) removed.</li>
-                <li>
-                  IQR outliers: {res.nIqrFlagged} flagged (&gt;1.5×IQR).
-                  {res.excludeIqr ? " Excluded." : " Included; toggle 'Exclude IQR outliers' to remove."}
-                </li>
-                <li>Points used: n = {formatCompactCount(res.n)}.</li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="grid gap-6 lg:grid-cols-2">
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-slate-100/70 sm:p-5">
-              <h3 className="font-bold text-slate-900">Executive summary</h3>
-              <div className="mt-4 overflow-hidden rounded-lg border border-slate-200">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-slate-50">
-                      <SortableTh
-                        columnKey="metric"
-                        sortKey={execSortKey}
-                        sortDir={execSortDir}
-                        onSort={onExecSort}
-                        className="px-4 py-2 text-slate-700"
-                      >
-                        Metric
-                      </SortableTh>
-                      <SortableTh
-                        columnKey="value"
-                        sortKey={execSortKey}
-                        sortDir={execSortDir}
-                        onSort={onExecSort}
-                        className="px-4 py-2 text-slate-700"
-                      >
-                        Value
-                      </SortableTh>
-                      <SortableTh
-                        columnKey="interpretation"
-                        sortKey={execSortKey}
-                        sortDir={execSortDir}
-                        onSort={onExecSort}
-                        className="px-4 py-2 text-slate-700"
-                      >
-                        Interpretation
-                      </SortableTh>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {sortedExecRows.map((row) => (
-                      <tr key={row.key}>
-                        <td className="px-4 py-2 text-slate-600">{row.metric}</td>
-                        <td className="px-4 py-2 font-medium">{row.value}</td>
-                        <td className="px-4 py-2 text-slate-600">{row.interp}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-slate-100/70 sm:p-5">
-              <h3 className="font-bold text-slate-900">Correlation (Pearson)</h3>
-              <p className="mt-3 text-sm text-slate-600">
-                {res.correlation !== null && (
-                  <>
-                    <strong>r = {res.correlation.toFixed(3)}</strong> (n = {formatCompactCount(res.n)})
-                    {" · "}
-                    p-value {res.pValue ?? "—"} · Strength:{" "}
-                    <strong>{strengthLabel(res.correlation)}</strong>
-                  </>
-                )}
-              </p>
-              <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                {res.correlation !== null ? (
-                  <>
-                    There is a {strengthLabel(res.correlation)} linear relationship across{" "}
-                    {formatCompactCount(res.n)} points:{" "}
-                    {res.correlation >= 0
-                      ? "higher Variable 1 aligns with higher Variable 2"
-                      : "higher Variable 1 aligns with lower Variable 2"}.{" "}
-                  </>
-                ) : (
-                  <>Insufficient overlap to estimate a stable linear association across {formatCompactCount(res.n)} points.</>
-                )}{" "}
-                {res.nIqrFlagged > 0 &&
-                  `${res.nIqrFlagged} point(s) flagged as IQR outliers (1.5×IQR rule).`}
-              </p>
-              {res.slope !== null && (
-                <p className="mt-2 text-sm font-medium text-slate-700">
-                  A 1-unit increase in Variable 1 predicts {res.slope.toExponential(2)} change in{" "}
-                  Variable 2 (p = {res.pValue ?? "—"}).
-                </p>
-              )}
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-slate-100/70 sm:p-5">
-            <h3 className="font-bold text-slate-900">Residuals vs fitted</h3>
-            <p className="mt-1 text-sm text-slate-500">
-              Check for heteroscedasticity: residuals should be scattered around zero.
-            </p>
-            <div className="mt-4">
-              <ResidualsScatter
-                points={res.points.map((p) => ({
-                  fitted: p.fitted,
-                  residual: p.residual,
-                  countryName: p.countryName,
-                  year: p.year,
-                }))}
-              />
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-slate-100/70 sm:p-5">
-            <h3 className="font-bold text-slate-900">Subgroup analysis (by region)</h3>
-            <p className="mt-1 text-sm text-slate-500">
-              Consistency across regions (Bradford Hill).
-            </p>
-            <div className="mt-4 overflow-hidden rounded-lg border border-slate-200">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-slate-50">
-                    <SortableTh
-                      columnKey="region"
-                      sortKey={subgroupSortKey}
-                      sortDir={subgroupSortDir}
-                      onSort={onSubgroupSort}
-                      className="px-4 py-2 text-slate-700"
-                    >
-                      Region
-                    </SortableTh>
-                    <SortableTh
-                      columnKey="r"
-                      sortKey={subgroupSortKey}
-                      sortDir={subgroupSortDir}
-                      onSort={onSubgroupSort}
-                      className="px-4 py-2 text-slate-700"
-                    >
-                      r
-                    </SortableTh>
-                    <SortableTh
-                      columnKey="n"
-                      sortKey={subgroupSortKey}
-                      sortDir={subgroupSortDir}
-                      onSort={onSubgroupSort}
-                      className="px-4 py-2 text-slate-700"
-                    >
-                      n
-                    </SortableTh>
-                    <SortableTh
-                      columnKey="pValue"
-                      sortKey={subgroupSortKey}
-                      sortDir={subgroupSortDir}
-                      onSort={onSubgroupSort}
-                      className="px-4 py-2 text-slate-700"
-                    >
-                      p-value
-                    </SortableTh>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {sortedSubgroups.map((s) => (
-                    <tr key={s.region}>
-                      <td className="px-4 py-2 text-slate-600">{s.region}</td>
-                      <td className="px-4 py-2 font-medium">{s.r.toFixed(3)}</td>
-                      <td className="px-4 py-2">{formatCompactCount(s.n)}</td>
-                      <td className="px-4 py-2">{s.pValue}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-slate-100/70 sm:p-5">
-              <h3 className="font-bold text-slate-900">Causation &amp; context</h3>
-              {bizNarrativeLoading ? (
-                <LoadingProgressSection
-                  className="mt-3"
-                  variant="muted"
-                  label="Generating analyst narrative…"
-                  progress={narrativeLoadProgress}
-                />
-              ) : bizNarrative ? (
-                <>
-                  <p className="mt-3 text-sm leading-relaxed text-slate-600">{bizNarrative.causationParagraph}</p>
-                  <p className="mt-3 text-xs text-slate-500">
-                    Use this data for hypothesis generation; confirm with subgroup analysis and
-                    robustness checks.
-                  </p>
-                </>
-              ) : (
-                <>
-                  <p className="mt-3 text-sm leading-relaxed text-slate-600">
-                    Correlation does not imply causation. Omitted variables (institutions, education,
-                    infrastructure, governance, and geography) may confound the relationship between{" "}
-                    {labelX} and {labelY}. In other words, both metrics can move together because they
-                    respond to shared drivers rather than because changes in {labelX} directly cause
-                    changes in {labelY}.
-                  </p>
-                  <p className="mt-3 text-xs text-slate-500">
-                    Use this data for hypothesis generation; confirm with subgroup analysis and
-                    robustness checks.
-                  </p>
-                  {bizNarrativeErr ? (
-                    <p className="mt-3 text-xs text-red-600">Narrative unavailable: {bizNarrativeErr}</p>
-                  ) : null}
-                </>
-              )}
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-slate-100/70 sm:p-5">
-              <h3 className="font-bold text-slate-900">Actionable insight</h3>
-              <p className="mt-3 text-sm leading-relaxed text-slate-600">
-                {res.slope !== null && (
-                  <>
-                    A 1-unit increase in Variable 1 ({labelX}) predicts a change of{" "}
-                    {res.slope.toExponential(2)} in Variable 2 ({labelY}) (p={res.pValue ?? "—"}).{" "}
-                    {strengthLabel(res.correlation ?? 0)} correlation. Use for hypothesis generation;
-                    confirm with subgroup analysis and robustness checks.
-                  </>
-                )}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-slate-100/70 sm:p-5">
-              <h3 className="font-bold text-slate-900">If causation is not supported</h3>
-              {bizNarrative ? (
-                <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-relaxed text-slate-600">
-                  {bizNarrative.recommendedAnalyses.map((s) => (
-                    <li key={s}>{s}</li>
-                  ))}
-                </ol>
-              ) : (
-                <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-relaxed text-slate-600">
-                  <li>Subgroup analysis by region or income.</li>
-                  <li>Time-lagged or panel analysis.</li>
-                  <li>Control for confounders (e.g. multiple regression).</li>
-                  <li>Use experiments (RCTs) or instrumental variables.</li>
-                </ol>
-              )}
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-slate-100/70 sm:p-5">
-              <h3 className="font-bold text-slate-900">
-                Comprehensive hypothesis for business analysis
-              </h3>
-              {bizNarrative ? (
-                <>
-                  <p className="mt-2 text-sm text-slate-600">
-                    Analyst narrative for <strong>{labelX}</strong> (Variable 1) vs{" "}
-                    <strong>{labelY}</strong> (Variable 2) across {analysisYearCount} years ({analysisStartYear}–{analysisEndYear}):
-                  </p>
-                  <p className="mt-3 text-sm leading-relaxed text-slate-600">
-                    {bizNarrative.associationParagraphs[0]}
-                  </p>
-                  <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                    {bizNarrative.associationParagraphs[1]}
-                  </p>
-                  <ul className="mt-4 list-disc space-y-2 pl-5 text-sm leading-relaxed text-slate-600">
-                    {bizNarrative.correlationBullets.map((s) => (
-                      <li key={s}>{s}</li>
-                    ))}
-                    {bizNarrative.causationHypotheses.map((s) => (
-                      <li key={s}>{s}</li>
-                    ))}
-                  </ul>
-                  <p className="mt-4 text-xs text-slate-500">
-                    This hypothesis is exploratory. Stress-test before driving capital allocation or
-                    policy decisions.
-                  </p>
-                </>
-              ) : (
-                <>
-                  <p className="mt-2 text-sm text-slate-600">
-                    Working hypothesis for <strong>{labelX}</strong> (Variable 1) vs{" "}
-                    <strong>{labelY}</strong> (Variable 2) across {analysisYearCount} years ({analysisStartYear}–{analysisEndYear}):
-                  </p>
-                  <ul className="mt-4 list-disc space-y-2 pl-5 text-sm leading-relaxed text-slate-600">
-                    <li>
-                      <strong>Statistical trend:</strong> Higher Variable 1 values tend to align with
-                      higher Variable 2 values based on scatter and Pearson statistics (
-                      {formatCompactCount(res.n)} points with valid data).
-                    </li>
-                    <li>
-                      <strong>Strategic implication:</strong> Shifts in Variable 1 may be informative
-                      of movements in Variable 2 within target segments.
-                    </li>
-                    <li>
-                      <strong>Outlier analysis:</strong> Countries far above the main cloud as potential
-                      out-performers; those below as structural risks.
-                    </li>
-                    <li>
-                      <strong>Limitations:</strong> Sample size, multicollinearity, non-linear effects.
-                    </li>
-                  </ul>
-                  <p className="mt-4 text-xs text-slate-500">
-                    This hypothesis is exploratory. Stress-test before driving capital allocation or
-                    policy decisions.
-                  </p>
-                </>
-              )}
-            </div>
-          </div>
-        </>
-      )}
+      {res && !loading ? (
+        <BusinessAnalysisResults
+          res={{
+            n: res.n,
+            nMissing: res.nMissing,
+            nIqrFlagged: res.nIqrFlagged,
+            excludeIqr: res.excludeIqr,
+            correlation: res.correlation,
+            pValue: res.pValue,
+            rSquared: res.rSquared,
+            slope: res.slope,
+            points: res.points.map((p) => ({
+              fitted: p.fitted,
+              residual: p.residual,
+              countryName: p.countryName,
+              year: p.year,
+            })),
+            subgroups: res.subgroups,
+          }}
+          labelX={labelX}
+          labelY={labelY}
+          analysisStartYear={analysisStartYear}
+          analysisEndYear={analysisEndYear}
+          analysisYearCount={analysisYearCount}
+          execSortKey={execSortKey}
+          execSortDir={execSortDir}
+          onExecSort={onExecSort}
+          sortedExecRows={sortedExecRows}
+          subgroupSortKey={subgroupSortKey}
+          subgroupSortDir={subgroupSortDir}
+          onSubgroupSort={onSubgroupSort}
+          sortedSubgroups={sortedSubgroups}
+          bizNarrative={bizNarrative}
+          bizNarrativeLoading={bizNarrativeLoading}
+          narrativeLoadProgress={narrativeLoadProgress}
+          bizNarrativeErr={bizNarrativeErr}
+        />
+      ) : null}
     </div>
   );
 }

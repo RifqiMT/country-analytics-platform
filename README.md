@@ -8,17 +8,18 @@ The platform is designed for policy analysts, strategy managers, researchers, se
 
 ## Product overview
 
-CAP delivers **seven integrated capabilities** across a single React application:
+CAP delivers **eight integrated capabilities** across a single React application:
 
 | # | Module | Route | Purpose |
 |---|--------|-------|---------|
-| 1 | **Country Dashboard** | `/` | Country KPI cards, multi-domain trend charts, comparison tables, FX rates, timezone, and EEZ context |
-| 2 | **Global Analytics** | `/global` | Choropleth map, category-filtered global country tables, and world aggregate (WLD) time-series charts |
-| 3 | **Analytics Assistant** | `/assistant` | Platform-grounded chat with ranking/comparison tables, citation controls, and optional verified-web mode |
-| 4 | **PESTEL Analysis** | `/pestel` | Structured macro-environment analysis: six dimensions, SWOT, market implications, and recommendations |
-| 5 | **Porter Five Forces** | `/porter` | Industry attractiveness analysis by country and ILO-ISIC sector |
-| 6 | **Business Analytics** | `/business` | Cross-country correlation/regression diagnostics, scatter/residual plots, and optional LLM narrative |
-| 7 | **Sources & Methodology** | `/sources` | Metric catalog explorer, data-provider documentation, formulas, and governance transparency |
+| 1 | **Country Dashboard** | `/` | Country KPI cards, multi-domain trend charts, comparison tables, FX rates, head of government, timezone, and EEZ context |
+| 2 | **Compare Countries** | `/compare` | Side-by-side dual-country trends, KPI deltas, and pair tables with PNG/CSV export |
+| 3 | **Global Analytics** | `/global` | Choropleth map, category-filtered global country tables, and world aggregate (WLD) time-series charts |
+| 4 | **Analytics Assistant** | `/assistant` | Platform-grounded chat with ranking/comparison tables, citation controls, and optional verified-web mode |
+| 5 | **PESTEL Analysis** | `/pestel` | Structured macro-environment analysis: six dimensions, SWOT, market implications, and recommendations |
+| 6 | **Porter Five Forces** | `/porter` | Industry attractiveness analysis by country and ILO-ISIC sector |
+| 7 | **Business Analytics** | `/business` | Cross-country correlation/regression diagnostics, scatter/residual plots, and optional LLM narrative |
+| 8 | **Sources & Methodology** | `/sources` | Metric catalog explorer, data-provider documentation, formulas, and governance transparency |
 
 Cross-cutting: **Bring Your Own Key (BYOK)** — app-wide Groq/Tavily key management in the header, validated once and reused across all AI modules.
 
@@ -61,8 +62,14 @@ Requirement-to-code mapping, technical/business guardrails, and release readines
 ### Exchange-rate logic
 Country dashboard FX prioritizes **ECB daily quotes** (via Frankfurter), with **World Bank official FX** (`PA.NUS.FCRF`) as institutional fallback. UI shows quote date and source.
 
+### Series load resilience
+Country metric series load in small client batches (chunk size 4, parallel waves of 2) with retries and automatic half-split on timeout. Server bisects timed-out all-null bundles and skips WLD world-proxy fill on batched client requests.
+
+### Head-of-government enrichment
+Dashboard resolves current officeholder name via Wikidata (P6) and optional Tavily+Groq when keys are available; office title falls back from government type when Wikidata P1313 is missing.
+
 ### Business Analytics resilience
-Batched year processing, timeout-aware retries, optional strict-range mode, and presentation mode (`P` keyboard shortcut) for executive review.
+Year-range WDI snapshot fetches (not per-year loops), deadline-aware serverless budgets, empty-result `CORRELATION_EMPTY` handling, optional strict-range mode, and presentation mode (`P`) for executive review.
 
 ---
 
@@ -216,7 +223,15 @@ Full contracts: [`docs/API_REFERENCE.md`](docs/API_REFERENCE.md)
 
 ## Latest implementation highlights
 
-> **Documentation status:** Synchronized with codebase as of **2026-07-20**. See [`docs/DOCUMENTATION_AUDIT_REPORT.md`](docs/DOCUMENTATION_AUDIT_REPORT.md) for full audit verification.
+> **Documentation status:** Re-audited against uncommitted implementation as of **2026-07-20**. See [`docs/DOCUMENTATION_AUDIT_REPORT.md`](docs/DOCUMENTATION_AUDIT_REPORT.md).
+
+### 2026-07-20 — UX modularization, HoG, and resilience
+- **Compare Countries** (`/compare`) documented as a first-class module with dual-country charts and pair tables
+- **Head of government** name + title on Dashboard (Wikidata P6 / Tavily+Groq enrichment)
+- Resilient country series loading (client chunk 4 + server bisect on timeout)
+- Global correlation uses year-range WDI snapshots; empty results return `CORRELATION_EMPTY` and are not cached
+- PESTEL / Porter / SWOT palettes refreshed; shared `PageIntro` copy via `platformCopy.ts`
+- Module toolbars extracted for Assistant, Business, Global, PESTEL, and Porter
 
 ### 2026-07-20 — Crime & public safety metrics
 - Added **9 crime & public safety metrics** (UNODC, UN/WHO, IDMC, UCDP, World Bank WGI)

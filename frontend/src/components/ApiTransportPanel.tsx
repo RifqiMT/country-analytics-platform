@@ -1,42 +1,25 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { subscribeApiTransport, type ApiTransportEvent } from "../api";
+import { transportSummary, transportStripLine, transportStripStats, type TransportSummaryTone } from "../lib/apiTransportStats";
+import RequestLogRow from "./RequestLogRow";
+import TransportStripStats from "./TransportStripStats";
 
-function formatClock(ts: number): string {
-  try {
-    const d = new Date(ts);
-    return `${d.toLocaleTimeString(undefined, { hour12: false })}.${String(d.getMilliseconds()).padStart(3, "0")}`;
-  } catch {
-    return String(ts);
+function toneStyles(tone: TransportSummaryTone, embedded: boolean): string {
+  if (tone === "fail") {
+    return embedded
+      ? "hover:bg-red-50/80"
+      : "border-red-200 bg-red-50/95 text-red-950 hover:bg-red-100/95";
   }
-}
-
-function formatBytes(n: number): string {
-  if (n < 1024) return `${n} B`;
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
-  return `${(n / (1024 * 1024)).toFixed(2)} MB`;
-}
-
-/** Short summary for the collapsed chip (no paths or raw errors). */
-function collapsedSummary(events: ApiTransportEvent[]): { line1: string; line2: string; tone: "neutral" | "ok" | "fail" } {
-  if (events.length === 0) {
-    return { line1: "API activity", line2: "No requests yet", tone: "neutral" };
+  if (tone === "busy") {
+    return embedded
+      ? "hover:bg-amber-50/60"
+      : "border-amber-200 bg-amber-50/90 text-amber-950 hover:bg-amber-100/90";
   }
-  const last = events[0]!;
-  const n = events.length;
-  const countLabel = n === 1 ? "1 call" : `${n} calls`;
-  if (last.outcome === "success") {
-    return {
-      line1: "API activity",
-      line2: `${countLabel} · last ${last.durationSec.toFixed(2)}s · OK`,
-      tone: "ok",
-    };
+  if (tone === "ok") {
+    return embedded ? "hover:bg-slate-50/80" : "border-slate-200 bg-white/95 text-slate-900 hover:bg-slate-50/95";
   }
-  return {
-    line1: "API activity",
-    line2: `${countLabel} · last failed (${last.durationSec.toFixed(2)}s)`,
-    tone: "fail",
-  };
+  return embedded ? "hover:bg-slate-50/80" : "border-slate-200 bg-white/95 text-slate-700 hover:bg-slate-50/95";
 }
 
 type ApiTransportPanelVariant = "floating" | "inline";
@@ -56,8 +39,7 @@ export default function ApiTransportPanel({
 }: Props) {
   const [events, setEvents] = useState<ApiTransportEvent[]>([]);
   const [open, setOpen] = useState(false);
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
-  const [expandedPathIds, setExpandedPathIds] = useState<Set<string>>(() => new Set());
+  const [livePulse, setLivePulse] = useState(false);
   const [portalStyle, setPortalStyle] = useState<CSSProperties>({});
   const toggleRef = useRef<HTMLButtonElement>(null);
   const inline = variant === "inline";
@@ -70,12 +52,19 @@ export default function ApiTransportPanel({
     });
   }, []);
 
+  useEffect(() => {
+    if (events.length === 0) return;
+    setLivePulse(true);
+    const t = window.setTimeout(() => setLivePulse(false), 1400);
+    return () => window.clearTimeout(t);
+  }, [events[0]?.id]);
+
   const updatePortalPosition = useCallback(() => {
     const el = toggleRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
     const margin = 8;
-    const width = Math.min(448, window.innerWidth - 24);
+    const width = Math.min(480, window.innerWidth - 24);
     const right = Math.max(12, window.innerWidth - rect.right);
     const spaceBelow = window.innerHeight - rect.bottom;
     const openBelow = spaceBelow >= 240 || spaceBelow >= rect.top;
@@ -120,43 +109,24 @@ export default function ApiTransportPanel({
     return () => window.removeEventListener("keydown", onKey);
   }, [usePortal, open]);
 
-  const toggleExcerpt = useCallback((id: string) => {
-    setExpandedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }, []);
-
   const clear = useCallback(() => {
     setEvents([]);
-    setExpandedIds(new Set());
-    setExpandedPathIds(new Set());
   }, []);
 
-  const togglePathExpanded = useCallback((id: string) => {
-    setExpandedPathIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }, []);
+  const summary = transportSummary(events);
+  const stripLine = transportStripLine(events);
+  const stripStats = transportStripStats(events);
+  const { line1, tone } = {
+    line1: summary.title,
+    tone: summary.tone,
+  };
 
-  const { line1, line2, tone } = collapsedSummary(events);
-
-  const chipStyles =
-    tone === "fail"
-      ? "border-red-200 bg-red-50/95 text-red-950 hover:bg-red-100/95"
-      : tone === "ok"
-        ? "border-slate-200 bg-white/95 text-slate-900 hover:bg-slate-50/95"
-        : "border-slate-200 bg-white/95 text-slate-700 hover:bg-slate-50/95";
+  const chipStyles = toneStyles(tone, false);
 
   const panel = open ? (
         <div
           id="api-transport-log-panel"
-          className={`pointer-events-auto flex max-h-[min(75vh,620px)] w-[min(100vw-1.25rem,28rem)] max-w-[calc(100vw-1.25rem)] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_25px_50px_-12px_rgba(15,23,42,0.28)] ${
+          className={`pointer-events-auto flex max-h-[min(75vh,640px)] w-[min(100vw-1.25rem,30rem)] max-w-[calc(100vw-1.25rem)] flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-[0_25px_50px_-12px_rgba(15,23,42,0.28)] ring-1 ring-slate-900/[0.04] ${
             usePortal
               ? ""
               : inline
@@ -165,143 +135,61 @@ export default function ApiTransportPanel({
           }`}
           style={usePortal ? portalStyle : undefined}
           role="region"
-          aria-label="API request log — full detail"
+          aria-label="Request log"
         >
-          <header className="shrink-0 border-b border-slate-200 bg-slate-50 px-3 py-3 sm:px-4">
+          <header className="shrink-0 border-b border-slate-100 px-3 py-3 sm:px-4">
             <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <h2 className="text-xs font-bold uppercase tracking-[0.12em] text-slate-600">Request log</h2>
-                <p className="mt-1 text-xs leading-relaxed text-slate-600">
-                  Client <code className="rounded bg-white px-1 py-px font-mono text-[10px] text-slate-700 ring-1 ring-slate-200/80">getJson</code>{" "}
-                  / <code className="rounded bg-white px-1 py-px font-mono text-[10px] text-slate-700 ring-1 ring-slate-200/80">postJson</code>
-                  — duration, status, size. Scroll long URLs inside each row.
-                </p>
+              <div className="min-w-0 flex-1">
+                <h2 className="text-sm font-semibold text-slate-900">Request log</h2>
+                <p className="mt-1 text-xs leading-relaxed text-slate-500">{stripLine}</p>
               </div>
               {events.length > 0 ? (
                 <button
                   type="button"
                   onClick={clear}
-                  className="shrink-0 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-100"
+                  className="shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
                 >
-                  Clear all
+                  Clear log
                 </button>
               ) : null}
             </div>
+            <TransportStripStats items={stripStats} className="mt-3" />
           </header>
-          <ul className="min-h-0 flex-1 space-y-2 overflow-y-auto overflow-x-hidden overscroll-contain bg-slate-50 p-2 sm:p-3">
+          <ul className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain">
             {events.length === 0 ? (
-              <li className="rounded-lg border border-dashed border-slate-200 bg-white px-4 py-8 text-center">
-                <p className="text-sm font-medium text-slate-700">No requests yet</p>
-                <p className="mt-1 text-xs text-slate-500">Calls appear here as you use the app.</p>
+              <li className="px-4 py-10 text-center">
+                <p className="text-sm font-medium text-slate-700">No requests recorded yet</p>
+                <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                  Open a country dashboard or run an analysis. Each network call will appear here.
+                </p>
               </li>
             ) : (
-              events.map((e) => {
-                const pathLong = e.path.length > 96;
-                const pathOpen = expandedPathIds.has(e.id);
-                return (
-                  <li
-                    key={e.id}
-                    className={`rounded-lg border bg-white p-3 shadow-sm ring-1 ring-slate-900/[0.04] ${
-                      e.outcome === "success"
-                        ? "border-slate-200 border-l-[3px] border-l-emerald-500"
-                        : "border-slate-200 border-l-[3px] border-l-red-500"
-                    }`}
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span
-                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
-                            e.outcome === "success"
-                              ? "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200"
-                              : "bg-red-50 text-red-800 ring-1 ring-red-200"
-                          }`}
-                        >
-                          {e.outcome === "success" ? "Success" : "Failed"}
-                        </span>
-                        <span className="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-slate-700">
-                          {e.method}
-                        </span>
-                      </div>
-                      <time
-                        className="font-mono text-[10px] tabular-nums text-slate-400"
-                        dateTime={new Date(e.at).toISOString()}
-                      >
-                        {formatClock(e.at)}
-                      </time>
-                    </div>
-
-                    <div className="mt-2">
-                      <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Endpoint</p>
-                      <div
-                        className={`rounded-md border border-slate-200 bg-slate-50 font-mono text-[11px] leading-snug text-slate-800 ${
-                          pathLong && !pathOpen ? "max-h-[3.25rem] overflow-hidden" : "max-h-[min(12rem,40vh)] overflow-y-auto"
-                        } break-all px-2 py-1.5`}
-                      >
-                        {pathLong && !pathOpen ? `${e.path.slice(0, 96)}…` : e.path}
-                      </div>
-                      {pathLong ? (
-                        <button
-                          type="button"
-                          onClick={() => togglePathExpanded(e.id)}
-                          className="mt-1 text-[10px] font-semibold text-teal-700 hover:text-teal-800 hover:underline"
-                        >
-                          {pathOpen ? "Show less" : "Show full URL"}
-                        </button>
-                      ) : null}
-                    </div>
-
-                    <dl className="mt-3 grid grid-cols-3 gap-1.5 sm:gap-2">
-                      <div className="rounded-md bg-slate-50 px-1.5 py-1.5 text-center ring-1 ring-slate-100 sm:px-2">
-                        <dt className="text-[9px] font-semibold uppercase tracking-wide text-slate-400">Duration</dt>
-                        <dd className="mt-0.5 font-mono text-[11px] font-semibold tabular-nums text-slate-900 sm:text-xs">
-                          {e.durationSec.toFixed(3)}s
-                        </dd>
-                      </div>
-                      <div className="rounded-md bg-slate-50 px-1.5 py-1.5 text-center ring-1 ring-slate-100 sm:px-2">
-                        <dt className="text-[9px] font-semibold uppercase tracking-wide text-slate-400">HTTP</dt>
-                        <dd className="mt-0.5 font-mono text-[11px] font-semibold text-slate-900 sm:text-xs">{e.status ?? "—"}</dd>
-                      </div>
-                      <div className="rounded-md bg-slate-50 px-1.5 py-1.5 text-center ring-1 ring-slate-100 sm:px-2">
-                        <dt className="text-[9px] font-semibold uppercase tracking-wide text-slate-400">Size</dt>
-                        <dd className="mt-0.5 font-mono text-[11px] font-semibold tabular-nums text-slate-900 sm:text-xs">
-                          {e.outcome === "success" ? formatBytes(e.responseBytes) : "—"}
-                        </dd>
-                      </div>
-                    </dl>
-
-                    {e.outcome === "failure" && (
-                      <div className="mt-2 rounded-md border border-red-200 bg-red-50 p-2">
-                        <p className="text-xs font-medium text-red-900">{e.error}</p>
-                        {e.bodyExcerpt ? (
-                          <div className="mt-2">
-                            <button
-                              type="button"
-                              onClick={() => toggleExcerpt(e.id)}
-                              className="text-xs font-semibold text-red-800 underline decoration-red-300 underline-offset-2 hover:decoration-red-600"
-                            >
-                              {expandedIds.has(e.id) ? "Hide response body" : "Show response body"}
-                            </button>
-                            {expandedIds.has(e.id) ? (
-                              <pre className="mt-2 max-h-48 overflow-auto rounded-md border border-slate-700 bg-slate-900 p-2 font-mono text-[10px] leading-relaxed text-slate-100">
-                                {e.bodyExcerpt}
-                              </pre>
-                            ) : null}
-                          </div>
-                        ) : null}
-                      </div>
-                    )}
-                  </li>
-                );
-              })
+              events.map((e, index) => <RequestLogRow key={e.id} event={e} isLatest={index === 0} />)
             )}
           </ul>
         </div>
   ) : null;
 
   const bolt = (
-    <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-    </svg>
+    <span
+      className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+        tone === "fail"
+          ? "bg-red-100 text-red-700"
+          : tone === "busy"
+            ? "bg-amber-100 text-amber-800"
+            : tone === "ok"
+              ? "bg-emerald-50 text-emerald-700"
+              : "bg-slate-100 text-slate-500"
+      } ${livePulse && embedded ? "tools-live-pulse" : ""}`}
+      aria-hidden
+    >
+      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+      </svg>
+      {livePulse && embedded && events.length > 0 ? (
+        <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-white" />
+      ) : null}
+    </span>
   );
 
   const chevron = (
@@ -319,34 +207,39 @@ export default function ApiTransportPanel({
       onClick={() => {
         setOpen((o) => !o);
       }}
-      className={`flex w-full items-center gap-2 text-left transition ${
+      className={`flex w-full items-center gap-2.5 text-left transition ${toneStyles(tone, embedded)} ${
         embedded
-          ? `min-h-[2.75rem] px-3 py-2.5 hover:bg-slate-100/80 sm:px-4 ${open ? "bg-slate-100/80" : ""}`
+          ? `px-3 py-2.5 sm:px-4 ${open ? "bg-slate-50" : ""}`
           : `pointer-events-auto max-w-full rounded-lg border px-2.5 py-1.5 shadow-sm ${chipStyles}`
       }`}
       aria-expanded={open}
       aria-controls={open ? "api-transport-log-panel" : undefined}
-      title={open ? "Hide request log" : "Show API request log"}
-      aria-label={`API requests: ${line2}. ${open ? "Expanded" : "Collapsed"}.`}
+      title={open ? "Hide request log" : "Show request log"}
+      aria-label={`${line1}: ${stripLine}. ${open ? "Expanded" : "Collapsed"}.`}
       id="api-transport-toggle"
     >
-      <span className={tone === "fail" ? "text-red-600" : "text-slate-500"}>{bolt}</span>
-      <span className="min-w-0 flex-1">
-        {embedded ? (
-          <span className="flex items-center justify-between gap-2">
-            <span className="truncate text-xs font-semibold uppercase tracking-wide text-slate-600">Request log</span>
-            {chevron}
+      {embedded ? bolt : <span className={tone === "fail" ? "text-red-600" : "text-slate-500"}>{bolt}</span>}
+      {embedded ? (
+        <>
+          <span className="min-w-0 shrink-0 sm:w-[7.5rem]">
+            <span className="block truncate text-sm font-semibold text-slate-900">{line1}</span>
+            <span className="mt-0.5 block truncate text-xs text-slate-500">{stripLine}</span>
           </span>
-        ) : (
-          <span className="flex items-center justify-between gap-2">
-            <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">API</span>
-            {chevron}
-          </span>
-        )}
-        <span className={`block truncate font-medium leading-tight text-slate-800 ${embedded ? "mt-0.5 text-xs" : "mt-0.5 text-xs"}`}>
-          {line2}
+          <TransportStripStats items={stripStats} className="min-w-0 flex-1" />
+          {chevron}
+        </>
+      ) : (
+        <span className="min-w-0 flex-1">
+          <>
+            <span className="flex items-center justify-between gap-2">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">API</span>
+              {chevron}
+            </span>
+            <span className="mt-0.5 block truncate text-xs font-medium leading-tight text-slate-800">{summary.subtitle}</span>
+            <span className="mt-0.5 block truncate text-[10px] text-slate-500">{stripLine}</span>
+          </>
         </span>
-      </span>
+      )}
     </button>
   ) : (
     <button
@@ -368,7 +261,8 @@ export default function ApiTransportPanel({
           <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-slate-500">{line1}</span>
           {chevron}
         </span>
-        <span className="mt-0.5 block text-[12px] font-medium leading-snug text-slate-800">{line2}</span>
+        <span className="mt-0.5 block text-[12px] font-medium leading-snug text-slate-800">{summary.subtitle}</span>
+        <span className="mt-0.5 block truncate text-[10px] text-slate-500">{stripLine}</span>
         <span className="mt-1 block text-[10px] text-slate-500">Tap to {open ? "collapse" : "expand"} details</span>
       </span>
     </button>

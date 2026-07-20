@@ -575,7 +575,7 @@ export async function fetchCountryBundle(
   const fetchIds = [...fetchSet];
   const raw: Record<string, SeriesPoint[]> = {};
   const concurrency = isServerlessRuntime()
-    ? Math.min(8, Math.max(4, fetchIds.length <= 10 ? 8 : 6))
+    ? Math.min(6, Math.max(3, fetchIds.length <= 6 ? 5 : 4))
     : 6;
   // Avoid issuing dozens of parallel World Bank requests (rate limits -> retries -> timeouts).
   // A small concurrency cap significantly improves worst-case latency on serverless.

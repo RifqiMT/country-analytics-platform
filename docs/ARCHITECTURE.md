@@ -136,7 +136,7 @@ If evidence quality or scope constraints fail, the system uses deterministic fal
 
 - `backend/src/serverlessBudget.ts` caps outbound work to stay within Vercel/Lambda limits.
 - Default budget: 55s on serverless, 120s locally (`CAP_SERVERLESS_BUDGET_MS` override).
-- Correlation uses batched year processing with `correlationYearConcurrency()` (8 on serverless, 4 locally).
+- Correlation year loops respect `correlationDeadlineFromBudget()` so work stops before the serverless wall clock expires.
 - Individual route timeouts (e.g. FX series 22s) use `settleWithin()` pattern.
 
 ### 4) Frontend observability layer

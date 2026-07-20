@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { postJson } from "../../api";
+import { keysSummary } from "../../lib/apiTransportStats";
 import {
   clearUserApiKeys,
   loadUserApiKeys,
@@ -85,8 +86,8 @@ export default function UserApiKeysHeaderPanel({ variant = "default" }: { varian
       setGroqStatus(groqApiKey.trim() ? (result.groq.ok ? "valid" : "invalid") : "idle");
       setTavilyStatus(tavilyApiKey.trim() ? (result.tavily.ok ? "valid" : "invalid") : "idle");
       const parts: string[] = [
-        `Groq: ${result.groq.ok ? "OK" : "Not valid"} — ${result.groq.message}`,
-        `Tavily: ${result.tavily.ok ? "OK" : "Not valid"} — ${result.tavily.message}`,
+        `Groq: ${result.groq.ok ? "OK" : "Not valid"}. ${result.groq.message}`,
+        `Tavily: ${result.tavily.ok ? "OK" : "Not valid"}. ${result.tavily.message}`,
       ];
       setValidationMessage(parts.join(" | "));
     } catch (e) {
@@ -121,6 +122,13 @@ export default function UserApiKeysHeaderPanel({ variant = "default" }: { varian
   };
 
   const embedded = variant === "embedded";
+  const summary = keysSummary(groqApiKey, tavilyApiKey);
+  const badgeClass =
+    summary.tone === "ready"
+      ? "bg-emerald-50 text-emerald-800 ring-emerald-200/80"
+      : summary.tone === "partial"
+        ? "bg-amber-50 text-amber-900 ring-amber-200/80"
+        : "bg-slate-100 text-slate-600 ring-slate-200/80";
 
   return (
     <details
@@ -131,14 +139,19 @@ export default function UserApiKeysHeaderPanel({ variant = "default" }: { varian
       }`}
     >
       <summary
-        className={`flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden ${
+        className={`flex cursor-pointer list-none items-center gap-2.5 transition-colors [&::-webkit-details-marker]:hidden ${
           embedded
-            ? "min-h-[2.75rem] px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-600 hover:bg-slate-50/80 sm:px-4"
+            ? "px-3 py-2.5 hover:bg-slate-50 sm:px-4"
             : "text-xs font-semibold uppercase tracking-wide text-slate-600"
         }`}
       >
-        <span className="inline-flex min-w-0 items-center gap-2">
-          <svg className="h-4 w-4 shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+        <span
+          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+            embedded ? "bg-slate-100 text-slate-600" : ""
+          }`}
+          aria-hidden
+        >
+          <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -146,27 +159,38 @@ export default function UserApiKeysHeaderPanel({ variant = "default" }: { varian
               d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"
             />
           </svg>
-          <span className="truncate">AI API Keys</span>
-          {!embedded && <span className="hidden sm:inline">(App-wide)</span>}
         </span>
-        <span className="inline-flex shrink-0 items-center gap-2">
-          <span
-            className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-              hasAnyKey ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-600"
-            }`}
-          >
-            {hasAnyKey ? "Active" : "Not set"}
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center gap-2">
+            <span className={`truncate ${embedded ? "text-sm font-semibold text-slate-900" : "text-xs font-semibold uppercase tracking-wide text-slate-600"}`}>
+              AI keys
+            </span>
+            {embedded ? (
+              <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${badgeClass}`}>
+                {summary.badge}
+              </span>
+            ) : (
+              <>
+                <span className="hidden sm:inline">(App-wide)</span>
+                <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${badgeClass}`}>
+                  {summary.badge}
+                </span>
+              </>
+            )}
           </span>
-          <svg
-            className="h-3.5 w-3.5 shrink-0 text-slate-400 transition group-open:rotate-180"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            aria-hidden
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
+          {embedded ? (
+            <span className="mt-0.5 block truncate text-xs text-slate-500">{summary.subtitle}</span>
+          ) : null}
         </span>
+        <svg
+          className="h-3.5 w-3.5 shrink-0 text-slate-400 transition group-open:rotate-180"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          aria-hidden
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
       </summary>
       <div className={`grid grid-cols-1 gap-2 ${embedded ? "border-t border-slate-100 bg-slate-50/40 p-3 sm:p-4" : "mt-2"}`}>
         <label className="min-w-0">
@@ -259,13 +283,15 @@ export default function UserApiKeysHeaderPanel({ variant = "default" }: { varian
             {validating ? "Validating..." : "Validate keys"}
           </button>
         </div>
+        <p className="text-[11px] leading-relaxed text-slate-500">
+          Keys stay in this browser and are sent with Assistant, PESTEL, Porter, and Business narrative requests.
+        </p>
+        {validationMessage ? (
+          <p className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-[11px] leading-relaxed text-slate-600">
+            {validationMessage}
+          </p>
+        ) : null}
       </div>
-      <p className="mt-2 text-[11px] text-slate-500">
-        Keys are active for the current session and attached to API requests across Assistant, PESTEL, Porter, and Business narrative flows.
-      </p>
-      {validationMessage ? (
-        <p className="mt-1 text-[11px] text-slate-600">{validationMessage}</p>
-      ) : null}
     </details>
   );
 }

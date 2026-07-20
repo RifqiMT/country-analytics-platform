@@ -132,8 +132,9 @@ Response (high-level; full shape in `frontend/src/api.ts` `CountrySummary`):
   "capital": ["Jakarta"],
   "population": 274000000,
   "area": 1910000,
-  "government": "President ...",
+  "government": "Presidential republic",
   "headOfGovernmentTitle": "President",
+  "headOfGovernmentName": "Prabowo Subianto",
   "ianaTimezone": "Asia/Jakarta",
   "eezSqKm": 6150000,
   "usdFxRate": 15420,
@@ -242,6 +243,14 @@ Query params:
 - `start` (optional): start year (clamped; defaults to `MIN_DATA_YEAR`)
 - `end` (optional): end year (clamped; defaults to `currentDataYear()`)
 
+**Timeout / resilience behavior:**
+- Soft timeout scales with metric count: base `14_000` ms + `5_500 × N`, ceiling `68s` (≤4 metrics), `62s` (≤8), `58s` (else), or `95s` (≥40), then capped by serverless budget.
+- When the client sends an explicit `metrics` list (batched requests), the server sets `skipWldFallback: true` (no world-aggregate proxy fill).
+- If the fetch times out with an all-null bundle and `N > 1`, the server bisects the metric list and refetches both halves in parallel.
+- Response headers may include:
+  - `x-cap-warning: country-series-partial-timeout` when timed out but some values returned
+  - existing dense-null fallback markers when applicable
+
 Response:
 ```json
 {
@@ -256,7 +265,12 @@ Response:
 
 Errors:
 - `400` unknown metric IDs
+- `504` with `code: "SERIES_TIMEOUT"` when the series call cannot complete in budget (client retries with smaller batches automatically)
 - `500` internal error
+
+**Head-of-government enrichment** (on `GET /api/country/:cca3`, not series):
+- `headOfGovernmentTitle`: Wikidata P1313 or inferred from government type
+- `headOfGovernmentName`: Tavily+Groq (when both keys present) preferred, else Wikidata P6; 14s settle budget; 6h cache key `head-gov-person:{ISO3}`
 
 ### Global analytics
 
@@ -571,7 +585,13 @@ Response:
 
 Errors:
 - `400` unknown metric IDs
+- `503` with `code: "CORRELATION_EMPTY"` when `n === 0` (body includes `metricX`, `metricY`, `startYear`, `endYear`); empty results are **not** cached
 - `500` internal errors
+
+**Implementation notes:**
+- Uses year-range WDI snapshots (`fetchGlobalYearSnapshotsForRange`) rather than per-year concurrency loops
+- Respects `correlationDeadlineFromBudget()` so work stops before serverless wall-clock expiry
+- Cache key `corr:global:v4:...` (TTL 30m); highlight country is a presentation concern and is not part of the cache key
 
 #### POST `/api/analysis/business/correlation-narrative`
 

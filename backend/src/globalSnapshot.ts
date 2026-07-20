@@ -35,7 +35,16 @@ async function fetchGlobalIndicatorYearOnce(indicatorCode: string, year: number)
     )}?date=${year}&format=json&per_page=${perPage}&page=${page}`;
     const res = await fetchWithRetry(url, undefined, { attempts: 5, baseDelayMs: 500 });
     if (!res.ok) throw new Error(`World Bank global HTTP ${res.status}`);
-    const raw = (await res.json()) as unknown;
+    const text = await res.text();
+    if (!text.trimStart().startsWith("[") && !text.trimStart().startsWith("{")) {
+      throw new Error(`World Bank global returned non-JSON for ${indicatorCode} ${year}`);
+    }
+    let raw: unknown;
+    try {
+      raw = JSON.parse(text) as unknown;
+    } catch {
+      throw new Error(`World Bank global JSON parse failed for ${indicatorCode} ${year}`);
+    }
     if (!Array.isArray(raw) || raw.length < 2) break;
     const chunk = raw[1];
     if (!Array.isArray(chunk) || chunk.length === 0) break;
@@ -224,15 +233,288 @@ async function enrichFromSexPairAverage(
 }
 
 /**
+ * Paginated WDI fetch across a year span (`date=start:end`) — far fewer round-trips than one year at a time.
+ * Returns rows keyed by calendar year for correlation / multi-year analytics.
+ */
+async function fetchGlobalIndicatorYearRangeOnce(
+  indicatorCode: string,
+  startYear: number,
+  endYear: number
+): Promise<Map<number, GlobalRow[]>> {
+  const byYearIso = new Map<number, Map<string, GlobalRow>>();
+  let page = 1;
+  const perPage = 1000;
+  for (;;) {
+    const url = `https://api.worldbank.org/v2/country/all/indicator/${encodeURIComponent(
+      indicatorCode
+    )}?date=${startYear}:${endYear}&format=json&per_page=${perPage}&page=${page}`;
+    const res = await fetchWithRetry(url, undefined, { attempts: 5, baseDelayMs: 500 });
+    if (!res.ok) throw new Error(`World Bank global range HTTP ${res.status}`);
+    const text = await res.text();
+    // WAF / CDN sometimes returns HTML with HTTP 200 — treat as failure so we can fall back.
+    if (!text.trimStart().startsWith("[") && !text.trimStart().startsWith("{")) {
+      throw new Error(`World Bank global range returned non-JSON for ${indicatorCode}`);
+    }
+    let raw: unknown;
+    try {
+      raw = JSON.parse(text) as unknown;
+    } catch {
+      throw new Error(`World Bank global range JSON parse failed for ${indicatorCode}`);
+    }
+    if (!Array.isArray(raw) || raw.length < 2) break;
+    const chunk = raw[1];
+    if (!Array.isArray(chunk) || chunk.length === 0) break;
+    for (const r of chunk) {
+      if (!r || typeof r !== "object") continue;
+      const rec = r as {
+        countryiso3code?: string;
+        country?: { value?: string };
+        value?: unknown;
+        date?: string | number;
+      };
+      const year = typeof rec.date === "number" ? rec.date : parseInt(String(rec.date ?? ""), 10);
+      if (!Number.isFinite(year) || year < startYear || year > endYear) continue;
+      const rawIso = rec.countryiso3code;
+      if (!rawIso || rawIso === "") continue;
+      const iso = canonicalWbIso3(rawIso);
+      if (!/^[A-Z]{3}$/.test(iso)) continue;
+      const name = rec.country?.value ?? iso;
+      const parsed = parseWdiNumericValue(rec.value);
+      if (!byYearIso.has(year)) byYearIso.set(year, new Map());
+      const byIso = byYearIso.get(year)!;
+      const prev = byIso.get(iso);
+      if (!prev) {
+        byIso.set(iso, { countryIso3: iso, countryName: name, value: parsed });
+      } else {
+        byIso.set(iso, {
+          countryIso3: iso,
+          countryName: name || prev.countryName,
+          value: pickBetterObservation(prev.value, parsed),
+        });
+      }
+    }
+    const meta = raw[0] as { pages?: number };
+    if (typeof meta?.pages === "number" && page >= meta.pages) break;
+    page += 1;
+    if (page > 80) break;
+  }
+  const out = new Map<number, GlobalRow[]>();
+  for (const [year, byIso] of byYearIso) {
+    out.set(year, [...byIso.values()]);
+  }
+  return out;
+}
+
+async function fetchGlobalIndicatorYearRange(
+  indicatorCode: string,
+  startYear: number,
+  endYear: number
+): Promise<Map<number, GlobalRow[]>> {
+  const maxAttempts = 3;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fetchGlobalIndicatorYearRangeOnce(indicatorCode, startYear, endYear);
+    } catch (e) {
+      if (attempt >= maxAttempts) {
+        console.error(
+          `[WDI] global range fetch failed for ${indicatorCode} ${startYear}:${endYear}:`,
+          e instanceof Error ? e.message : e
+        );
+        return new Map();
+      }
+      await new Promise((r) => setTimeout(r, 400 * attempt));
+    }
+  }
+  return new Map();
+}
+
+function emptyYearMap(startYear: number, endYear: number): Map<number, GlobalRow[]> {
+  const m = new Map<number, GlobalRow[]>();
+  for (let y = startYear; y <= endYear; y++) m.set(y, []);
+  return m;
+}
+
+function mergeYearMaps(
+  primary: Map<number, GlobalRow[]>,
+  fallback: Map<number, GlobalRow[]>,
+  startYear: number,
+  endYear: number
+): Map<number, GlobalRow[]> {
+  const out = new Map<number, GlobalRow[]>();
+  for (let y = startYear; y <= endYear; y++) {
+    out.set(y, mergeGlobalRows(primary.get(y) ?? [], fallback.get(y) ?? []));
+  }
+  return out;
+}
+
+function applySexPairAverageOnRows(
+  rows: GlobalRow[],
+  maleByIso: Map<string, number | null>,
+  femaleByIso: Map<string, number | null>
+): GlobalRow[] {
+  return rows.map((row) => {
+    if (!isMissingValue(row.value)) return row;
+    const iso = row.countryIso3.toUpperCase();
+    const m = maleByIso.get(iso);
+    const f = femaleByIso.get(iso);
+    if (!isMissingValue(m) && !isMissingValue(f)) {
+      return { ...row, value: ((m as number) + (f as number)) / 2 };
+    }
+    return row;
+  });
+}
+
+function countUsableRowsInYearMap(byYear: Map<number, GlobalRow[]>): number {
+  let n = 0;
+  for (const rows of byYear.values()) {
+    for (const r of rows) {
+      if (!isMissingValue(r.value)) n += 1;
+    }
+  }
+  return n;
+}
+
+/**
+ * Fast multi-year global snapshots for correlation analytics.
+ * Prefers WDI date-range pages; falls back to per-year snapshots when the range path is empty or blocked.
+ * Skips per-country IMF/UIS enrichment on the range path (too slow for long spans).
+ */
+export async function fetchGlobalYearSnapshotsForRange(
+  metricId: string,
+  startYear: number,
+  endYear: number
+): Promise<Map<number, GlobalRow[]>> {
+  const def = METRIC_BY_ID[metricId];
+  if (!def) throw new Error(`Unknown metric: ${metricId}`);
+  if (endYear < startYear) return emptyYearMap(startYear, endYear);
+
+  const rangeCacheKey = `global:range:v2:${metricId}:${startYear}:${endYear}`;
+  const rangeHit = getCache<Array<[number, GlobalRow[]]>>(rangeCacheKey);
+  if (rangeHit) {
+    const restored = new Map(rangeHit);
+    if (countUsableRowsInYearMap(restored) > 0) return restored;
+  }
+
+  // Reuse per-year caches when the full span is already warm with real data.
+  const fromYearCache = new Map<number, GlobalRow[]>();
+  let allCached = true;
+  for (let y = startYear; y <= endYear; y++) {
+    const hit = getCache<GlobalRow[]>(`global:v10:${metricId}:${y}`);
+    if (!hit || hit.length === 0) {
+      allCached = false;
+      break;
+    }
+    fromYearCache.set(y, hit);
+  }
+  if (allCached && countUsableRowsInYearMap(fromYearCache) > 0) return fromYearCache;
+
+  let byYear = await fetchGlobalIndicatorYearRange(def.worldBankCode, startYear, endYear);
+  if (def.fallbackWorldBankCode) {
+    const fb = await fetchGlobalIndicatorYearRange(def.fallbackWorldBankCode, startYear, endYear);
+    byYear = mergeYearMaps(byYear, fb, startYear, endYear);
+  } else {
+    byYear = mergeYearMaps(byYear, emptyYearMap(startYear, endYear), startYear, endYear);
+  }
+
+  if (metricId === "life_expectancy" || metricId === "mortality_under5") {
+    const maleCode = metricId === "life_expectancy" ? "SP.DYN.LE00.MA.IN" : "SH.DYN.MORT.MA";
+    const femaleCode = metricId === "life_expectancy" ? "SP.DYN.LE00.FE.IN" : "SH.DYN.MORT.FE";
+    const [maleByYear, femaleByYear] = await Promise.all([
+      fetchGlobalIndicatorYearRange(maleCode, startYear, endYear),
+      fetchGlobalIndicatorYearRange(femaleCode, startYear, endYear),
+    ]);
+    for (let y = startYear; y <= endYear; y++) {
+      const maleByIso = new Map(
+        (maleByYear.get(y) ?? []).map((r) => [r.countryIso3.toUpperCase(), r.value] as const)
+      );
+      const femaleByIso = new Map(
+        (femaleByYear.get(y) ?? []).map((r) => [r.countryIso3.toUpperCase(), r.value] as const)
+      );
+      byYear.set(y, applySexPairAverageOnRows(byYear.get(y) ?? [], maleByIso, femaleByIso));
+    }
+  }
+
+  // Range path failed or was blocked — fall back to lite per-year WDI snapshots (no IMF/UIS).
+  if (countUsableRowsInYearMap(byYear) === 0) {
+    console.warn(
+      `[WDI] range snapshot empty for ${metricId} ${startYear}:${endYear}; falling back to per-year lite fetches`
+    );
+    byYear = await fetchGlobalYearSnapshotsYearByYearLite(metricId, startYear, endYear);
+  }
+
+  if (countUsableRowsInYearMap(byYear) === 0) {
+    // Do not poison per-year / range caches with empty failures.
+    return emptyYearMap(startYear, endYear);
+  }
+
+  for (let y = startYear; y <= endYear; y++) {
+    const rows = byYear.get(y) ?? [];
+    byYear.set(y, rows);
+    if (rows.length > 0) setCache(`global:v10:${metricId}:${y}`, rows, 1000 * 60 * 60);
+  }
+  setCache(rangeCacheKey, [...byYear.entries()], 1000 * 60 * 45);
+  return byYear;
+}
+
+/** WDI-only year snapshot (no IMF/UIS) for fast correlation recovery. */
+async function fetchGlobalYearSnapshotLite(metricId: string, year: number): Promise<GlobalRow[]> {
+  const def = METRIC_BY_ID[metricId];
+  if (!def) throw new Error(`Unknown metric: ${metricId}`);
+  const cacheKey = `global:lite:v1:${metricId}:${year}`;
+  const cached = getCache<GlobalRow[]>(cacheKey);
+  if (cached && cached.length > 0) return cached;
+
+  const primary = await fetchGlobalIndicatorYear(def.worldBankCode, year);
+  let rows = primary;
+  if (def.fallbackWorldBankCode) {
+    const fb = await fetchGlobalIndicatorYear(def.fallbackWorldBankCode, year);
+    rows = mergeGlobalRows(primary, fb);
+  }
+  if (metricId === "life_expectancy") {
+    rows = await enrichFromSexPairAverage(rows, year, "SP.DYN.LE00.MA.IN", "SP.DYN.LE00.FE.IN");
+  }
+  if (metricId === "mortality_under5") {
+    rows = await enrichFromSexPairAverage(rows, year, "SH.DYN.MORT.MA", "SH.DYN.MORT.FE");
+  }
+  if (rows.length > 0) setCache(cacheKey, rows, 1000 * 60 * 60);
+  return rows;
+}
+
+async function fetchGlobalYearSnapshotsYearByYearLite(
+  metricId: string,
+  startYear: number,
+  endYear: number
+): Promise<Map<number, GlobalRow[]>> {
+  const years = Array.from({ length: endYear - startYear + 1 }, (_, i) => startYear + i);
+  const concurrency = isServerlessRuntime() ? 6 : 8;
+  const out = emptyYearMap(startYear, endYear);
+  for (let i = 0; i < years.length; i += concurrency) {
+    const chunk = years.slice(i, i + concurrency);
+    const resolved = await Promise.all(
+      chunk.map(async (year) => {
+        try {
+          const rows = await fetchGlobalYearSnapshotLite(metricId, year);
+          return { year, rows };
+        } catch {
+          return { year, rows: [] as GlobalRow[] };
+        }
+      })
+    );
+    for (const { year, rows } of resolved) out.set(year, rows);
+  }
+  return out;
+}
+
+/**
  * One metric, one year — all economies (paginated WDI).
  * Merges secondary WDI code when defined; IMF WEO when `imfWeoIndicator` is set; UNESCO UIS when `uisIndicatorId` is set.
  */
 export async function fetchGlobalYearSnapshot(metricId: string, year: number): Promise<GlobalRow[]> {
   const def = METRIC_BY_ID[metricId];
   if (!def) throw new Error(`Unknown metric: ${metricId}`);
-  const cacheKey = `global:v9:${metricId}:${year}`;
+  const cacheKey = `global:v10:${metricId}:${year}`;
   const cached = getCache<GlobalRow[]>(cacheKey);
-  if (cached) return cached;
+  if (cached && cached.length > 0) return cached;
 
   const primary = await fetchGlobalIndicatorYear(def.worldBankCode, year);
   let rows = primary;

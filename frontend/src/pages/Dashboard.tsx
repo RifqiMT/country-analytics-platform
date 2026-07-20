@@ -15,6 +15,7 @@ import DashboardComparisonTable, {
 } from "../components/dashboard/DashboardComparisonTable";
 import DashboardHero, { type HeroKpi } from "../components/dashboard/DashboardHero";
 import DashboardInfoCard from "../components/dashboard/DashboardInfoCard";
+import HeadOfGovernmentCard from "../components/dashboard/HeadOfGovernmentCard";
 import DashboardLoadingState from "../components/dashboard/DashboardLoadingState";
 import DashboardSectionNav, { type DashboardNavItem } from "../components/dashboard/DashboardSectionNav";
 import MetricCard from "../components/dashboard/MetricCard";
@@ -38,11 +39,13 @@ import { labourChartRows, mergeSeriesForLineChart } from "../lib/chartSeries";
 import { startSimulatedLoadProgress } from "../lib/loadProgress";
 import {
   fetchCountrySeriesBatched,
+  formatSeriesLoadError,
   latest,
   withTimeout,
   yoyBpsRate,
   yoyPct,
 } from "../lib/countrySeriesFetch";
+import LoadErrorBanner from "../components/layout/LoadErrorBanner";
 import { readStoredDashboardCountry, writeStoredDashboardCountry } from "../dashboardCountryStorage";
 
 const DASHBOARD_SECTION_IDS = {
@@ -389,7 +392,7 @@ export default function Dashboard() {
       setBundle(allSeriesBundle);
       setMainLoadProgress(100);
     } catch (e) {
-      setErr(String(e));
+      setErr(formatSeriesLoadError(e));
       setMainLoadProgress(0);
       setLoadingExtras(false);
       return;
@@ -1000,9 +1003,12 @@ export default function Dashboard() {
       </CollapsibleToolbar>
 
       {err ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">
-          {err}
-        </div>
+        <LoadErrorBanner
+          message={err}
+          onRetry={() => {
+            setTick((t) => t + 1);
+          }}
+        />
       ) : null}
 
       {(loading || loadingExtras) && (
@@ -1058,11 +1064,10 @@ export default function Dashboard() {
                   <p className="dash-section-label">Government</p>
                   <div className="dash-subsection-grid lg:grid-cols-2">
                     <DashboardInfoCard label="Government type">{pill(meta.government || "—", "slate")}</DashboardInfoCard>
-                    <DashboardInfoCard label="Head of government">
-                      <p className="text-base font-semibold text-slate-900">
-                        {meta.headOfGovernmentTitle ?? headOfGovernment(meta.government)}
-                      </p>
-                    </DashboardInfoCard>
+                    <HeadOfGovernmentCard
+                      role={meta.headOfGovernmentTitle ?? headOfGovernment(meta.government)}
+                      name={meta.headOfGovernmentName}
+                    />
                   </div>
                 </div>
 

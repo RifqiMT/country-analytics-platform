@@ -21,6 +21,8 @@ export interface CountrySummary {
   government?: string;
   /** Head-of-government office label (Wikidata), e.g. President */
   headOfGovernmentTitle?: string;
+  /** Current officeholder personal name (Wikidata P6 and/or Tavily+Groq). */
+  headOfGovernmentName?: string;
   /** UN M.49 numeric code (string), used for EEZ lookups */
   ccn3?: string;
   landlocked?: boolean;

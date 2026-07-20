@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useScrollCompact } from "../../hooks/useScrollCompact";
 import HeaderToolsStrip from "./HeaderToolsStrip";
-import { APP_NAV, APP_TAGLINE } from "./navConfig";
+import PlatformTagline from "./PlatformTagline";
+import { APP_NAV } from "./navConfig";
 
 export default function AppHeader() {
   const compact = useScrollCompact(28);
@@ -36,7 +37,9 @@ export default function AppHeader() {
               <span className="hidden lg:inline">Country Analytics Platform</span>
             </h1>
             {!compact && (
-              <p className="mt-0.5 hidden text-sm leading-snug text-slate-600 xl:block">{APP_TAGLINE}</p>
+              <div className="mt-1 hidden xl:block">
+                <PlatformTagline variant="compact" />
+              </div>
             )}
           </div>
 
@@ -85,9 +88,9 @@ export default function AppHeader() {
 
         {/* Mobile about blurb */}
         {aboutOpen && !compact && (
-          <p className="mt-2 rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2 text-xs leading-relaxed text-slate-600 lg:hidden">
-            {APP_TAGLINE}
-          </p>
+          <div className="mt-2 rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-3 lg:hidden">
+            <PlatformTagline variant="panel" />
+          </div>
         )}
 
         {/* Mobile / tablet tools */}
@@ -98,7 +101,9 @@ export default function AppHeader() {
 
         {/* Tablet tagline — desktop nav lives below on lg+ only */}
         {!compact && (
-          <p className="mt-2 hidden text-sm leading-snug text-slate-600 md:block lg:hidden">{APP_TAGLINE}</p>
+          <div className="mt-2 hidden md:block lg:hidden">
+            <PlatformTagline variant="full" />
+          </div>
         )}
 
         {/* Desktop navigation — segmented control */}

@@ -131,6 +131,12 @@ Tables/cards should always reflect returned years (not just requested years).
 - Conflict metrics (IDP displacement, battle deaths) reflect specific institutional definitions—users must consult source documentation before cross-country comparison.
 - Do not combine crime rate metrics with governance index metrics in a single composite score without explicit methodology disclosure.
 
+### BG-05: Head-of-government enrichment is best-effort
+
+- Officeholder name may be missing when Wikidata P6 and optional Tavily+Groq enrichment fail.
+- UI must show an explicit empty/not-reported state rather than inventing a name.
+- Title inference from government type is a fallback label only—not a verified constitutional office mapping for every polity.
+
 ## 6) Operational guardrails (release discipline)
 
 ### OG-01: Update docs + traceability on AI behavior changes

@@ -84,9 +84,9 @@ Core value:
 - `docs/GUARDRAILS.md` (incl. BG-04, UG, PG guardrails)
 
 ### Design and operational governance
-- `docs/DESIGN_GUIDELINES.md` (brand tokens, PESTEL/Porter/SWOT palettes)
+- `docs/DESIGN_GUIDELINES.md` (brand tokens, refreshed PESTEL/Porter/SWOT/Compare palettes)
 - `docs/METRICS_AND_OKRS.md` (incl. Objective 4: security/governance coverage)
-- `docs/TRACEABILITY_MATRIX.md` (FR-01–FR-28, NFR-01–NFR-08)
+- `docs/TRACEABILITY_MATRIX.md` (FR-01–FR-36, NFR-01–NFR-09)
 - `docs/PRODUCT_DOCUMENTATION_STANDARD.md`
 - `docs/RELEASE_READINESS_CHECKLIST.md`
 - `docs/CHANGELOG.md`
@@ -126,9 +126,9 @@ Core value:
 |--------|---------------|
 | Canonical indicators | 68 |
 | Data categories | 6 metric categories + 1 UI-only global table grouping (`general`) |
-| Application modules | 7 routes |
+| Application modules | 8 routes (incl. Compare Countries) |
 | API endpoints | 20+ |
 | Documentation files | 23 |
-| Functional requirements (traceability) | FR-01 through FR-28 |
+| Functional requirements (traceability) | FR-01 through FR-36 |
 | User personas | 7 |
 | Year range | 2000 – current |

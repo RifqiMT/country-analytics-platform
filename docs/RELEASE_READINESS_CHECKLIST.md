@@ -10,15 +10,20 @@ Use this checklist before production releases to keep analytics quality, guardra
 
 ## 1. Product and UX checks
 
-- [ ] All seven modules load without console errors: Dashboard, Global Analytics, Assistant, PESTEL, Porter, Business Analytics, Sources
+- [ ] All eight modules load without console errors: Dashboard, Compare Countries, Global Analytics, Assistant, PESTEL, Porter, Business Analytics, Sources
 - [ ] Country Dashboard: country select, year range, all accordion sections (incl. Crime & public safety) render KPI cards and charts
+- [ ] Country Dashboard: head-of-government card shows name/title or clear “Not reported” state
 - [ ] Country Dashboard: FX snapshot card shows rate, currency, as-of date, and source label
 - [ ] Country Dashboard: FX trend chart loads via `/api/country/:cca3/fx-series`
+- [ ] Compare Countries: dual-country charts, pair tables, A/B colors, PNG/CSV export
 - [ ] Global Analytics: choropleth map, all table tabs (general, financial, health, education, crime), WLD charts
+- [ ] Series resilience: large metric loads complete via chunking/retry without unhandled UI crash
 - [ ] Assistant, PESTEL, Porter, and Business Analytics complete primary user flows
 - [ ] App-wide AI key manager: save, clear, validate, and reuse keys across all AI modules
 - [ ] Business Analytics: presentation mode toggle (button + keyboard `P`) works; ignored while typing in inputs
+- [ ] Business Analytics: empty correlation returns governed empty-state (no silent cache of `n=0`)
 - [ ] Sources page: top sections collapsed by default; metric cards expand/collapse correctly
+- [ ] Shared PageIntro chrome (eyebrow/lead/highlights) consistent across modules
 - [ ] Error states are user-readable (no raw stack traces or internal prompt artifacts)
 
 ---

@@ -47,13 +47,15 @@ For persona details, see `docs/USER_PERSONAS.md`.
 
 ### In scope (current)
 
-- Country dashboard indicators and comparison views
+- Country dashboard indicators and comparison views (including head-of-government name/title)
+- Compare Countries dual-country trends, KPI deltas, and pair tables (`/compare`)
 - Global analytics (map, global tables, and world aggregate series)
 - Analytics Assistant (platform-grounded responses; optional verified-web mode)
 - Strategy modules: PESTEL and Porter Five Forces
-- Business Analytics: correlation/regression diagnostics + narrative interpretation
+- Business Analytics: correlation/regression diagnostics + narrative interpretation (year-range snapshots; empty-result governance)
 - Source and metric definitions explorer
 - Crime & public safety indicators (9 metrics: homicide, GBV, conflict displacement, battle deaths, WGI governance) in dashboard accordion, global crime table, and choropleth map
+- Resilient metric series delivery (client chunking + server bisect on timeout)
 
 ### Out of scope (current)
 
@@ -107,6 +109,12 @@ Primary NFR themes:
 1. Select country(s) and year window.
 2. Choose metric(s) using catalog-defined IDs.
 3. Compare values and interpret within unit + data-year context.
+
+### Journey A2: Compare Countries pair analysis
+1. Select Country A and Country B on `/compare`.
+2. Review dual-line charts and pair tables by domain.
+3. Interpret KPI deltas with unit-correct formatting.
+4. Export PNG/CSV for stakeholder packs.
 
 ### Journey B: Assistant → Ranking/Comparison → Citations → Readiness
 1. Ask a metric-scoped question (ranking/comparison) in natural language.
@@ -211,4 +219,11 @@ For governance details, see `docs/PRODUCT_DOCUMENTATION_STANDARD.md`.
   - Governance indices (rule of law, political stability, control of corruption)
 - Global Analytics adds **Crime & safety** table tab; homicide rate selectable on choropleth map.
 - Sources page includes crime category with UNODC, IDMC, UCDP, and WGI source attribution.
-- Interpretation guardrails documented in `docs/GUARDRAILS.md` (BG-04).
+### 14.4 Head of government, Compare module, and series resilience (2026-07-20)
+
+- Dashboard `HeadOfGovernmentCard` shows officeholder **name** and **title** from `GET /api/country/:cca3`.
+- Name resolution: Tavily+Groq (when both keys present) preferred; else Wikidata P6; title from Wikidata P1313 or government-type inference.
+- Compare Countries (`/compare`) is a first-class dual-country analysis surface with shared series resilience.
+- Country series client uses chunk size 4, parallel waves of 2, retries, and recursive half-split; server bisects timed-out all-null batches and skips WLD proxy on batched calls.
+- Business correlation uses year-range WDI snapshots; empty results return `503 CORRELATION_EMPTY` and are not cached.
+- PESTEL/Porter/SWOT color tokens refreshed; shared `PageIntro` / `platformCopy` for module chrome.

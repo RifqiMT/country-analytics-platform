@@ -95,14 +95,16 @@ t = r × sqrt(n−2) / sqrt(max(1e−20, 1−r²))
 p = 2 × (1 − normalCdf(|t|))
 ```
 
-### 2.8 Timeout resilience (serverless)
+### 2.7 Timeout resilience (serverless)
 
-- Backend uses batched year processing with per-year fault tolerance
-- Serverless concurrency: 8 years parallel (4 locally)
+- Backend uses **year-range WDI snapshots** (`fetchGlobalYearSnapshotsForRange`) for both metrics in parallel, not per-year concurrency loops
+- Work respects `correlationDeadlineFromBudget()` so computation stops before serverless wall-clock expiry
+- Empty results (`n === 0`) return HTTP `503` with `code: "CORRELATION_EMPTY"` and are **not** cached
 - Frontend reliability mode: automatic retry with narrower windows on timeout
 - Strict mode: only selected range attempted; no fallback
+- Client session cache key: `cap_business_correlation_v2` (rejects empty points)
 
-### 2.9 Narrative generation constraints
+### 2.8 Narrative generation constraints
 
 When LLM narrative is generated:
 - Language is **exploratory** — hypothesis guidance, not proof

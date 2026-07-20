@@ -23,16 +23,81 @@ body {
 @keyframes cap-toast-in {
   from {
     opacity: 0;
-    transform: translateX(1rem);
+    transform: translateX(1rem) scale(0.98);
   }
   to {
     opacity: 1;
-    transform: translateX(0);
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes cap-toast-progress {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
   }
 }
 
 .toast-slide-in {
-  animation: cap-toast-in 0.28s ease-out;
+  animation: cap-toast-in 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.toast-progress {
+  animation-name: cap-toast-progress;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+.group:hover .toast-progress {
+  animation-play-state: paused;
+}
+
+@keyframes cap-tools-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.45);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+.tools-live-pulse {
+  animation: cap-tools-pulse 1.2s ease-out;
+}
+
+@keyframes assistant-thinking-bounce {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.35;
+  }
+  30% {
+    transform: translateY(-3px);
+    opacity: 1;
+  }
+}
+
+.assistant-thinking-dot span {
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: assistant-thinking-bounce 1.1s ease-in-out infinite;
+}
+
+.assistant-thinking-dot span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.assistant-thinking-dot span:nth-child(3) {
+  animation-delay: 0.3s;
 }
 
 /**

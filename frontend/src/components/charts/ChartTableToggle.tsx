@@ -1,4 +1,5 @@
-import { useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import ExportPngButton from "../ExportPngButton";
 import {
   VizGalleryBusContext,
   VizGalleryNestedFsContext,
@@ -17,7 +18,33 @@ type Props = {
   tableLabel?: string;
   /** Shown in the full-screen header (Escape or Close to exit). */
   vizTitle?: string;
+  /**
+   * When Table view is selected, Export downloads CSV via this callback.
+   * Chart view always exports PNG. If omitted, Table view falls back to PNG.
+   */
+  onExportCsv?: () => void;
 };
+
+function exportPngFilename(vizTitle: string | undefined): string {
+  const base = (vizTitle ?? "visualization")
+    .replace(/[^a-z0-9]+/gi, "_")
+    .replace(/^_+|_+$/g, "")
+    .toLowerCase()
+    .slice(0, 80);
+  return `${base || "visualization"}_chart.png`;
+}
+
+function DownloadIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v10m0 0l-4-4m4 4l4-4" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 15v4a2 2 0 002 2h12a2 2 0 002-2v-4" />
+    </svg>
+  );
+}
+
+const toolbarExportClass =
+  "inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[10px] font-semibold text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50";
 
 export default function ChartTableToggle({
   chart,
@@ -26,9 +53,11 @@ export default function ChartTableToggle({
   chartLabel = "Chart",
   tableLabel = "Table",
   vizTitle,
+  onExportCsv,
 }: Props) {
   const [mode, setMode] = useState<Mode>("chart");
   const [fullscreen, setFullscreen] = useState(false);
+  const exportPaneRef = useRef<HTMLDivElement | null>(null);
 
   const galleryBus = useContext(VizGalleryBusContext);
   const galleryStepIdx = useContext(VizGalleryStepIndexContext);
@@ -69,11 +98,38 @@ export default function ChartTableToggle({
     ? "rounded-full px-3 py-1 text-xs font-semibold transition"
     : "rounded-full px-2.5 py-0.5 text-[10px] font-semibold transition";
 
+  const exportCsvMode = mode === "table" && typeof onExportCsv === "function";
+
+  const exportBtn = exportCsvMode ? (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onExportCsv();
+      }}
+      className={toolbarExportClass}
+      title="Export table as CSV"
+      aria-label="Export table as CSV"
+    >
+      <DownloadIcon className="h-3.5 w-3.5 shrink-0" />
+      <span className="hidden sm:inline">Export</span>
+    </button>
+  ) : (
+    <ExportPngButton
+      getTarget={() => exportPaneRef.current}
+      filename={exportPngFilename(vizTitle)}
+      size="toolbar"
+      title="Export chart as PNG"
+      label="Export"
+    />
+  );
+
   const toolbar = (
     <div
       className={`flex shrink-0 flex-wrap items-center justify-between gap-2 ${fullscreen ? "mb-2" : "mb-2"}`}
     >
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1.5">
         {!fullscreen && !inGalleryOverlay ? (
           <button
             type="button"
@@ -92,6 +148,7 @@ export default function ChartTableToggle({
             <span className="hidden sm:inline">Full screen</span>
           </button>
         ) : null}
+        {!fullscreen ? exportBtn : null}
       </div>
       <div className="flex flex-wrap items-center justify-end gap-1.5">
         <span
@@ -129,6 +186,7 @@ export default function ChartTableToggle({
 
   const dataPane = (
     <div
+      ref={exportPaneRef}
       className={
         mode === "table"
           ? fullscreen
@@ -180,13 +238,16 @@ export default function ChartTableToggle({
           <h2 className="min-w-0 truncate text-base font-semibold tracking-tight text-slate-900 sm:text-lg">
             {vizTitle ?? "Visualization"}
           </h2>
-          <button
-            type="button"
-            onClick={exitFullscreen}
-            className="shrink-0 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
-          >
-            Close
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            {exportBtn}
+            <button
+              type="button"
+              onClick={exitFullscreen}
+              className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+            >
+              Close
+            </button>
+          </div>
         </div>
       ) : null}
       {fullscreen ? <div className="flex min-h-0 flex-1 flex-col overflow-hidden pt-2">{main}</div> : main}

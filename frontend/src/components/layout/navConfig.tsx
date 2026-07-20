@@ -68,6 +68,3 @@ export const MOBILE_PRIMARY_NAV: NavItem[] = [
 
 /** Secondary destinations opened from the “More” tab. */
 export const MOBILE_MORE_NAV: NavItem[] = [APP_NAV[1]!, APP_NAV[3]!, APP_NAV[4]!, APP_NAV[7]!];
-
-export const APP_TAGLINE =
-  "Analyst-grade financial, demographic, and health metrics for every country (2000 – latest), powered by World Bank, UN, UNESCO, WHO, and IMF data.";
