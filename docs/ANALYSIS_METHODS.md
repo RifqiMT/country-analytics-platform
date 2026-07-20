@@ -1,107 +1,205 @@
-# Analysis Methods
+# Analysis Methods — Statistical and Strategic Methodology
 
-## Business correlation
-- Computes linear association between selected metrics
-- Supports outlier exclusion
-- Returns diagnostics + narrative interpretation
+**Document version:** 2026-07-20  
+**Audience:** Analysts, researchers, product managers, engineers, and QA  
+**Scope:** Business Analytics correlation, PESTEL, Porter Five Forces
 
-## PESTEL
-- Combines indicator digest and optional web context
-- Uses structured output and fallback controls
+---
 
-## Porter
-- Builds force-level analysis from digest + optional web context
-- Applies grounding and fallback behavior
+## 1. Important limitation (read first)
 
-## Important limitation
-Correlation indicates association, not causation.
+**Correlation indicates association, not causation.** All statistical outputs in this platform are decision-support tools. Causal claims require independent validation beyond what the platform provides.
 
-## 1) Business Analytics: Correlation & regression
+---
 
-The Business Analytics module analyzes the relationship between two selected metrics (`metricX`, `metricY`) across a specified inclusive year window.
+## 2. Business Analytics — Correlation and regression
 
-### 1.1 Data points and missingness
+The Business Analytics module analyzes the linear relationship between two selected metrics (`metricX`, `metricY`) across an inclusive year window for all countries with overlapping data.
 
-- A data point is a country-year observation where **both** metric values exist (non-null) for the same year.
-- Missing values are excluded from computation.
+**Endpoint:** `GET /api/analysis/correlation-global`  
+**Narrative endpoint:** `POST /api/analysis/business/correlation-narrative`
 
-### 1.2 Pearson correlation (r)
+### 2.1 Data points and missingness
 
-Pearson correlation measures linear association strength:
+| Rule | Description |
+| --- | --- |
+| Point definition | A country-year observation where **both** metric values exist (non-null) for the same year |
+| Missing exclusion | Missing values are excluded — never imputed as zero in correlation computation |
+| Year window | Inclusive loop from `start` to `end`, clamped to platform bounds (2000–current) |
 
-`r = cov(x, y) / (std(x) * std(y))`
+### 2.2 Pearson correlation (r)
 
-Interpretation guidance:
-- `|r| >= 0.7`: strong
-- `0.4 <= |r| < 0.7`: moderate
-- `0.2 <= |r| < 0.4`: weak
-- `< 0.2`: negligible
+**Formula:**
+```
+r = cov(x, y) / (std(x) × std(y))
+```
 
-### 1.3 Regression line (slope and intercept)
+**Interpretation thresholds:**
 
-The system fits a simple linear regression line:
+| |r| range | Strength label |
+| --- | --- |
+| ≥ 0.7 | Strong |
+| 0.4 – 0.7 | Moderate |
+| 0.2 – 0.4 | Weak |
+| < 0.2 | Negligible |
 
-`y_fitted = intercept + slope * x`
+### 2.3 Linear regression
+
+**Fitted line:**
+```
+y_fitted = intercept + slope × x
+```
 
 Where:
-- `slope` is derived from the correlation and variance ratio between X and Y
-- `intercept` ensures the line is centered on means of X and Y
+- `slope = r × sqrt(var(y) / var(x))` (when var(x) > 0)
+- `intercept = mean(y) − slope × mean(x)`
 
-### 1.4 Residuals
+### 2.4 Residuals
 
-For each included point:
+```
+residual = y − y_fitted
+```
 
-`residual = y - y_fitted`
+Used for:
+- Residual-vs-fitted scatter plot
+- Residual distribution diagnostics (mean, median, IQR of residuals)
+- Highlight country residual analysis in narrative payload
 
-Residuals are used for:
-- residual diagnostics (residual distribution / residual-vs-fitted plots)
-- explaining “how well the line fits” the observed data
+### 2.5 IQR outlier exclusion (optional)
 
-### 1.5 Optional outlier exclusion (IQR rule)
+When `excludeIqr=true`:
 
-Users can toggle outlier exclusion by applying an interquartile range rule:
+**For X:**
+```
+iqrX = q3x − q1x
+outlier if x < q1x − 1.5×iqrX  OR  x > q3x + 1.5×iqrX
+```
 
-For X:
-- Compute `q1x` and `q3x`
-- `iqrX = q3x - q1x`
-- Flag X as an outlier if `x < q1x - 1.5*iqrX` or `x > q3x + 1.5*iqrX`
+**For Y:** Same rule using q1y/q3y.
 
-For Y:
-- Compute `q1y` and `q3y`
-- Apply the same 1.5*IQR rule for Y outliers
+Points flagged in **either** X or Y are removed from computation. Count reported as `nIqrFlagged`.
 
-If `excludeIqr=true`, any point flagged as an outlier in either X or Y is removed from the regression/correlation computation.
+### 2.6 Confidence band (ciBand)
 
-### 1.6 Confidence band (`ciBand`)
-
-The system computes a confidence band around the fitted line using:
+Visualization aid using:
 - `tCrit = 1.96`
-- a mean-squared error estimate from residuals
-- a standard error expression that depends on x position relative to mean x
+- `mse = sse / (n − 2)`
+- Standard error expression depending on x position relative to mean(x)
 
-This band is a visualization/uncertainty aid; it is not a substitute for robust causal inference.
+**Note:** The confidence band is a visualization/uncertainty aid — not a substitute for robust causal inference.
 
-## 2) Narrative generation for correlation (`correlation-narrative`)
+### 2.7 p-value approximation
 
-When narrative generation is enabled, the module sends a structured payload to the backend and optionally uses LLM synthesis.
+```
+t = r × sqrt(n−2) / sqrt(max(1e−20, 1−r²))
+p = 2 × (1 − normalCdf(|t|))
+```
 
-Important constraints:
-- The narrative language is exploratory and framed as hypothesis guidance.
-- Correlation is treated as association, not causation.
-- Residual diagnostics and subgroup patterns can be included to strengthen “what to investigate next”.
+### 2.8 Timeout resilience (serverless)
 
-## 3) PESTEL methodology
+- Backend uses batched year processing with per-year fault tolerance
+- Serverless concurrency: 8 years parallel (4 locally)
+- Frontend reliability mode: automatic retry with narrower windows on timeout
+- Strict mode: only selected range attempted; no fallback
 
-PESTEL outputs combine:
-- A structured digest of relevant platform indicator signals
-- Optional web context (when enabled and when evidence gates allow it)
+### 2.9 Narrative generation constraints
 
-The backend constrains output to stable narrative sections so the UI remains consistent, and uses a data-only scaffold when AI generation is unavailable.
+When LLM narrative is generated:
+- Language is **exploratory** — hypothesis guidance, not proof
+- Correlation explicitly framed as association
+- Residual diagnostics and regional subgroups included when available
+- Deterministic fallback if LLM JSON shape/timeout gates fail
 
-## 4) Porter Five Forces methodology
+---
 
-Porter Five Forces outputs combine:
-- Force-level digest scaffolding derived from platform indicator signals
-- Optional web context for competitive/industry dynamics when evidence gates allow it
+## 3. PESTEL methodology
 
-When AI generation is unavailable or web evidence is thin, the system uses deterministic scaffold outputs to keep the product dependable and safe.
+**Endpoint:** `POST /api/analysis/pestel`  
+**UI:** `frontend/src/pages/Pestel.tsx`
+
+### 3.1 Input digest
+
+1. Backend builds indicator digest from platform metrics for focus country + year
+2. Optional Tavily web context retrieved as **snippet-only** evidence blocks
+3. Digest keys mapped via `pestelDigestKeys.ts` to six PESTEL dimensions
+
+### 3.2 Output structure
+
+| Section | Content |
+| --- | --- |
+| Six dimensions | Political, Economic, Sociocultural, Technological, Environmental, Legal |
+| SWOT grid | Strengths, Weaknesses, Opportunities, Threats (5 bullets each) |
+| Comprehensive sections | Two-paragraph narrative blocks per strategic area |
+| Market implications | Structured implications list |
+| Recommendations | Action-oriented recommendations |
+
+### 3.3 Quality pipeline
+
+```mermaid
+flowchart LR
+  D[Indicator digest] --> W[Optional Tavily snippets]
+  W --> LLM[Groq generation]
+  LLM --> SAN[Grounding sanitizer]
+  SAN --> QA[Strict grounding QA]
+  QA -->|pass| OUT[Final PESTEL output]
+  QA -->|fail| FB[Deterministic Tavily+data blend or data-only scaffold]
+  FB --> OUT
+```
+
+**Grounding QA thresholds:** Ratio and section-level checks in `pestelGrounding.ts`. Failure triggers deterministic replacement with attribution signal.
+
+### 3.4 Fallback behavior
+
+When Groq key missing or grounding QA fails:
+- Data-only scaffold with stable JSON schema
+- UI renders all sections without empty states
+- Attribution indicates scaffold/fallback mode
+
+---
+
+## 4. Porter Five Forces methodology
+
+**Endpoint:** `POST /api/analysis/porter`  
+**UI:** `frontend/src/pages/Porter.tsx`
+
+### 4.1 Input digest
+
+1. Platform indicator digest for focus country + year
+2. ILO-ISIC industry sector framing (`industrySector` field)
+3. Optional Tavily web context for competitive/industry dynamics
+
+### 4.2 Five forces output
+
+| Force | Analysis focus |
+| --- | --- |
+| Threat of new entry | Barriers, capital requirements, regulatory environment |
+| Supplier power | Input concentration, switching costs |
+| Buyer power | Customer concentration, price sensitivity |
+| Threat of substitutes | Alternative products/services, technology disruption |
+| Competitive rivalry | Market concentration, growth rate, differentiation |
+
+### 4.3 Fallback behavior
+
+Same pattern as PESTEL: LLM when keys available and evidence passes gates; deterministic scaffold otherwise.
+
+---
+
+## 5. Method comparison summary
+
+| Method | Statistical rigor | AI dependency | Primary output |
+| --- | --- | --- | --- |
+| Business correlation | High (Pearson r, regression, residuals) | Optional narrative only | Scatter plot + diagnostics + optional narrative |
+| PESTEL | Medium (indicator digest + qualitative synthesis) | Required for full narrative; scaffold without | Structured strategic assessment |
+| Porter | Medium (indicator digest + industry framing) | Required for full narrative; scaffold without | Five forces analysis by sector |
+
+---
+
+## 6. Related documents
+
+| Document | Relationship |
+| --- | --- |
+| `docs/VARIABLES.md` | Derived variables (r, slope, residual, ciBand) |
+| `docs/GUARDRAILS.md` | BG-02 (correlation ≠ causation), AG-06/AG-07 (PESTEL) |
+| `docs/TRACEABILITY_MATRIX.md` | FR-09, FR-10, FR-13, FR-20 |
+| `docs/DESIGN_GUIDELINES.md` | PESTEL/Porter theme colors |
+| `docs/METRICS_AND_OKRS.md` | Quality KPIs for analysis modules |

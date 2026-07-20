@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-07-20 (Third pass — elaboration and cross-reference expansion)
+
+- Rewrote **`docs/ASSISTANT_BEHAVIOR.md`** — full enterprise spec with routing diagram, evidence model, QA prompts
+- Rewrote **`docs/ANALYSIS_METHODS.md`** — comprehensive correlation, PESTEL, Porter methodology with formulas and flowcharts
+- Created **`docs/TESTING_STRATEGY.md`** — manual QA scope, API validation table, future automation roadmap
+- Expanded **`docs/TRACEABILITY_MATRIX.md`** — PRD journey mapping, doc cross-reference, persona-to-FR matrix
+- Expanded **`docs/USER_PERSONAS.md`** — persona-to-module matrix and workflow examples
+- Expanded **`docs/USER_STORIES.md`** — epic overview table, stories D4 (FX) and D5 (comparison), FR traceability
+- Expanded **`docs/PRD.md`** — additional personas, technical constraints table, NFR security/accessibility
+- Expanded **`docs/GUARDRAILS.md`** — UX guardrails (UG-01–04), performance guardrails (PG-01–04)
+- Expanded **`docs/PRODUCT_DOCUMENTATION_STANDARD.md`** — complete 22-file document registry
+
 ## 2026-07-20 (Second pass — comprehensive doc audit & gap closure)
 
 ### Documentation gaps closed

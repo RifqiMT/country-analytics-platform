@@ -1,106 +1,173 @@
-# Assistant Behavior
+# Analytics Assistant — Behavior Specification
 
-## Purpose
+**Document version:** 2026-07-20  
+**Audience:** Product managers, analysts, engineers, QA, and governance reviewers  
+**Canonical code:** `backend/src/assistantIntel.ts`, `backend/src/index.ts` (`POST /api/assistant/chat`)
 
-Explain how the assistant routes questions, uses evidence, and applies safeguards.
+---
 
-## Intent classes
-- statistics_drill
-- country_compare
-- country_overview
-- general_web
+## 1. Purpose and scope
 
-## Evidence model
-- Platform evidence blocks (D)
-- Web evidence blocks (W)
+The Analytics Assistant helps users explore country intelligence through natural language. It is designed to:
 
-## Quality controls
-- Citation and relevance checks
-- Deterministic paths for ranking/comparison classes
-- Fallback behavior when quality thresholds are not met
+- Answer **metric-scoped** ranking and comparison questions using deterministic platform evidence
+- Support **time-sensitive non-metric** questions via verified live web retrieval (when configured)
+- Generate **narrative prose** only when evidence quality gates pass
+- **Never** present unsupported certainty — deterministic fallbacks are mandatory when evidence is thin
 
-## User guidance
-- Ask metric-scoped questions for precision
-- Use web-priority mode for time-sensitive questions
-- Review attribution context before final decisions
+The assistant is **not** a general-purpose chatbot. It is a governed decision-support tool anchored to the platform's 68-metric catalog and explicit evidence boundaries.
 
-## Enterprise Behavior Specification (Expanded)
+---
 
-### 1) What the assistant is designed to do
+## 2. Intent routing
 
-The assistant helps users by:
-- Ranking and comparing countries using deterministic metric-driven tables when the question is metric-scoped
-- Explaining patterns in clear analyst prose while maintaining scope fidelity to the requested metrics
-- Supporting time-sensitive questions via verified live web retrieval when web grounding is required
+The backend classifies each user message into an intent class. Classification determines eligible evidence sources, whether deterministic templates apply, and whether fallback paths activate.
 
-### 2) Intent routing (how requests are classified)
+| Intent class | Typical user question | Evidence mode | Deterministic path |
+| --- | --- | --- | --- |
+| `statistics_drill` | "Rank top 10 countries by GDP per capita" | Platform metrics | Yes — ranking table |
+| `country_compare` | "Compare Indonesia and Brazil on population and life expectancy" | Platform metrics | Yes — comparison table with `% of top` |
+| `country_overview` | "Give me an overview of Indonesia's economic indicators" | Platform metrics | Partial — digest + optional LLM |
+| `general_web` | "Who is the current president of France?" | Verified web (Tavily) | Yes — verified-web deterministic path |
 
-The backend classifies the user’s question into intent classes and uses that classification to determine:
-- Which evidence sources are eligible (platform evidence, verified web evidence, or both)
-- Whether deterministic templates are allowed (to avoid hallucinated tables)
-- Whether fallback paths must be used due to scope mismatch risk
+### Routing decision flow
 
-Current intent classes:
-- `statistics_drill`: questions that require numeric/statistical extraction and ranking behavior
-- `country_compare`: questions that ask for comparing countries across metric dimensions
-- `country_overview`: questions that ask for a broad overview anchored to indicator series
-- `general_web`: non-metric questions where live web evidence may be required
+```mermaid
+flowchart TD
+  Q[User message] --> IC[Intent classification]
+  IC -->|metric-scoped| PE[Platform evidence builder]
+  IC -->|time-sensitive non-metric| VW[Verified web retrieval]
+  IC -->|mixed| HY[Hybrid: platform + web]
+  PE --> DT{Deterministic table applicable?}
+  DT -->|yes| TBL[Ranking/comparison table]
+  DT -->|no| LLM[LLM synthesis with grounding]
+  VW --> VWD[Verified-web deterministic reply]
+  LLM --> QA{Grounding QA pass?}
+  QA -->|yes| OUT[User-visible response]
+  QA -->|no| FB[Deterministic fallback]
+  TBL --> OUT
+  VWD --> OUT
+  FB --> OUT
+```
 
-### 3) Evidence model and citation discipline
+---
 
-The assistant can use two evidence streams:
-- **Platform evidence blocks** (`[D#]`): deterministic facts derived from platform indicator series and ranking/comparison structures
-- **Web evidence blocks** (`[W#]`): condensed live web excerpts intended to support only the specific claims they back
+## 3. Evidence model and citation discipline
 
-Safety requirement:
-- The final user-visible output must not leak internal placeholder citation tokens.
-- Assertions must align to evidence blocks; unsupported claims trigger fallback.
+The assistant uses two evidence streams:
 
-### 4) Deterministic paths vs LLM generation
+| Stream | Internal tag | Source | Usage rule |
+| --- | --- | --- | --- |
+| Platform evidence | `[D#]` | Metric series, deterministic comparison/ranking tables | Must anchor all numeric metric claims |
+| Web evidence | `[W#]` | Tavily retrieved excerpts | Must support only the specific claims cited; treated as excerpt text |
 
-Deterministic paths are used for:
-- Ranking/comparison answers where stable table-first output is required
-- Verified-web time-sensitive questions when deterministic verified-web reply paths are available
+**Safety requirements:**
+- Final user-visible output must **not** leak internal placeholder citation tokens (`[D#]`, `[W#]`)
+- Assertions must align to evidence blocks; unsupported claims trigger fallback
+- Web synthesis text from providers must not be treated as authoritative — only retrieved snippets
 
-LLM generation is used for:
+---
+
+## 4. Deterministic paths vs LLM generation
+
+### Deterministic paths (no LLM required)
+
+Used when stable, auditable output is required:
+- Ranking tables for metric-scoped global/country questions
+- Comparison tables with `% of top` relative values
+- Verified-web replies for time-sensitive non-metric questions
+
+### LLM generation (Groq required)
+
+Used for:
 - Narrative synthesis and strategy-style prose when evidence quality gates pass
+- Elaboration on platform evidence blocks when deterministic tables are insufficient
 
-When evidence quality gates fail:
-- The system activates deterministic scaffold/fallback outputs to maintain dependability
+### Fallback activation
 
-### 5) Web-first vs Auto routing
+When evidence quality gates fail (missing keys, thin web context, grounding QA failure, drift detection):
+- System returns deterministic scaffold/fallback output
+- Fallback is **first-class**, not an error state
+- Attribution signals indicate fallback mode to the user
 
-The UI exposes a routing mode concept:
-- **Auto (balanced routing)**: tends to keep metric grounding tight and only uses web as needed
-- **Web-first**: biases toward live retrieval on every turn when Tavily is configured
+---
 
-This is implemented through request-level fields:
-- `webSearchPriority` and/or legacy `assistantMode` (e.g. `assistantMode="web_priority"`)
+## 5. Web routing modes
 
-If Tavily keys are missing, web-first/verified-web behavior falls back safely.
+| Mode | Request field | Behavior |
+| --- | --- | --- |
+| Auto (balanced) | `webSearchPriority: false` | Platform metrics first; web only when needed |
+| Web-first | `webSearchPriority: true` or `assistantMode: "web_priority"` | Biases toward live retrieval on every turn |
 
-### 6) Model selection and retry/fallback chain
+If Tavily keys are missing (server and BYOK), web-first behavior falls back safely to platform-only or scaffold responses.
 
-When LLM generation is enabled:
-- The backend selects a primary Groq model for each use case (assistant, pestel, porter, business)
-- If the primary model fails due to transient errors or retryable provider conditions, the backend tries fallback candidates
+---
 
-Model chain inputs (configured by env vars):
-- `GROQ_MODEL_*` for use-case primary selection
-- `GROQ_FALLBACK_MODELS_*` for use-case fallback candidates
-- `GROQ_FALLBACK_MODELS` for global fallback candidates
+## 6. BYOK key integration
 
-### 7) Performance controls (prompt budgets)
+Key resolution priority per request:
+1. `X-User-Groq-Api-Key` / `X-User-Tavily-Api-Key` headers (from header panel)
+2. Server environment keys (`GROQ_API_KEY`, `TAVILY_API_KEY`)
+3. Deterministic fallback (no AI/web)
 
-To avoid provider failures and long-tail latencies:
-- the backend clamps prompt and context budgets before LLM calls
-- it reduces metric fetch to only what is required for the question scope
+See `docs/VARIABLES.md` for header contracts and `docs/GUARDRAILS.md` (TG-04) for precedence rules.
 
-### 8) User-visible UX signals
+---
 
-The assistant UI communicates behavior through:
-- Persona banner (category, persona name/title, and brief description)
-- Verified Web Answer Mode badge (when verified-web deterministic path is used)
-- Routing label (“Dashboard” vs “Web search” vs other routing signals)
+## 7. Model selection and fallback chain
 
-These signals help users understand trust and provenance without requiring them to inspect raw system internals.
+When LLM generation is enabled, the backend selects a primary Groq model per use case:
+
+| Use case | Primary model (code default) | Env override |
+| --- | --- | --- |
+| Assistant | `llama-3.1-8b-instant` | `GROQ_MODEL_ASSISTANT` |
+| PESTEL | `llama-3.3-70b-versatile` | `GROQ_MODEL_PESTEL` |
+| Porter | `openai/gpt-oss-120b` | `GROQ_MODEL_PORTER` |
+| Business | `llama-3.3-70b-versatile` | `GROQ_MODEL_BUSINESS` |
+
+Fallback chain: per-use-case `GROQ_FALLBACK_MODELS_*` → global `GROQ_FALLBACK_MODELS` → built-in defaults.
+
+---
+
+## 8. Performance controls
+
+- Prompt and context budgets clamped before LLM calls (`assistantPromptBudget.ts`)
+- Metric fetch reduced to only what the question scope requires
+- Serverless budget governed by `CAP_SERVERLESS_BUDGET_MS` (default 55s)
+
+---
+
+## 9. User-visible UX signals
+
+| Signal | When shown | Purpose |
+| --- | --- | --- |
+| Persona banner | Every response | Category, persona name, brief description |
+| Verified Web Answer Mode badge | Verified-web deterministic path | Indicates live web grounding was used |
+| Routing label | Every response | "Dashboard" vs "Web search" vs other routing |
+| Attribution footer | When fallback/scaffold used | Explains evidence mode and limitations |
+
+These signals help users evaluate trust and provenance without inspecting system internals.
+
+---
+
+## 10. QA validation prompts (recommended benchmark set)
+
+| Prompt | Expected behavior |
+| --- | --- |
+| "Rank Indonesia, Brazil, and India by GDP per capita" | Deterministic comparison table; `% of top` values |
+| "Compare life expectancy trends for Japan and USA" | Metric-scoped response; no drift to unrelated indicators |
+| "Who is the current president of Indonesia?" | Verified-web path with citation; or fallback if web thin |
+| "What is the GDP of Atlantis?" | Graceful handling; no fabricated data |
+| (With Groq key removed) "Summarize Indonesia economy" | Deterministic scaffold or platform-only digest |
+
+---
+
+## 11. Related documents
+
+| Document | Relationship |
+| --- | --- |
+| `docs/GUARDRAILS.md` | AG-01 through AG-07 AI safety boundaries |
+| `docs/VARIABLES.md` | Request/response variables for `/api/assistant/chat` |
+| `docs/TRACEABILITY_MATRIX.md` | FR-04 through FR-08, FR-18, FR-19 |
+| `docs/API_REFERENCE.md` | Endpoint contract |
+| `docs/USER_STORIES.md` | Stories A1–A4 acceptance criteria |

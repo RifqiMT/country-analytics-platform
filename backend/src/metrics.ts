@@ -39,8 +39,8 @@ export const METRICS: MetricDef[] = [
     sourceName: "World Bank WDI; IMF WEO (NGDPD, billions US$) for gaps",
     sourceUrl: "https://data.worldbank.org/indicator/NY.GDP.MKTP.CD",
     description:
-      "Gross domestic product in current US dollars. Missing WDI points are filled from IMF WEO nominal GDP (NGDPD), converted from billions of US dollars.",
-    formula: "GDP = C + I + G + (X − M)",
+      "The total value of goods and services produced within a country, expressed in current US dollars. Where the World Bank series has a missing year, the platform may use IMF World Economic Outlook nominal GDP (NGDPD), converted from billions of US dollars.",
+    formula: "GDP = consumption + investment + government spending + (exports − imports)",
   },
   {
     id: "gdp_per_capita",
@@ -52,8 +52,8 @@ export const METRICS: MetricDef[] = [
     sourceName: "World Bank WDI; IMF WEO (NGDPDPC) for gaps",
     sourceUrl: "https://data.worldbank.org/indicator/NY.GDP.PCAP.CD",
     description:
-      "GDP divided by midyear population. Missing WDI points are filled from IMF WEO GDP per capita, current prices (NGDPDPC), where published.",
-    formula: "GDP per capita = GDP / Population",
+      "Average economic output per person, calculated as total GDP divided by midyear population in current US dollars. Missing World Bank values may be supplemented with IMF WEO GDP per capita at current prices (NGDPDPC).",
+    formula: "GDP per capita = GDP ÷ population",
   },
   {
     id: "gdp_growth",
@@ -63,7 +63,9 @@ export const METRICS: MetricDef[] = [
     worldBankCode: "NY.GDP.MKTP.KD.ZG",
     sourceName: "World Bank WDI",
     sourceUrl: "https://data.worldbank.org/indicator/NY.GDP.MKTP.KD.ZG",
-    description: "Annual percentage growth rate of GDP at constant prices.",
+    description:
+      "The annual percentage change in real (inflation-adjusted) gross domestic product, showing how quickly the economy is expanding or contracting from one year to the next.",
+    formula: "GDP growth (%) = ((real GDP this year − real GDP prior year) ÷ real GDP prior year) × 100",
   },
   {
     id: "population",
@@ -76,7 +78,7 @@ export const METRICS: MetricDef[] = [
     sourceName: "World Bank WDI; IMF WEO population (LP, millions) for gaps",
     sourceUrl: "https://data.worldbank.org/indicator/SP.POP.TOTL",
     description:
-      "Total population based on census and WPP estimates. Missing WDI points are filled from IMF WEO population (LP), converted from millions of people.",
+      "The total number of people living in the country, based on national censuses and United Nations population projections. Where World Bank data is missing, IMF WEO population (LP) may be used, converted from millions of people.",
   },
   {
     id: "gov_debt_pct_gdp",
@@ -89,8 +91,8 @@ export const METRICS: MetricDef[] = [
     sourceName: "World Bank WDI; IMF WEO (DataMapper) for gaps",
     sourceUrl: "https://data.worldbank.org/indicator/GC.DOD.TOTL.GD.ZS",
     description:
-      "Debt of central government as share of GDP (WDI). Null years are filled from IMF WEO general government gross debt (% of GDP), DataMapper series GGXWDG_NGDP, where published.",
-    formula: "Debt / GDP × 100",
+      "Central government debt expressed as a percentage of gross domestic product, indicating the scale of public borrowing relative to the size of the economy. Missing years may be filled from IMF WEO general government gross debt (GGXWDG_NGDP).",
+    formula: "Debt (% of GDP) = (government debt ÷ GDP) × 100",
   },
   {
     id: "inflation",
@@ -102,7 +104,8 @@ export const METRICS: MetricDef[] = [
     sourceName: "World Bank WDI; IMF WEO (PCPIPCH) for gaps",
     sourceUrl: "https://data.worldbank.org/indicator/FP.CPI.TOTL.ZG",
     description:
-      "Inflation from WDI consumer price index. Null years are filled from IMF WEO inflation, average consumer prices (PCPIPCH), where published.",
+      "The annual rate of change in consumer prices, commonly used to track the cost of living and changes in purchasing power. Where World Bank CPI data is unavailable, IMF WEO average consumer price inflation (PCPIPCH) may supplement the series.",
+    formula: "Inflation (%) ≈ ((CPI this year − CPI prior year) ÷ CPI prior year) × 100",
   },
   {
     id: "interest_real",
@@ -112,7 +115,9 @@ export const METRICS: MetricDef[] = [
     worldBankCode: "FR.INR.RINR",
     sourceName: "World Bank WDI",
     sourceUrl: "https://data.worldbank.org/indicator/FR.INR.RINR",
-    description: "Real interest rate from World Bank WDI where reported.",
+    description:
+      "The interest rate adjusted for inflation, reflecting the real return on saving or the real cost of borrowing once price changes are taken into account.",
+    formula: "Real interest rate (%) ≈ nominal interest rate − inflation rate",
   },
   {
     id: "unemployment_ilo",
@@ -125,7 +130,8 @@ export const METRICS: MetricDef[] = [
     sourceName: "World Bank WDI / ILO modeled; IMF WEO (LUR) for gaps",
     sourceUrl: "https://data.worldbank.org/indicator/SL.UEM.TOTL.ZS",
     description:
-      "Share of labour force without work but available. National-estimate series SL.UEM.TOTL.NE.ZS is used when the modeled ILO series is null. Remaining gaps use IMF WEO unemployment rate (LUR).",
+      "The share of the labour force that is without work, available to work, and actively seeking employment, using ILO-modelled estimates. When the primary series is missing, national estimates or IMF WEO unemployment (LUR) may be used.",
+    formula: "Unemployment rate (%) = (unemployed ÷ labour force) × 100",
   },
   {
     id: "poverty_headcount",
@@ -135,7 +141,9 @@ export const METRICS: MetricDef[] = [
     worldBankCode: "SI.POV.DDAY",
     sourceName: "World Bank WDI",
     sourceUrl: "https://data.worldbank.org/indicator/SI.POV.DDAY",
-    description: "Population living below international poverty line.",
+    description:
+      "The percentage of the population living on less than US$2.15 per day at 2017 purchasing power parity—the World Bank's international extreme poverty line.",
+    formula: "Poverty headcount (%) = (people below poverty line ÷ total population) × 100",
   },
   {
     id: "life_expectancy",
@@ -146,7 +154,7 @@ export const METRICS: MetricDef[] = [
     sourceName: "World Bank WDI",
     sourceUrl: "https://data.worldbank.org/indicator/SP.DYN.LE00.IN",
     description:
-      "Average years a newborn would live under current mortality. Where the total series is null, the global table may use the mean of male (SP.DYN.LE00.MA.IN) and female (SP.DYN.LE00.FE.IN) life expectancy for the same year.",
+      "The average number of years a newborn would be expected to live if current age-specific mortality patterns continued throughout their life. When the combined total is unavailable, male and female series may be averaged.",
   },
   {
     id: "mortality_under5",
@@ -157,7 +165,8 @@ export const METRICS: MetricDef[] = [
     sourceName: "World Bank WDI",
     sourceUrl: "https://data.worldbank.org/indicator/SH.DYN.MORT",
     description:
-      "Probability of dying before age five per 1,000 births. Where the total series is null, the global table may use the mean of male (SH.DYN.MORT.MA) and female (SH.DYN.MORT.FE) under-five mortality rates.",
+      "The probability that a child will die before reaching age five, expressed per 1,000 live births. When the total rate is missing, male and female rates may be averaged.",
+    formula: "Under-five mortality = (deaths under age 5 ÷ live births) × 1,000",
   },
   {
     id: "literacy_adult",
@@ -169,7 +178,8 @@ export const METRICS: MetricDef[] = [
     sourceName: "World Bank WDI; UNESCO UIS API (gap-fill)",
     sourceUrl: "https://data.worldbank.org/indicator/SE.ADT.LITR.ZS",
     description:
-      "Adult literacy from UIS via WDI. Null years may be filled from UIS LR.GALP.AG15T99 (GALP model estimates).",
+      "The percentage of people aged 15 and over who can read and write a short, simple statement about everyday life. Missing years may be supplemented with UNESCO UIS model estimates (LR.GALP.AG15T99).",
+    formula: "Literacy rate (%) = (literate adults aged 15+ ÷ adult population aged 15+) × 100",
   },
   {
     id: "school_primary_completion",
@@ -181,7 +191,8 @@ export const METRICS: MetricDef[] = [
     sourceName: "World Bank WDI; UNESCO UIS API (gap-fill)",
     sourceUrl: "https://data.worldbank.org/indicator/SE.PRM.CMPT.ZS",
     description:
-      "WDI uses gross intake ratio to last grade of primary; UIS gap-fill uses CR.1 (completion rate, primary). Methodology can differ slightly.",
+      "The share of children of primary graduation age who have completed the final grade of primary school. World Bank and UNESCO UIS (CR.1) definitions may differ slightly; UIS data is used only to fill gaps.",
+    formula: "Completion rate (%) = (graduates of final primary grade ÷ primary graduation-age population) × 100",
   },
   {
     id: "enrollment_secondary",
@@ -191,7 +202,9 @@ export const METRICS: MetricDef[] = [
     worldBankCode: "SE.SEC.ENRR",
     sourceName: "World Bank WDI",
     sourceUrl: "https://data.worldbank.org/indicator/SE.SEC.ENRR",
-    description: "Total secondary enrollment regardless of age.",
+    description:
+      "Total enrolment in secondary education as a percentage of the official secondary school-age population, including students who may be older or younger than the typical age group.",
+    formula: "Gross enrolment (%) = (total secondary enrolment ÷ secondary school-age population) × 100",
   },
   {
     id: "teachers_primary",
@@ -201,7 +214,9 @@ export const METRICS: MetricDef[] = [
     worldBankCode: "SE.PRM.ENRL.TC.ZS",
     sourceName: "World Bank WDI",
     sourceUrl: "https://data.worldbank.org/indicator/SE.PRM.ENRL.TC.ZS",
-    description: "Average pupils per teacher in primary education.",
+    description:
+      "The average number of pupils per teacher in primary education—a common measure of classroom capacity and teaching resources.",
+    formula: "Pupil–teacher ratio = total primary pupils ÷ total primary teachers",
   },
   {
     id: "labour_force_participation",
@@ -211,7 +226,9 @@ export const METRICS: MetricDef[] = [
     worldBankCode: "SL.TLF.ACTI.ZS",
     sourceName: "World Bank WDI / ILO modeled",
     sourceUrl: "https://data.worldbank.org/indicator/SL.TLF.ACTI.ZS",
-    description: "Proportion of working-age population in labour force.",
+    description:
+      "The percentage of the population aged 15 and over that is either employed or actively seeking work.",
+    formula: "Participation rate (%) = (labour force ÷ population aged 15+) × 100",
   },
   {
     id: "pop_age_0_14",
@@ -221,7 +238,9 @@ export const METRICS: MetricDef[] = [
     worldBankCode: "SP.POP.0014.TO.ZS",
     sourceName: "World Bank WDI",
     sourceUrl: "https://data.worldbank.org/indicator/SP.POP.0014.TO.ZS",
-    description: "Youth dependency proxy — share under 15.",
+    description:
+      "The share of the total population aged under 15 years, often used as a broad indicator of youth dependency.",
+    formula: "Share (%) = (population aged 0–14 ÷ total population) × 100",
   },
   {
     id: "pop_age_65_plus",
@@ -231,7 +250,9 @@ export const METRICS: MetricDef[] = [
     worldBankCode: "SP.POP.65UP.TO.ZS",
     sourceName: "World Bank WDI",
     sourceUrl: "https://data.worldbank.org/indicator/SP.POP.65UP.TO.ZS",
-    description: "Aging indicator — share 65 and older.",
+    description:
+      "The share of the total population aged 65 and over, commonly used to assess population aging and elderly dependency.",
+    formula: "Share (%) = (population aged 65+ ÷ total population) × 100",
   },
   {
     id: "gdp_ppp",
@@ -244,8 +265,8 @@ export const METRICS: MetricDef[] = [
     sourceName: "World Bank WDI; IMF WEO (PPPGDP, billions intl$) for gaps",
     sourceUrl: "https://data.worldbank.org/indicator/NY.GDP.MKTP.PP.CD",
     description:
-      "GDP converted to international dollars using PPP rates. Missing WDI points are filled from IMF WEO GDP at PPP (PPPGDP), converted from billions of international dollars.",
-    formula: "GDP (PPP) = GDP × PPP conversion factor",
+      "Total economic output converted to international dollars using purchasing power parity (PPP) exchange rates, allowing more meaningful cross-country comparisons of living standards. Missing World Bank values may be supplemented with IMF WEO PPP GDP (PPPGDP).",
+    formula: "GDP (PPP) = GDP in local currency × PPP conversion factor",
   },
   {
     id: "gdp_per_capita_ppp",
@@ -257,8 +278,8 @@ export const METRICS: MetricDef[] = [
     sourceName: "World Bank WDI; IMF WEO (PPPPC) for gaps",
     sourceUrl: "https://data.worldbank.org/indicator/NY.GDP.PCAP.PP.CD",
     description:
-      "GDP per person in international dollars (PPP). Missing WDI points are filled from IMF WEO GDP per capita at PPP (PPPPC), where published.",
-    formula: "GDP per capita (PPP) = GDP (PPP) / Population",
+      "Average economic output per person in international dollars at PPP, adjusting for differences in price levels between countries. Missing years may use IMF WEO GDP per capita at PPP (PPPPC).",
+    formula: "GDP per capita (PPP) = GDP (PPP) ÷ population",
   },
   {
     id: "gni_per_capita_atlas",
@@ -269,7 +290,8 @@ export const METRICS: MetricDef[] = [
     sourceName: "World Bank WDI",
     sourceUrl: "https://data.worldbank.org/indicator/NY.GNP.PCAP.CD",
     description:
-      "Gross national income per person, Atlas method (current US$). The World Bank uses this series (with annual thresholds) for operational income classifications (low / lower-middle / upper-middle / high income). The Country API income group is the authoritative bucket label; this series is the underlying per-capita magnitude.",
+      "Average gross national income per person using the World Bank Atlas method and current US dollars. This series underpins the Bank's operational income classifications (low, lower-middle, upper-middle, and high income).",
+    formula: "GNI per capita = gross national income ÷ midyear population",
   },
   {
     id: "gov_debt_usd",
@@ -280,8 +302,8 @@ export const METRICS: MetricDef[] = [
     sourceName: "World Bank WDI; derived where level series is missing",
     sourceUrl: "https://data.worldbank.org/indicator/GC.DOD.TOTL.CD",
     description:
-      "Outstanding central government debt in current US dollars (WDI GC.DOD.TOTL.CD). Where that level series has no value, the backend estimates US$ debt as (government debt % of GDP ÷ 100) × nominal GDP (US$), using the same blended debt-% series as the Gov. debt (% GDP) metric (WDI plus IMF WEO gap-fill).",
-    formula: "Debt (US$) ≈ (Debt % GDP / 100) × GDP (nominal US$) when direct WDI level is missing",
+      "The outstanding stock of central government debt in current US dollars. When the direct level series is unavailable, debt in US dollars may be estimated from the debt-to-GDP ratio and nominal GDP.",
+    formula: "Debt (US$) ≈ (debt % of GDP ÷ 100) × nominal GDP (US$)",
   },
   {
     id: "lending_rate",
@@ -291,7 +313,8 @@ export const METRICS: MetricDef[] = [
     worldBankCode: "FR.INR.LEND",
     sourceName: "World Bank WDI",
     sourceUrl: "https://data.worldbank.org/indicator/FR.INR.LEND",
-    description: "Bank lending rate to prime borrowers.",
+    description:
+      "The average interest rate charged by banks on loans to prime (low-risk) customers, reflecting the general cost of borrowing in the financial system.",
   },
   {
     id: "poverty_national",
@@ -301,7 +324,9 @@ export const METRICS: MetricDef[] = [
     worldBankCode: "SI.POV.NAHC",
     sourceName: "World Bank WDI",
     sourceUrl: "https://data.worldbank.org/indicator/SI.POV.NAHC",
-    description: "Population below national poverty lines.",
+    description:
+      "The percentage of the population living below each country's own nationally defined poverty line, which reflects local costs and social standards.",
+    formula: "Poverty headcount (%) = (people below national poverty line ÷ total population) × 100",
   },
   {
     id: "maternal_mortality",
@@ -311,7 +336,9 @@ export const METRICS: MetricDef[] = [
     worldBankCode: "SH.STA.MMRT",
     sourceName: "World Bank WDI",
     sourceUrl: "https://data.worldbank.org/indicator/SH.STA.MMRT",
-    description: "Annual number of maternal deaths per 100,000 live births.",
+    description:
+      "The number of women who die from pregnancy-related causes while pregnant or within 42 days of termination, per 100,000 live births.",
+    formula: "Maternal mortality ratio = (maternal deaths ÷ live births) × 100,000",
   },
   {
     id: "undernourishment",
@@ -321,7 +348,9 @@ export const METRICS: MetricDef[] = [
     worldBankCode: "SN.ITK.DEFC.ZS",
     sourceName: "World Bank WDI",
     sourceUrl: "https://data.worldbank.org/indicator/SN.ITK.DEFC.ZS",
-    description: "Population in a state of undernourishment.",
+    description:
+      "The proportion of the population whose food intake is insufficient to meet minimum dietary energy requirements over a year.",
+    formula: "Prevalence (%) = (undernourished people ÷ total population) × 100",
   },
   {
     id: "birth_rate",
@@ -331,7 +360,9 @@ export const METRICS: MetricDef[] = [
     worldBankCode: "SP.DYN.CBRT.IN",
     sourceName: "World Bank WDI",
     sourceUrl: "https://data.worldbank.org/indicator/SP.DYN.CBRT.IN",
-    description: "Annual live births per 1,000 population (midyear estimate).",
+    description:
+      "The number of live births during a year per 1,000 people, based on midyear population estimates.",
+    formula: "Crude birth rate = (live births ÷ midyear population) × 1,000",
   },
   {
     id: "tb_incidence",
@@ -342,7 +373,8 @@ export const METRICS: MetricDef[] = [
     sourceName: "World Bank WDI (WHO Global TB Programme)",
     sourceUrl: "https://data.worldbank.org/indicator/SH.TBS.INCD",
     description:
-      "Estimated new and relapse tuberculosis cases per 100,000 population (morbidity burden proxy).",
+      "The estimated number of new and relapse tuberculosis cases per 100,000 people, serving as a measure of TB morbidity in the population.",
+    formula: "TB incidence = (new and relapse TB cases ÷ population) × 100,000",
   },
   {
     id: "uhc_service_coverage",
@@ -353,7 +385,7 @@ export const METRICS: MetricDef[] = [
     sourceName: "World Bank WDI (WHO/World Bank UHC monitoring)",
     sourceUrl: "https://data.worldbank.org/indicator/SH.UHC.SRVS.CV.XD",
     description:
-      "Universal health coverage service coverage index (coverage of essential services on a 0-100 scale).",
+      "A composite index (0–100) measuring how well essential health services—such as reproductive, maternal, and infectious disease care—are covered for the population.",
   },
   {
     id: "hospital_beds",
@@ -363,7 +395,9 @@ export const METRICS: MetricDef[] = [
     worldBankCode: "SH.MED.BEDS.ZS",
     sourceName: "World Bank WDI",
     sourceUrl: "https://data.worldbank.org/indicator/SH.MED.BEDS.ZS",
-    description: "Hospital beds available per 1,000 people.",
+    description:
+      "The number of hospital beds available per 1,000 people, including general and specialised beds in public and private facilities.",
+    formula: "Hospital beds per 1,000 = (total hospital beds ÷ population) × 1,000",
   },
   {
     id: "physicians_density",
@@ -373,7 +407,9 @@ export const METRICS: MetricDef[] = [
     worldBankCode: "SH.MED.PHYS.ZS",
     sourceName: "World Bank WDI",
     sourceUrl: "https://data.worldbank.org/indicator/SH.MED.PHYS.ZS",
-    description: "Medical doctors per 1,000 people.",
+    description:
+      "The number of medical doctors per 1,000 people, indicating the availability of physician-level health professionals.",
+    formula: "Physicians per 1,000 = (total physicians ÷ population) × 1,000",
   },
   {
     id: "nurses_midwives_density",
@@ -383,7 +419,9 @@ export const METRICS: MetricDef[] = [
     worldBankCode: "SH.MED.NUMW.P3",
     sourceName: "World Bank WDI",
     sourceUrl: "https://data.worldbank.org/indicator/SH.MED.NUMW.P3",
-    description: "Nurses and midwives per 1,000 people.",
+    description:
+      "The number of professional nurses and midwives per 1,000 people, reflecting nursing capacity in the health system.",
+    formula: "Nurses and midwives per 1,000 = (total nurses and midwives ÷ population) × 1,000",
   },
   {
     id: "immunization_dpt",
@@ -393,7 +431,9 @@ export const METRICS: MetricDef[] = [
     worldBankCode: "SH.IMM.IDPT",
     sourceName: "World Bank WDI (WHO/UNICEF estimates)",
     sourceUrl: "https://data.worldbank.org/indicator/SH.IMM.IDPT",
-    description: "Share of children ages 12-23 months who received DPT immunization.",
+    description:
+      "The percentage of children aged 12–23 months who have received the recommended diphtheria, pertussis, and tetanus (DPT) vaccine doses.",
+    formula: "DPT coverage (%) = (children aged 12–23 months with DPT doses ÷ children in cohort) × 100",
   },
   {
     id: "immunization_measles",
@@ -403,7 +443,9 @@ export const METRICS: MetricDef[] = [
     worldBankCode: "SH.IMM.MEAS",
     sourceName: "World Bank WDI (WHO/UNICEF estimates)",
     sourceUrl: "https://data.worldbank.org/indicator/SH.IMM.MEAS",
-    description: "Share of children ages 12-23 months who received measles immunization.",
+    description:
+      "The percentage of children aged 12–23 months who have received at least one dose of measles-containing vaccine.",
+    formula: "Measles coverage (%) = (children aged 12–23 months vaccinated ÷ children in cohort) × 100",
   },
   {
     id: "health_expenditure_gdp",
@@ -413,7 +455,9 @@ export const METRICS: MetricDef[] = [
     worldBankCode: "SH.XPD.CHEX.GD.ZS",
     sourceName: "World Bank WDI",
     sourceUrl: "https://data.worldbank.org/indicator/SH.XPD.CHEX.GD.ZS",
-    description: "Current health expenditure as a share of GDP.",
+    description:
+      "Total current spending on health care as a share of gross domestic product, including public and private sources.",
+    formula: "Health expenditure (% of GDP) = (current health spending ÷ GDP) × 100",
   },
   {
     id: "smoking_prevalence",
@@ -423,7 +467,9 @@ export const METRICS: MetricDef[] = [
     worldBankCode: "SH.PRV.SMOK",
     sourceName: "World Bank WDI",
     sourceUrl: "https://data.worldbank.org/indicator/SH.PRV.SMOK",
-    description: "Prevalence of current tobacco smoking among people ages 15 and above.",
+    description:
+      "The percentage of people aged 15 and over who currently use any tobacco product on a daily or non-daily basis.",
+    formula: "Smoking prevalence (%) = (current tobacco users aged 15+ ÷ population aged 15+) × 100",
   },
   {
     id: "oosc_primary",
@@ -435,7 +481,8 @@ export const METRICS: MetricDef[] = [
     sourceName: "World Bank WDI; UNESCO UIS API (gap-fill)",
     sourceUrl: "https://data.worldbank.org/indicator/SE.PRM.OOSC.ZS",
     description:
-      "Share of primary-school-age children out of school. UIS fallback: ROFST.1.CP. Global table may approximate OOSC as 100% minus adjusted net primary enrollment (SE.PRM.NENR) when both are still null.",
+      "The percentage of children of official primary school age who are not enrolled in primary or secondary education. UNESCO UIS data (ROFST.1.CP) may fill gaps; the global table may also derive an estimate from net enrolment when needed.",
+    formula: "Out-of-school rate (%) = (primary-age children not in school ÷ primary school-age population) × 100",
   },
   {
     id: "oosc_secondary",
@@ -446,7 +493,9 @@ export const METRICS: MetricDef[] = [
     uisIndicatorId: "ROFST.2.CP",
     sourceName: "World Bank WDI; UNESCO UIS API (gap-fill)",
     sourceUrl: "https://data.worldbank.org/indicator/SE.SEC.OOSC.ZS",
-    description: "Share of lower-secondary-age adolescents out of school. UIS fallback: ROFST.2.CP.",
+    description:
+      "The percentage of adolescents of lower secondary school age who are not enrolled in school. Missing values may be supplemented with UNESCO UIS out-of-school rate (ROFST.2.CP).",
+    formula: "Out-of-school rate (%) = (lower-secondary-age adolescents not in school ÷ relevant age population) × 100",
   },
   {
     id: "oosc_tertiary",
@@ -458,7 +507,8 @@ export const METRICS: MetricDef[] = [
     sourceName: "World Bank WDI; UNESCO UIS API (gap-fill)",
     sourceUrl: "https://data.worldbank.org/indicator/SE.TER.OOSC.ZS",
     description:
-      "Share of upper-secondary-age youth out of school. UIS fallback: ROFST.3.CP. Global table may approximate OOSC as 100% minus gross tertiary enrollment (SE.TER.ENRR, capped at 100%) when both are still null.",
+      "The percentage of youth of upper secondary school age who are not enrolled in school. UNESCO UIS (ROFST.3.CP) may fill gaps; tertiary enrolment may be used as a fallback in global views.",
+    formula: "Out-of-school rate (%) = (upper-secondary-age youth not in school ÷ relevant age population) × 100",
   },
   {
     id: "completion_secondary",
@@ -469,7 +519,9 @@ export const METRICS: MetricDef[] = [
     uisIndicatorId: "CR.2",
     sourceName: "World Bank WDI; UNESCO UIS API (gap-fill)",
     sourceUrl: "https://data.worldbank.org/indicator/SE.SEC.CMPT.ZS",
-    description: "Gross completion ratio for lower secondary. UIS fallback: CR.2.",
+    description:
+      "The percentage of children of lower secondary graduation age who have completed the final grade of lower secondary education. UNESCO UIS completion rate (CR.2) may supplement missing years.",
+    formula: "Completion rate (%) = (lower secondary graduates ÷ lower secondary graduation-age population) × 100",
   },
   {
     id: "completion_tertiary",
@@ -481,7 +533,8 @@ export const METRICS: MetricDef[] = [
     sourceName: "World Bank WDI; UNESCO UIS API (gap-fill)",
     sourceUrl: "https://data.worldbank.org/indicator/SE.TER.GRAD.ZS",
     description:
-      "Tertiary graduation ratio. UIS fallback GGR.6T7 covers first-degree programmes (ISCED 6–7); scope may differ from WDI.",
+      "The gross graduation ratio from tertiary education programmes. UNESCO UIS (GGR.6T7) covers first-degree programmes (ISCED 6–7) and may differ slightly in scope from the World Bank series.",
+    formula: "Graduation ratio (%) = (tertiary graduates ÷ relevant tertiary-age population) × 100",
   },
   {
     id: "reading_proficiency",
@@ -491,7 +544,9 @@ export const METRICS: MetricDef[] = [
     worldBankCode: "SE.LPV.PRIM",
     sourceName: "World Bank WDI",
     sourceUrl: "https://data.worldbank.org/indicator/SE.LPV.PRIM",
-    description: "Share of children at end-of-primary age below minimum reading proficiency.",
+    description:
+      "The share of children at the end of primary school age who cannot read and understand a simple text—the World Bank's learning poverty measure for reading.",
+    formula: "Learning poverty (%) = (children below minimum reading proficiency ÷ end-of-primary-age children) × 100",
   },
   {
     id: "gpi_primary",
@@ -501,7 +556,9 @@ export const METRICS: MetricDef[] = [
     worldBankCode: "SE.ENR.PRIM.FM.ZS",
     sourceName: "World Bank WDI",
     sourceUrl: "https://data.worldbank.org/indicator/SE.ENR.PRIM.FM.ZS",
-    description: "Ratio of female to male gross enrollment in primary education.",
+    description:
+      "The ratio of female to male gross primary enrolment. A value of 1.0 indicates gender parity; lower values suggest fewer girls enrolled relative to boys.",
+    formula: "Gender parity index = female gross enrolment ÷ male gross enrolment",
   },
   {
     id: "gpi_secondary",
@@ -511,7 +568,9 @@ export const METRICS: MetricDef[] = [
     worldBankCode: "SE.ENR.SEC.FM.ZS",
     sourceName: "World Bank WDI",
     sourceUrl: "https://data.worldbank.org/indicator/SE.ENR.SEC.FM.ZS",
-    description: "Ratio of female to male gross enrollment in secondary education.",
+    description:
+      "The ratio of female to male gross secondary enrolment. A value of 1.0 indicates gender parity; lower values suggest fewer girls enrolled relative to boys.",
+    formula: "Gender parity index = female gross enrolment ÷ male gross enrolment",
   },
   {
     id: "gpi_tertiary",
@@ -521,7 +580,9 @@ export const METRICS: MetricDef[] = [
     worldBankCode: "SE.ENR.TER.FM.ZS",
     sourceName: "World Bank WDI",
     sourceUrl: "https://data.worldbank.org/indicator/SE.ENR.TER.FM.ZS",
-    description: "Ratio of female to male gross enrollment in tertiary education.",
+    description:
+      "The ratio of female to male gross tertiary enrolment. A value of 1.0 indicates gender parity; lower values suggest fewer women enrolled relative to men.",
+    formula: "Gender parity index = female gross enrolment ÷ male gross enrolment",
   },
   {
     id: "trained_teachers_pri",
@@ -531,7 +592,9 @@ export const METRICS: MetricDef[] = [
     worldBankCode: "SE.PRM.TCAQ.LO.GE.ZS",
     sourceName: "World Bank WDI",
     sourceUrl: "https://data.worldbank.org/indicator/SE.PRM.TCAQ.LO.GE.ZS",
-    description: "Share of primary teachers meeting national training standards.",
+    description:
+      "The percentage of primary teachers who meet the minimum national training or qualification standards required to teach at that level.",
+    formula: "Trained teachers (%) = (qualified primary teachers ÷ total primary teachers) × 100",
   },
   {
     id: "trained_teachers_sec",
@@ -541,7 +604,9 @@ export const METRICS: MetricDef[] = [
     worldBankCode: "SE.SEC.TCAQ.LO.GE.ZS",
     sourceName: "World Bank WDI",
     sourceUrl: "https://data.worldbank.org/indicator/SE.SEC.TCAQ.LO.GE.ZS",
-    description: "Share of lower secondary teachers meeting training standards.",
+    description:
+      "The percentage of lower secondary teachers who meet the minimum national training or qualification standards required to teach at that level.",
+    formula: "Trained teachers (%) = (qualified lower secondary teachers ÷ total lower secondary teachers) × 100",
   },
   {
     id: "trained_teachers_ter",
@@ -551,7 +616,9 @@ export const METRICS: MetricDef[] = [
     worldBankCode: "SE.TER.TCAQ.LO.GE.ZS",
     sourceName: "World Bank WDI",
     sourceUrl: "https://data.worldbank.org/indicator/SE.TER.TCAQ.LO.GE.ZS",
-    description: "Share of upper secondary teachers meeting training standards.",
+    description:
+      "The percentage of upper secondary teachers who meet the minimum national training or qualification standards required to teach at that level.",
+    formula: "Trained teachers (%) = (qualified upper secondary teachers ÷ total upper secondary teachers) × 100",
   },
   {
     id: "edu_expenditure_gdp",
@@ -561,7 +628,9 @@ export const METRICS: MetricDef[] = [
     worldBankCode: "SE.XPD.TOTL.GD.ZS",
     sourceName: "World Bank WDI",
     sourceUrl: "https://data.worldbank.org/indicator/SE.XPD.TOTL.GD.ZS",
-    description: "Public spending on education as share of GDP.",
+    description:
+      "Total public spending on education as a share of gross domestic product, covering all education levels and institutions.",
+    formula: "Education expenditure (% of GDP) = (public education spending ÷ GDP) × 100",
   },
   {
     id: "enrollment_primary_pct",
@@ -571,7 +640,9 @@ export const METRICS: MetricDef[] = [
     worldBankCode: "SE.PRM.ENRR",
     sourceName: "World Bank WDI",
     sourceUrl: "https://data.worldbank.org/indicator/SE.PRM.ENRR",
-    description: "Gross enrollment ratio in primary education.",
+    description:
+      "Total enrolment in primary education as a percentage of the official primary school-age population, including over-age and under-age students.",
+    formula: "Gross enrolment (%) = (total primary enrolment ÷ primary school-age population) × 100",
   },
   {
     id: "enrollment_tertiary_pct",
@@ -581,7 +652,9 @@ export const METRICS: MetricDef[] = [
     worldBankCode: "SE.TER.ENRR",
     sourceName: "World Bank WDI",
     sourceUrl: "https://data.worldbank.org/indicator/SE.TER.ENRR",
-    description: "Gross enrollment ratio in tertiary education.",
+    description:
+      "Total enrolment in tertiary education as a percentage of the official tertiary-age population, including students outside the typical age range.",
+    formula: "Gross enrolment (%) = (total tertiary enrolment ÷ tertiary-age population) × 100",
   },
   {
     id: "enrollment_primary_count",
@@ -591,7 +664,8 @@ export const METRICS: MetricDef[] = [
     worldBankCode: "SE.PRM.ENRL",
     sourceName: "World Bank WDI",
     sourceUrl: "https://data.worldbank.org/indicator/SE.PRM.ENRL",
-    description: "Total students enrolled in primary education.",
+    description:
+      "The total number of students enrolled in primary education, regardless of age or sex.",
   },
   {
     id: "enrollment_secondary_count",
@@ -601,7 +675,8 @@ export const METRICS: MetricDef[] = [
     worldBankCode: "SE.SEC.ENRL",
     sourceName: "World Bank WDI",
     sourceUrl: "https://data.worldbank.org/indicator/SE.SEC.ENRL",
-    description: "Total students enrolled in secondary education.",
+    description:
+      "The total number of students enrolled in secondary education, regardless of age or sex.",
   },
   {
     id: "enrollment_tertiary_count",
@@ -611,7 +686,8 @@ export const METRICS: MetricDef[] = [
     worldBankCode: "SE.TER.ENRL",
     sourceName: "World Bank WDI",
     sourceUrl: "https://data.worldbank.org/indicator/SE.TER.ENRL",
-    description: "Total students enrolled in tertiary education.",
+    description:
+      "The total number of students enrolled in tertiary education programmes, regardless of age or sex.",
   },
   {
     id: "teachers_primary_count",
@@ -621,7 +697,8 @@ export const METRICS: MetricDef[] = [
     worldBankCode: "SE.PRM.TCHR",
     sourceName: "World Bank WDI",
     sourceUrl: "https://data.worldbank.org/indicator/SE.PRM.TCHR",
-    description: "Total teachers in primary education.",
+    description:
+      "The total number of teachers working in primary education, including full-time and part-time staff.",
   },
   {
     id: "teachers_secondary_count",
@@ -631,7 +708,8 @@ export const METRICS: MetricDef[] = [
     worldBankCode: "SE.SEC.TCHR",
     sourceName: "World Bank WDI",
     sourceUrl: "https://data.worldbank.org/indicator/SE.SEC.TCHR",
-    description: "Total teachers in secondary education.",
+    description:
+      "The total number of teachers working in secondary education, including full-time and part-time staff.",
   },
   {
     id: "teachers_tertiary_count",
@@ -641,7 +719,8 @@ export const METRICS: MetricDef[] = [
     worldBankCode: "SE.TER.TCHR",
     sourceName: "World Bank WDI",
     sourceUrl: "https://data.worldbank.org/indicator/SE.TER.TCHR",
-    description: "Total teachers in tertiary education.",
+    description:
+      "The total number of teaching staff in tertiary education programmes, including full-time and part-time personnel.",
   },
   {
     id: "pop_15_64_pct",
@@ -651,7 +730,9 @@ export const METRICS: MetricDef[] = [
     worldBankCode: "SP.POP.1564.TO.ZS",
     sourceName: "World Bank WDI",
     sourceUrl: "https://data.worldbank.org/indicator/SP.POP.1564.TO.ZS",
-    description: "Working-age population share.",
+    description:
+      "The share of the total population aged 15 to 64 years, commonly treated as the working-age population.",
+    formula: "Share (%) = (population aged 15–64 ÷ total population) × 100",
   },
   {
     id: "labor_force_total",
@@ -661,7 +742,9 @@ export const METRICS: MetricDef[] = [
     worldBankCode: "SL.TLF.TOTL.IN",
     sourceName: "World Bank WDI / ILO modeled",
     sourceUrl: "https://data.worldbank.org/indicator/SL.TLF.TOTL.IN",
-    description: "Total economically active population.",
+    description:
+      "The total number of people who are employed or actively seeking employment—the economically active population.",
+    formula: "Labour force = employed people + unemployed people actively seeking work",
   },
   {
     id: "homicide_rate",
@@ -672,7 +755,8 @@ export const METRICS: MetricDef[] = [
     sourceName: "World Bank WDI (UNODC International Homicide Statistics)",
     sourceUrl: "https://data.worldbank.org/indicator/VC.IHR.PSRC.P5",
     description:
-      "Unlawful death purposefully inflicted on a person by another (excludes armed conflict). Sourced from UN Office on Drugs and Crime (UNODC) via criminal justice records, public health data, and UN crime surveys.",
+      "The number of unlawful deaths intentionally inflicted on a person by another, per 100,000 population (excluding deaths from armed conflict). Data are compiled by the UN Office on Drugs and Crime (UNODC) from criminal justice records, public health sources, and crime surveys.",
+    formula: "Homicide rate = (intentional homicides ÷ population) × 100,000",
   },
   {
     id: "homicide_rate_female",
@@ -682,7 +766,9 @@ export const METRICS: MetricDef[] = [
     worldBankCode: "VC.IHR.PSRC.FE.P5",
     sourceName: "World Bank WDI (UNODC International Homicide Statistics)",
     sourceUrl: "https://data.worldbank.org/indicator/VC.IHR.PSRC.FE.P5",
-    description: "Female intentional homicide rate per 100,000 female population (UNODC via WDI).",
+    description:
+      "The number of intentional homicides among females per 100,000 female population, as reported through UNODC International Homicide Statistics via the World Bank.",
+    formula: "Female homicide rate = (female intentional homicides ÷ female population) × 100,000",
   },
   {
     id: "homicide_rate_male",
@@ -692,7 +778,9 @@ export const METRICS: MetricDef[] = [
     worldBankCode: "VC.IHR.PSRC.MA.P5",
     sourceName: "World Bank WDI (UNODC International Homicide Statistics)",
     sourceUrl: "https://data.worldbank.org/indicator/VC.IHR.PSRC.MA.P5",
-    description: "Male intentional homicide rate per 100,000 male population (UNODC via WDI).",
+    description:
+      "The number of intentional homicides among males per 100,000 male population, as reported through UNODC International Homicide Statistics via the World Bank.",
+    formula: "Male homicide rate = (male intentional homicides ÷ male population) × 100,000",
   },
   {
     id: "gbv_women_pct",
@@ -703,7 +791,8 @@ export const METRICS: MetricDef[] = [
     sourceName: "World Bank WDI (UN/WHO household surveys)",
     sourceUrl: "https://data.worldbank.org/indicator/SG.VAW.1549.ZS",
     description:
-      "Share of ever-partnered women ages 15–49 who experienced physical and/or sexual violence by a current or former intimate partner in the past 12 months.",
+      "The percentage of ever-partnered women aged 15–49 who experienced physical and/or sexual violence by a current or former intimate partner in the past 12 months, based on household surveys.",
+    formula: "Prevalence (%) = (women reporting partner violence in past 12 months ÷ ever-partnered women aged 15–49) × 100",
   },
   {
     id: "idp_conflict_violence",
@@ -714,7 +803,7 @@ export const METRICS: MetricDef[] = [
     sourceName: "World Bank WDI (Internal Displacement Monitoring Centre)",
     sourceUrl: "https://data.worldbank.org/indicator/VC.IDP.NWCV",
     description:
-      "New internal displacements triggered by conflict and violence during the reference year (IDMC via WDI).",
+      "The number of new internal displacements triggered by conflict and violence during the reference year, as reported by the Internal Displacement Monitoring Centre (IDMC).",
   },
   {
     id: "battle_related_deaths",
@@ -725,7 +814,7 @@ export const METRICS: MetricDef[] = [
     sourceName: "World Bank WDI (Uppsala Conflict Data Program)",
     sourceUrl: "https://data.worldbank.org/indicator/VC.BTL.DETH",
     description:
-      "Fatalities from organized armed conflict during the year (UCDP Battle-Related Deaths Dataset via WDI).",
+      "The number of fatalities from organised armed conflict during the year, as recorded in the Uppsala Conflict Data Program (UCDP) Battle-Related Deaths Dataset.",
   },
   {
     id: "rule_of_law_wgi",
@@ -736,7 +825,7 @@ export const METRICS: MetricDef[] = [
     sourceName: "World Bank WDI (Worldwide Governance Indicators)",
     sourceUrl: "https://data.worldbank.org/indicator/GOV_WGI_RL_EST",
     description:
-      "Perceptions of confidence in and adherence to the rules of society — contract enforcement, property rights, police, courts, and crime (World Bank WGI). Higher is better.",
+      "A composite estimate of confidence in and adherence to the rules of society—including contract enforcement, property rights, police, courts, and crime—from the World Bank Worldwide Governance Indicators. Higher values indicate stronger rule of law.",
   },
   {
     id: "political_stability_wgi",
@@ -747,7 +836,7 @@ export const METRICS: MetricDef[] = [
     sourceName: "World Bank WDI (Worldwide Governance Indicators)",
     sourceUrl: "https://data.worldbank.org/indicator/GOV_WGI_PV_EST",
     description:
-      "Likelihood that the government will be destabilized or overthrown by violence or terrorism (World Bank WGI). Higher is more stable.",
+      "An estimate of the likelihood that a government will be destabilised or overthrown by violence or terrorism, from the World Bank Worldwide Governance Indicators. Higher values indicate greater political stability.",
   },
   {
     id: "corruption_control_wgi",
@@ -758,7 +847,7 @@ export const METRICS: MetricDef[] = [
     sourceName: "World Bank WDI (Worldwide Governance Indicators)",
     sourceUrl: "https://data.worldbank.org/indicator/GOV_WGI_CC_EST",
     description:
-      "Extent to which public power is exercised for private gain, including petty and grand corruption (World Bank WGI). Higher is better.",
+      "An estimate of the extent to which public power is exercised for private gain, including petty and grand corruption, from the World Bank Worldwide Governance Indicators. Higher values indicate better control of corruption.",
   },
 ];
 

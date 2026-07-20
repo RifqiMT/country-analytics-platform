@@ -80,7 +80,8 @@ Core value:
 ### AI and analysis behavior
 - `docs/ASSISTANT_BEHAVIOR.md`
 - `docs/ANALYSIS_METHODS.md`
-- `docs/GUARDRAILS.md` (incl. BG-04 crime interpretation)
+- `docs/TESTING_STRATEGY.md`
+- `docs/GUARDRAILS.md` (incl. BG-04, UG, PG guardrails)
 
 ### Design and operational governance
 - `docs/DESIGN_GUIDELINES.md` (brand tokens, PESTEL/Porter/SWOT palettes)
@@ -127,7 +128,7 @@ Core value:
 | Data categories | 6 metric categories + 1 UI-only global table grouping (`general`) |
 | Application modules | 7 routes |
 | API endpoints | 20+ |
-| Documentation files | 21 |
+| Documentation files | 22 |
 | Functional requirements (traceability) | FR-01 through FR-28 |
 | User personas | 7 |
 | Year range | 2000 – current |

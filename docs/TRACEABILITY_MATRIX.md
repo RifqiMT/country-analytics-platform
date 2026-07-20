@@ -73,3 +73,46 @@ Release changes that affect any assistant/analysis output behavior must be accom
 - An update to the corresponding documentation in `docs/`
 - A review in `TRACEABILITY_MATRIX.md` mapping for the touched requirement(s)
 - A guardrails alignment check in `docs/GUARDRAILS.md`
+
+---
+
+## 4) PRD journey → FR mapping
+
+| PRD Journey (§8) | Related FR IDs | Primary modules |
+| --- | --- | --- |
+| Journey A: Dashboard → Comparison → Evidence | FR-01, FR-03, FR-22, FR-29, FR-30 | Dashboard |
+| Journey B: Assistant → Ranking → Citations | FR-04, FR-05, FR-06, FR-07, FR-08, FR-18, FR-19 | Assistant |
+| Journey C: Strategy module output | FR-09, FR-10, FR-11, FR-12, FR-20, FR-21 | PESTEL, Porter |
+| Journey D: Business Analytics correlation | FR-13, FR-14, FR-15, FR-23, FR-24 | Business Analytics |
+| Journey E: Crime & safety assessment | FR-26, FR-27, FR-28 | Dashboard, Global, Sources |
+
+---
+
+## 5) Documentation → requirement cross-reference
+
+| Document | Covers FR/NFR |
+| --- | --- |
+| `docs/PRD.md` | All journeys; scope definition |
+| `docs/USER_STORIES.md` | Acceptance criteria for FR-01–FR-30 |
+| `docs/VARIABLES.md` | Request/env variables for all API routes |
+| `docs/API_REFERENCE.md` | Endpoint contracts for FR-03, FR-13, FR-18, FR-29 |
+| `docs/ASSISTANT_BEHAVIOR.md` | FR-04–FR-08 behavior detail |
+| `docs/ANALYSIS_METHODS.md` | FR-09, FR-10, FR-13 methodology |
+| `docs/GUARDRAILS.md` | NFR-01, NFR-02, NFR-07 enforcement |
+| `docs/DESIGN_GUIDELINES.md` | NFR-06 UX/accessibility |
+| `docs/TESTING_STRATEGY.md` | Validation approach for all FR/NFR |
+| `docs/METRIC_CATALOG.md` | FR-17, FR-26–FR-28 data definitions |
+
+---
+
+## 6) Persona → FR mapping
+
+| Persona | Primary FR IDs |
+| --- | --- |
+| Policy Analyst | FR-01, FR-03, FR-17 |
+| Strategy Manager | FR-04, FR-09, FR-10 |
+| Research Associate | FR-03, FR-17, FR-13 |
+| Product / Ops Leader | NFR-05, FR-18, FR-19 |
+| BYOK Power User | FR-18, FR-19 |
+| Executive Reviewer | FR-24, FR-14 |
+| Security & Risk Analyst | FR-26, FR-27, FR-28 |

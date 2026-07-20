@@ -162,3 +162,53 @@ When data-source hierarchy or resilience logic changes (e.g., FX provider fallba
 - The repository does not yet include automated test suites (`*.test.ts`, `*.spec.ts`).
 - Release validation relies on the manual QA steps in `docs/TRACEABILITY_MATRIX.md` and `docs/RELEASE_READINESS_CHECKLIST.md`.
 - When automated tests are introduced, they must be referenced in the traceability matrix validation column.
+
+See `docs/TESTING_STRATEGY.md` for manual QA scope and future automation roadmap.
+
+---
+
+## 7) UX guardrails (presentation and interaction)
+
+### UG-01: Evidence context must remain visible
+
+- Units, data years, and source labels must not be hidden in analysis views where users interpret values.
+- Fullscreen and presentation modes may hide controls but must not hide computed results or attribution.
+
+### UG-02: Keyboard accessibility for primary workflows
+
+- All primary actions (generate, export, toggle, country select) must be keyboard operable.
+- Keyboard shortcuts (e.g. Business Analytics `P`) must not fire while user is typing in editable controls.
+
+### UG-03: Color is not the only signal
+
+- Status chips (key validation, verified-web badge, error notices) must include text labels.
+- Selection states use checkbox + label, not color alone.
+
+### UG-04: Progressive disclosure for dense content
+
+- Sources page and dashboard accordions use collapse/expand to reduce initial cognitive load.
+- Complex analysis (Business Analytics) uses explicit "Generate" gating to prevent accidental computation.
+
+---
+
+## 8) Performance guardrails
+
+### PG-01: Serverless invocation budget
+
+- Outbound work on Vercel must respect `CAP_SERVERLESS_BUDGET_MS` (default 55s).
+- Long-running routes (correlation, FX series) use `settleWithin()` timeouts.
+
+### PG-02: Bootstrap warmup on serverless
+
+- Background full-catalog warmup is skipped on serverless to avoid `FUNCTION_INVOCATION_TIMEOUT`.
+- Users may experience cold-start latency on first request after deploy.
+
+### PG-03: Caching without stale-user deception
+
+- Server-side in-memory cache improves latency but is per-invocation on serverless.
+- Client-side session caches (PESTEL, Porter, Business) persist until user regenerates — not indefinitely.
+
+### PG-04: Business Analytics timeout disclosure
+
+- When reliability mode delivers a narrower year window, UI must show explicit delivery note.
+- Strict mode users accept potential timeout failure over undisclosed fallback.

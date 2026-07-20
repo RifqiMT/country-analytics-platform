@@ -156,3 +156,44 @@ Each persona describes:
 **Success signals:**
 - Analyst can produce a country safety profile with homicide, governance, and conflict indicators in a single dashboard pass.
 - Global crime table enables regional benchmarking without manual data assembly.
+
+---
+
+## Persona-to-module matrix
+
+| Persona | Dashboard | Global | Assistant | PESTEL | Porter | Business | Sources |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Policy Analyst | **Primary** | Secondary | Secondary | — | — | Secondary | Reference |
+| Strategy Manager | Secondary | Secondary | Secondary | **Primary** | **Primary** | Secondary | Reference |
+| Research Associate | **Primary** | **Primary** | Secondary | — | — | **Primary** | **Primary** |
+| Product / Ops Leader | Review | Review | Review | Review | Review | Review | Review |
+| BYOK Power User | — | — | **Primary** | **Primary** | **Primary** | **Primary** | — |
+| Executive Reviewer | — | — | — | Secondary | Secondary | **Primary** | — |
+| Security & Risk Analyst | **Primary** | **Primary** | Secondary | Secondary | — | Secondary | Reference |
+
+**Legend:** Primary = main daily workflow; Secondary = supporting use; Reference = lookup/audit; Review = governance oversight.
+
+---
+
+## Persona workflow examples
+
+### Policy Analyst — weekly country briefing
+1. Open Dashboard → select focus country → set year range
+2. Review Financial and Health accordion sections for YoY changes
+3. Open comparison table → note country vs regional avg vs global
+4. Ask Assistant: "Compare [country] and [peer] on GDP per capita and life expectancy"
+5. Export chart PNG for briefing deck
+
+### Security & Risk Analyst — country safety profile
+1. Open Dashboard → select focus country → Crime & public safety section
+2. Review homicide, conflict, and governance KPI cards
+3. Switch to Global Analytics → Crime & safety tab → regional benchmark
+4. Select `homicide_rate` on choropleth map
+5. Consult Sources for UNODC/IDMC/UCDP/WGI attribution in report
+
+### Strategy Manager — expansion planning cycle
+1. Select target country on Dashboard for baseline indicators
+2. Generate PESTEL analysis for macro-environment assessment
+3. Generate Porter analysis for target ILO-ISIC sector
+4. Use Business Analytics to test hypothesis (e.g. GDP per capita vs life expectancy)
+5. Present Business Analytics in presentation mode for leadership review

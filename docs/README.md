@@ -16,7 +16,7 @@ The documentation set must enable readers to:
 
 1. `PRODUCT_DOCUMENTATION.md`
 2. `PRD.md`
-2. `USER_PERSONAS.md`
+3. `USER_PERSONAS.md`
 3. `USER_STORIES.md`
 4. `METRICS_AND_OKRS.md`
 5. `GUARDRAILS.md`
@@ -30,7 +30,8 @@ The documentation set must enable readers to:
 4. `METRIC_CATALOG.md`
 5. `ANALYSIS_METHODS.md`
 6. `ASSISTANT_BEHAVIOR.md`
-7. `TRACEABILITY_MATRIX.md`
+7. `TESTING_STRATEGY.md`
+8. `TRACEABILITY_MATRIX.md`
 
 ### Design and UX review
 
@@ -52,6 +53,7 @@ The documentation set must enable readers to:
 - `METRIC_CATALOG.md`: canonical metric dictionary and source mapping
 - `ANALYSIS_METHODS.md`: statistical and strategic method explanations
 - `ASSISTANT_BEHAVIOR.md`: routing, grounding, and response controls
+- `TESTING_STRATEGY.md`: manual QA scope and future automation roadmap
 - `DESIGN_GUIDELINES.md`: design system and UX quality rules
 - `METRICS_AND_OKRS.md`: product health and performance framework
 - `GUARDRAILS.md`: technical, business, and AI safety boundaries
@@ -91,6 +93,15 @@ If implementation or behavior changes, update affected docs in the same PR and v
 - Expanded RELEASE_READINESS_CHECKLIST, DEPLOYMENT_VERCEL, ARCHITECTURE
 - Corrected category terminology: 6 data categories + UI-only `general` grouping
 - Updated `.env.example` with business model vars and serverless budget
+
+### 2026-07-20 third pass — elaboration and cross-reference expansion:
+
+- Rewrote `ASSISTANT_BEHAVIOR.md` and `ANALYSIS_METHODS.md` as full enterprise specifications
+- Created `TESTING_STRATEGY.md` (manual QA + automation roadmap)
+- Expanded traceability matrix with PRD journey, doc, and persona cross-references
+- Expanded personas (module matrix, workflows), user stories (epic table, D4/D5 FX stories)
+- Added UX guardrails (UG) and performance guardrails (PG) to `GUARDRAILS.md`
+- Added complete 22-file document registry to `PRODUCT_DOCUMENTATION_STANDARD.md`
 
 ### 2026-04-29 implementation-to-doc sync included:
 

@@ -151,3 +151,32 @@ Before marking a documentation update complete, verify:
 - [ ] `docs/README.md` sync checkpoint updated for major releases
 - [ ] Root `README.md` highlights section updated for user-visible changes
 
+---
+
+## Complete document registry (22 files)
+
+| # | Document | Canonical purpose | Update trigger |
+| --- | --- | --- | --- |
+| 1 | `README.md` (root) | Product entry point, quick start, doc map | Any user-visible feature change |
+| 2 | `docs/README.md` | Role-based reading paths, sync checkpoints | Any doc set reorganization |
+| 3 | `docs/PRODUCT_DOCUMENTATION.md` | Comprehensive product guide | Scope, features, or stack changes |
+| 4 | `docs/PRD.md` | Product requirements and journeys | Scope or requirement changes |
+| 5 | `docs/USER_PERSONAS.md` | Audience model | New user types or workflow changes |
+| 6 | `docs/USER_STORIES.md` | Acceptance criteria | New/changed user-facing behavior |
+| 7 | `docs/VARIABLES.md` | Variable dictionary with relationship charts | Env, API, storage, or derived var changes |
+| 8 | `docs/METRIC_CATALOG.md` | 68-metric indicator dictionary | Metric add/remove/rename |
+| 9 | `docs/METRICS_AND_OKRS.md` | Product health metrics and OKRs | New KPIs or OKR cycle changes |
+| 10 | `docs/DESIGN_GUIDELINES.md` | UI/UX standards and palettes | New components, colors, or patterns |
+| 11 | `docs/GUARDRAILS.md` | Technical, business, AI, UX, performance limits | Boundary or safety rule changes |
+| 12 | `docs/TRACEABILITY_MATRIX.md` | Requirements → code mapping | Any FR/NFR change |
+| 13 | `docs/ARCHITECTURE.md` | System layers and runtime flows | Architectural changes |
+| 14 | `docs/API_REFERENCE.md` | Endpoint contracts | API shape or route changes |
+| 15 | `docs/ASSISTANT_BEHAVIOR.md` | Assistant routing and grounding | AI behavior changes |
+| 16 | `docs/ANALYSIS_METHODS.md` | Statistical/strategic methodology | Analysis logic changes |
+| 17 | `docs/TESTING_STRATEGY.md` | Manual QA and automation roadmap | Validation approach changes |
+| 18 | `docs/DEPLOYMENT_VERCEL.md` | Production deployment runbook | Deploy config changes |
+| 19 | `docs/RELEASE_READINESS_CHECKLIST.md` | Pre-release gate | New release validation steps |
+| 20 | `docs/EXECUTIVE_DOCUMENTATION_SUMMARY.md` | Leadership status snapshot | Major release milestones |
+| 21 | `docs/CHANGELOG.md` | Versioned development history | Every documentation/product sync |
+| 22 | `docs/PRODUCT_DOCUMENTATION_STANDARD.md` | This governance document | Documentation process changes |
+

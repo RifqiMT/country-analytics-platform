@@ -171,6 +171,7 @@ Start with [`docs/README.md`](docs/README.md) for role-based reading paths.
 |----------|---------|
 | [`docs/ASSISTANT_BEHAVIOR.md`](docs/ASSISTANT_BEHAVIOR.md) | Routing, grounding, response controls |
 | [`docs/ANALYSIS_METHODS.md`](docs/ANALYSIS_METHODS.md) | Correlation, PESTEL, Porter methodology |
+| [`docs/TESTING_STRATEGY.md`](docs/TESTING_STRATEGY.md) | Manual QA scope and automation roadmap |
 
 ### Design, metrics & governance
 | Document | Purpose |

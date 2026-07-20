@@ -1,11 +1,11 @@
-export type SimulatedLoadProgressOptions = {
+type SimulatedLoadProgressOptions = {
   initial?: number;
   cap?: number;
   step?: number;
   intervalMs?: number;
 };
 
-export const DEFAULT_SIMULATED_LOAD_PROGRESS: Required<SimulatedLoadProgressOptions> = {
+const DEFAULT_SIMULATED_LOAD_PROGRESS: Required<SimulatedLoadProgressOptions> = {
   initial: 8,
   cap: 92,
   step: 6,

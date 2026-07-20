@@ -4,6 +4,18 @@ This document defines the platform’s primary user stories and includes accepta
 
 Stories are written in user language, but each acceptance section is specific enough to guide QA and engineering verification.
 
+## Epic overview and traceability
+
+| Epic | Stories | Traceability (FR) | Primary persona |
+| --- | --- | --- | --- |
+| Dashboard & Global Analytics | D1–D5 | FR-01, FR-02, FR-22, FR-29, FR-30 | Policy Analyst, Research Associate |
+| Analytics Assistant | A1–A4 | FR-04–FR-08, FR-18, FR-19 | Strategy Manager, BYOK User |
+| Strategy Modules | S1–S3 | FR-09–FR-12, FR-20, FR-21 | Strategy Manager |
+| Business Analytics | B1–B4 | FR-13–FR-15, FR-23, FR-24 | Research Associate, Executive Reviewer |
+| Crime & Public Safety | C1–C4 | FR-26–FR-28 | Security & Risk Analyst |
+
+---
+
 ## 1) Dashboard and Global Analytics
 
 ### Story D1: Control country and year range
@@ -31,6 +43,25 @@ Stories are written in user language, but each acceptance section is specific en
 **Acceptance criteria:**
 - Exports reflect the current filters and selection state (year range, regions/categories, and metrics).
 - Exports function in both normal and fullscreen modes.
+
+### Story D4: FX exchange-rate transparency
+
+**Story:** As a financial analyst, I want to see current USD/EUR exchange rates and historical trends with source attribution so I can trust the currency context for country analysis.
+
+**Acceptance criteria:**
+- Country profile card shows `1 USD = local currency` and `1 EUR = local currency` with as-of date and source institution.
+- FX trend chart loads dual-series USD/EUR data from `/api/country/:cca3/fx-series`.
+- When ECB daily quote is unavailable, World Bank institutional fallback is used and labeled.
+- Chart supports table toggle, PNG export, and fullscreen mode.
+
+### Story D5: Dashboard comparison benchmarking
+
+**Story:** As a policy analyst, I want a comparison table showing my focus country against regional average and global benchmark so I can contextualize performance.
+
+**Acceptance criteria:**
+- Comparison table loads via `/api/dashboard/comparison` with country, regional avg, and global columns.
+- YoY percentage and basis-point deltas display where prior-year data exists.
+- Table is sortable and reflects the actual data year returned by the backend.
 
 ## 2) Analytics Assistant
 

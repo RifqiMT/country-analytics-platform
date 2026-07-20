@@ -30,6 +30,9 @@ This product solves that by standardizing metric definitions and by presenting a
 | Strategy managers | Structured strategy outputs tied to indicator evidence | Speed up synthesis for planning cycles |
 | Research associates | Reproducible comparisons and auditable methodology | Reduce cleanup and reconciliation work |
 | Product / operations leaders | Measurable quality, performance, and governance | Keep releases dependable and traceable |
+| Security & risk analysts | Standardized crime, governance, and conflict indicators | Country safety profiling and regional benchmarking |
+| Enterprise power users (BYOK) | Personal API key reuse across AI modules | Avoid server key provisioning delays |
+| Executive reviewers | Clean presentation-ready analysis views | Leadership review without analyst UI clutter |
 
 For persona details, see `docs/USER_PERSONAS.md`.
 
@@ -71,6 +74,9 @@ Examples of core FR capabilities:
 - Persisted analysis across navigation until user regenerates
 - Cross-app BYOK (Bring Your Own Key): users can supply Groq/Tavily keys in one header panel and reuse them across AI modules
 - PESTEL strict grounding QA: low-evidence LLM outputs are rejected and replaced by deterministic evidence blends
+- Crime & public safety dashboard section with 9 KPI metrics and 3 trend chart groups
+- FX exchange-rate snapshot (USD/EUR) with ECB primary and World Bank fallback
+- FX trend chart via dedicated time-series endpoint
 
 ## 7) Non-Functional Requirements (NFR)
 
@@ -78,9 +84,22 @@ Non-functional requirements are also mapped in `docs/TRACEABILITY_MATRIX.md`, an
 
 Primary NFR themes:
 - Reliability: deterministic fallback when evidence quality is insufficient
-- Performance: low-latency for interactive flows, with caching where appropriate
+- Performance: low-latency for interactive flows, with caching where appropriate; serverless budget governance (`CAP_SERVERLESS_BUDGET_MS`)
 - Explainability: citation/routing transparency and data-year clarity
 - Maintainability: docs, traceability, and metric catalogs remain synchronized
+- Accessibility: keyboard operable controls, visible focus states, adequate contrast
+- Security: BYOK keys never stored server-side; client-side storage only
+
+## 7.1) Technical constraints
+
+| Constraint | Value | Rationale |
+| --- | --- | --- |
+| Node.js runtime | ≥ 20 | Workspace engine requirement |
+| Data year range | 2000 – current | WDI coverage alignment |
+| Metric catalog size | 68 indicators | Canonical in `backend/src/metrics.ts` |
+| Serverless max duration | 60s (Vercel) | Platform limit via `vercel.json` |
+| Serverless app budget | 55s default | `CAP_SERVERLESS_BUDGET_MS` with reserve |
+| API routes | 23 endpoints | Documented in `docs/API_REFERENCE.md` |
 
 ## 8) Key User Journeys (UX logic)
 
