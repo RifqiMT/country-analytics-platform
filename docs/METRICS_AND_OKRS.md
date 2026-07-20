@@ -79,6 +79,24 @@ Share of PESTEL generations that pass strict grounding QA without forced determi
 **Why it matters:**  
 Directly measures whether PESTEL remains evidence-backed and usable for human decision workflows.
 
+### 2.5 Metric catalog completeness rate
+
+**What it measures:**  
+Share of documented metrics in `METRIC_CATALOG.md` that match `backend/src/metrics.ts` at release time.
+
+**Definition (working):**
+`MetricCatalogSyncRate = count(metrics in catalog matching code) / count(total metrics in code) * 100`
+
+**Target:** 100% on every release.
+
+### 2.6 Crime & safety module adoption
+
+**What it measures:**  
+Usage of crime-category features (dashboard safety section views, global crime table tab, homicide choropleth selection).
+
+**Why it matters:**  
+Validates that the 2026-07-20 crime metric expansion delivers value to security/risk analyst workflows.
+
 ## 3) Performance metrics
 
 ### 3.1 Assistant latency (P50 / P95)
@@ -204,6 +222,17 @@ Key Results:
 - **KR1:** Ensure **100%** of feature releases are reflected in `TRACEABILITY_MATRIX.md` and `GUARDRAILS.md`
 - **KR2:** Ensure **100%** of core documentation updates occur in the same release cycle as the feature change
 - **KR3:** Maintain weekly doc-drift review closure at **>= 90%**
+
+### Objective 4: Expand indicator coverage for security and governance use cases
+
+Key Results:
+- **KR1:** Maintain **68-metric catalog** synchronized across code, docs, and Sources page
+- **KR2:** Achieve **>= 90%** crime-category KPI card render success rate for countries with any crime data
+- **KR3:** Ensure global crime table loads within **P95 < 8s** for default year selection
+
+Measurement guidance:
+- Track crime section view events and global crime tab usage
+- Monitor missing-data rates for GBV and WGI indices by country
 
 ## 7) Review cadence (recommended)
 

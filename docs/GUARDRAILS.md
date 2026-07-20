@@ -123,6 +123,14 @@ Tables/cards should always reflect returned years (not just requested years).
 - If analysis is delivered on a narrower fallback window, UI must disclose it.
 - Users must be able to opt into strict selected-range-only mode for governance-sensitive workflows.
 
+### BG-04: Crime & safety data interpretation discipline
+
+- Homicide rates (UNODC via WDI) vary in reporting quality; missing values are meaningful, not zero.
+- GBV prevalence (`gbv_women_pct`) comes from household surveys with limited and uneven country coverage.
+- WGI governance indices (-2.5 to +2.5) are perception-based estimates, not direct event counts.
+- Conflict metrics (IDP displacement, battle deaths) reflect specific institutional definitions—users must consult source documentation before cross-country comparison.
+- Do not combine crime rate metrics with governance index metrics in a single composite score without explicit methodology disclosure.
+
 ## 6) Operational guardrails (release discipline)
 
 ### OG-01: Update docs + traceability on AI behavior changes

@@ -39,7 +39,7 @@ function collapsedSummary(events: ApiTransportEvent[]): { line1: string; line2: 
   };
 }
 
-export type ApiTransportPanelVariant = "floating" | "inline";
+type ApiTransportPanelVariant = "floating" | "inline";
 
 type Props = {
   variant?: ApiTransportPanelVariant;

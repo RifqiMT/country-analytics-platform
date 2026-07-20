@@ -50,6 +50,7 @@ For persona details, see `docs/USER_PERSONAS.md`.
 - Strategy modules: PESTEL and Porter Five Forces
 - Business Analytics: correlation/regression diagnostics + narrative interpretation
 - Source and metric definitions explorer
+- Crime & public safety indicators (9 metrics: homicide, GBV, conflict displacement, battle deaths, WGI governance) in dashboard accordion, global crime table, and choropleth map
 
 ### Out of scope (current)
 
@@ -174,3 +175,14 @@ For governance details, see `docs/PRODUCT_DOCUMENTATION_STANDARD.md`.
   - optional fallback to shorter recent windows when reliability mode is enabled,
   - strict selected-range mode available for exact-window analysis governance.
 - Narrative generation has deterministic fallback if LLM JSON shape/timeout gates fail.
+
+### 14.3 Crime & public safety metrics (2026-07-20)
+
+- Platform metric catalog expanded to **68 indicators** across 7 categories (including crime).
+- Dashboard adds **Crime & public safety** accordion section with KPI cards and three trend chart groups:
+  - Homicide rates (total, female, male)
+  - Conflict indicators (IDP displacement, battle-related deaths)
+  - Governance indices (rule of law, political stability, control of corruption)
+- Global Analytics adds **Crime & safety** table tab; homicide rate selectable on choropleth map.
+- Sources page includes crime category with UNODC, IDMC, UCDP, and WGI source attribution.
+- Interpretation guardrails documented in `docs/GUARDRAILS.md` (BG-04).

@@ -36,16 +36,13 @@ export function formatCompactCount(value: number, opts?: { suffix?: string }): s
   return formatCompactNumber(value, { ...opts, maxFrac: 0 });
 }
 
-export function formatKm2(value: number | null): string {
-  if (value === null || Number.isNaN(value)) return "—";
-  return formatCompactNumber(value, { suffix: "km²", maxFrac: 2 });
-}
+export type YoYDisplay = { text: string; tone: "up" | "down" | "flat" };
 
 export function formatYoY(
   pct: number | null,
   bps: number | null,
   preferBps: boolean
-): { text: string; tone: "up" | "down" | "flat" } {
+): YoYDisplay {
   if (preferBps && bps !== null && !Number.isNaN(bps)) {
     const rounded = Math.round(bps);
     if (rounded === 0) return { text: "0 bps YoY", tone: "flat" };

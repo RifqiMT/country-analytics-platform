@@ -1,4 +1,4 @@
-export const USER_API_KEYS_STORAGE_KEY = "cap.userApiKeys.v1";
+const USER_API_KEYS_STORAGE_KEY = "cap.userApiKeys.v1";
 export const USER_API_KEYS_CHANGED_EVENT = "cap-user-api-keys-changed";
 
 export type UserApiKeysScope = "session" | "local";
@@ -16,7 +16,7 @@ type UserApiKeysStored = {
   scope?: UserApiKeysScope;
 };
 
-export const DEFAULT_USER_API_KEYS: UserApiKeys = {
+const DEFAULT_USER_API_KEYS: UserApiKeys = {
   groqApiKey: "",
   tavilyApiKey: "",
   remember: false,

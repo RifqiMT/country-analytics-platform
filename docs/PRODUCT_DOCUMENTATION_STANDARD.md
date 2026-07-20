@@ -103,3 +103,51 @@ A documentation change is complete only when:
 - **Weekly**: quick drift scan for stale references, examples, and route/variable names.
 - **Per release**: ensure guardrails and traceability updates are complete.
 - **Monthly**: onboarding readability review for new joiners.
+- **Per metric catalog change**: synchronize `METRIC_CATALOG.md`, `VARIABLES.md`, Sources page, and traceability matrix in the same PR.
+
+## Document templates (quick reference)
+
+### Product document template
+1. Executive summary (1 paragraph)
+2. Vision and mission
+3. Product benefits (by audience)
+4. Feature catalog (module-by-module)
+5. Business guidelines
+6. Technical guidelines
+7. Stack and dependencies
+8. Related documents and maintenance rules
+
+### Variable entry template
+| Variable Name | Friendly Name | Definition | Formula / Rule | Location in the apps | Example |
+
+### Metric entry template
+| Metric ID | Friendly Name | Unit | Category | World Bank Code | Formula | Source summary |
+
+### User story template
+**Story:** As a [persona], I want [capability] so that [outcome].  
+**Acceptance criteria:** (numbered, testable, implementation-aligned)
+
+### Traceability row template
+| Req ID | Requirement | Primary Implementation | Supporting Files | Validation |
+
+### Guardrail template
+**ID:** [DG/TG/AG/BG/OG]-##  
+**Rule:** (must/should statement)  
+**Practical effect:** (what users/engineers observe)  
+**Validation:** (how to verify compliance)
+
+## Quality gates for documentation completeness
+
+Before marking a documentation update complete, verify:
+
+- [ ] All affected metric IDs appear in `METRIC_CATALOG.md` with correct units and sources
+- [ ] Request/response variables documented in `VARIABLES.md` with examples
+- [ ] PRD scope section reflects new/changed capabilities
+- [ ] At least one user story with acceptance criteria exists for new user-facing features
+- [ ] Traceability matrix has FR/NFR rows for new requirements
+- [ ] Guardrails updated if data interpretation or AI behavior boundaries change
+- [ ] Design guidelines updated if new UI patterns, colors, or components are introduced
+- [ ] `CHANGELOG.md` entry with date and scope
+- [ ] `docs/README.md` sync checkpoint updated for major releases
+- [ ] Root `README.md` highlights section updated for user-visible changes
+

@@ -8,7 +8,7 @@ import {
 import { getJson, type DataProvidersPayload, type MetricDef } from "../api";
 import { metricDisplayLabel } from "../lib/metricDisplay";
 
-const CATEGORY_ORDER = ["general", "financial", "health", "education", "labour", "demographics"] as const;
+const CATEGORY_ORDER = ["general", "financial", "health", "education", "labour", "demographics", "crime"] as const;
 
 const CATEGORY_LABEL: Record<string, string> = {
   general: "General",
@@ -17,6 +17,7 @@ const CATEGORY_LABEL: Record<string, string> = {
   education: "Education",
   labour: "Labour",
   demographics: "Demographics",
+  crime: "Crime & public safety",
 };
 
 const SOURCE_CHIP_DEFS: { id: string; label: string; test: (m: MetricDef) => boolean }[] = [
@@ -40,6 +41,26 @@ const SOURCE_CHIP_DEFS: { id: string; label: string; test: (m: MetricDef) => boo
     id: "unesco",
     label: "UNESCO",
     test: (m) => /unesco|uis/i.test(m.sourceName + m.description),
+  },
+  {
+    id: "unodc",
+    label: "UNODC",
+    test: (m) => /unodc|homicide|drugs and crime/i.test(m.sourceName + m.description),
+  },
+  {
+    id: "idmc",
+    label: "IDMC",
+    test: (m) => /idmc|displacement monitoring/i.test(m.sourceName + m.description),
+  },
+  {
+    id: "ucdp",
+    label: "UCDP",
+    test: (m) => /ucdp|uppsala conflict/i.test(m.sourceName + m.description),
+  },
+  {
+    id: "wgi",
+    label: "WGI",
+    test: (m) => /governance indicators|wgi/i.test(m.sourceName + m.description),
   },
 ];
 

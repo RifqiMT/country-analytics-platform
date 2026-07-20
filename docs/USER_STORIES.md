@@ -132,3 +132,44 @@ Stories are written in user language, but each acceptance section is specific en
 - Presentation mode hides diagnostics and filter chrome while keeping core results visible.
 - Users can toggle presentation mode via button and keyboard shortcut (`P`).
 - Shortcut is ignored while typing in editable controls.
+
+## 5) Crime & Public Safety Analytics
+
+### Story C1: Dashboard crime & safety section
+
+**Story:** As a security analyst, I want a dedicated crime & public safety section on the country dashboard so I can assess violence, conflict, and governance indicators for a focus country.
+
+**Acceptance criteria:**
+- Dashboard accordion includes a **Crime & public safety** section with KPI cards for all 9 crime metrics.
+- Three trend chart groups render: homicide rates, conflict indicators, and governance indices.
+- Charts support chart/table toggle, PNG export, and fullscreen mode.
+- Metric values display with correct units (per 100,000, %, cases, people, index).
+
+### Story C2: Global crime table and map
+
+**Story:** As a risk analyst, I want to compare crime & safety indicators across countries in a global table and map so I can benchmark regional safety profiles.
+
+**Acceptance criteria:**
+- Global Analytics table includes a **Crime & safety** category tab.
+- Table displays all crime-category metrics with sortable columns.
+- Choropleth map supports `homicide_rate` as a selectable metric.
+- Region filter and year selection apply consistently to crime table rows.
+
+### Story C3: Crime metric transparency in Sources
+
+**Story:** As a researcher, I want crime metrics documented with source attribution so I can cite credible institutions in reports.
+
+**Acceptance criteria:**
+- Sources page lists crime category metrics with UNODC, IDMC, UCDP, and WGI source chips.
+- Each metric card shows formula (if derived), World Bank code, and source URL.
+- Metric definitions match `docs/METRIC_CATALOG.md` and `backend/src/metrics.ts`.
+
+### Story C4: Responsible crime data interpretation
+
+**Story:** As a product user, I want clear guardrails on crime data interpretation so I do not over-interpret sparse or perception-based indicators.
+
+**Acceptance criteria:**
+- GBV and survey-based metrics are not presented as complete country coverage.
+- WGI indices are labeled as perception-based governance estimates.
+- Conflict metrics reflect documented source definitions (IDMC displacement cases, UCDP battle deaths).
+- Guardrails documented in `docs/GUARDRAILS.md` (BG-04) are reflected in Sources methodology text.

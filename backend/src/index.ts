@@ -46,6 +46,7 @@ import { clearAllCache, getCache, setCache } from "./cache.js";
 import { resetDataWarmupGate, startDataWarmup } from "./dataWarmup.js";
 import { fetchWbCountryProfile } from "./wbCountryProfile.js";
 import { buildDashboardComparison } from "./dashboardComparison.js";
+import { buildFxCurrencyCandidates, fetchCountryFxSeries } from "./fxSeries.js";
 import { buildGlobalTable, type TableCategory } from "./globalTable.js";
 import {
   buildDataOnlyPestel,
@@ -381,6 +382,126 @@ async function fetchBestUsdFxSnapshot(currencyCandidates: string[], iso3: string
   return null;
 }
 
+/** EUR per 1 USD from ECB/Frankfurter — used to triangulate EUR quotes from WB official USD rates. */
+async function fetchUsdEurRate(): Promise<{ rate: number; asOf?: string } | null> {
+  const key = "fx:usd:eur:cross:v1";
+  const cached = getCache<{ rate: number; asOf?: string }>(key);
+  if (cached && cached.rate > 0) return cached;
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), 7000);
+  try {
+    const url = "https://api.frankfurter.app/latest?from=USD&to=EUR";
+    const res = await fetch(url, { signal: ac.signal, headers: { Accept: "application/json" } });
+    if (!res.ok) return null;
+    const raw = (await res.json()) as { date?: unknown; rates?: Record<string, unknown> } | null;
+    const rate = Number(raw?.rates?.EUR);
+    if (!Number.isFinite(rate) || rate <= 0) return null;
+    const asOf = typeof raw?.date === "string" && raw.date.trim() ? raw.date.trim() : undefined;
+    const out = { rate, asOf };
+    setCache(key, out, 1000 * 60 * 60 * 6);
+    return out;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function fetchEurFxSnapshot(targetCurrency: string, iso3: string): Promise<UsdFxSnapshot> {
+  const target = String(targetCurrency ?? "").toUpperCase();
+  if (!/^[A-Z]{3}$/.test(target) || target === "EUR") return null;
+  const key = `fx:eur:${target}:v1`;
+  const cached = getCache<UsdFxSnapshot>(key);
+  if (cached && cached.rate > 0) return cached;
+  const wbOfficial = await settleWithin(fetchWbOfficialUsdFxLatest(iso3), 7000, null);
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), 7000);
+  try {
+    const url = `https://api.frankfurter.app/latest?from=EUR&to=${encodeURIComponent(target)}`;
+    const res = await fetch(url, { signal: ac.signal, headers: { Accept: "application/json" } });
+    if (!res.ok) {
+      const usdEur = await fetchUsdEurRate();
+      if (wbOfficial?.rate && usdEur?.rate) {
+        return {
+          target,
+          rate: wbOfficial.rate / usdEur.rate,
+          asOf: wbOfficial.year ? `${wbOfficial.year}-12-31` : usdEur.asOf,
+          source: "World Bank PA.NUS.FCRF (EUR triangulated)",
+        };
+      }
+      return null;
+    }
+    const raw = (await res.json()) as { date?: unknown; rates?: Record<string, unknown> } | null;
+    const rateCandidate = raw?.rates?.[target];
+    const rate = Number(rateCandidate);
+    if (!Number.isFinite(rate) || rate <= 0) {
+      const usdEur = await fetchUsdEurRate();
+      if (wbOfficial?.rate && usdEur?.rate) {
+        return {
+          target,
+          rate: wbOfficial.rate / usdEur.rate,
+          asOf: wbOfficial.year ? `${wbOfficial.year}-12-31` : usdEur.asOf,
+          source: "World Bank PA.NUS.FCRF (EUR triangulated)",
+        };
+      }
+      return null;
+    }
+    const asOf = typeof raw?.date === "string" && raw.date.trim() ? raw.date.trim() : undefined;
+    if (wbOfficial?.rate && wbOfficial.rate > 0) {
+      const usdEur = await fetchUsdEurRate();
+      if (usdEur?.rate && usdEur.rate > 0) {
+        const triangulated = wbOfficial.rate / usdEur.rate;
+        const deviation = Math.abs(rate - triangulated) / triangulated;
+        if (deviation > 0.6) {
+          return {
+            target,
+            rate: triangulated,
+            asOf: wbOfficial.year ? `${wbOfficial.year}-12-31` : asOf,
+            source: "World Bank PA.NUS.FCRF (EUR triangulated)",
+          };
+        }
+      }
+    }
+    const out: UsdFxSnapshot = { target, rate, asOf, source: "ECB via Frankfurter" };
+    setCache(key, out, 1000 * 60 * 60 * 6);
+    return out;
+  } catch {
+    const usdEur = await fetchUsdEurRate();
+    if (wbOfficial?.rate && usdEur?.rate) {
+      return {
+        target,
+        rate: wbOfficial.rate / usdEur.rate,
+        asOf: wbOfficial.year ? `${wbOfficial.year}-12-31` : usdEur.asOf,
+        source: "World Bank PA.NUS.FCRF (EUR triangulated)",
+      };
+    }
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function fetchBestEurFxSnapshot(currencyCandidates: string[], iso3: string): Promise<UsdFxSnapshot> {
+  const uniqueCandidates = [...new Set(currencyCandidates.map((c) => String(c ?? "").toUpperCase()))].filter(
+    (c) => /^[A-Z]{3}$/.test(c) && c !== "EUR"
+  );
+  for (const code of uniqueCandidates) {
+    const snap = await settleWithin(fetchEurFxSnapshot(code, iso3), 7000, null);
+    if (snap?.rate && Number.isFinite(snap.rate) && snap.rate > 0) return snap;
+  }
+  const wbOfficial = await settleWithin(fetchWbOfficialUsdFxLatest(iso3), 7000, null);
+  const usdEur = await fetchUsdEurRate();
+  if (wbOfficial?.rate && usdEur?.rate && wbOfficial.rate > 0 && usdEur.rate > 0) {
+    return {
+      target: uniqueCandidates[0] ?? "LCU",
+      rate: wbOfficial.rate / usdEur.rate,
+      asOf: wbOfficial.year ? `${wbOfficial.year}-12-31` : usdEur.asOf,
+      source: "World Bank PA.NUS.FCRF (EUR triangulated)",
+    };
+  }
+  return null;
+}
+
 async function validateGroqApiKey(apiKey: string): Promise<{ ok: boolean; message: string }> {
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort(), 8000);
@@ -626,7 +747,10 @@ app.get("/api/country/:cca3", async (req, res) => {
       (typeof mergedCountry.currencyDisplay === "string" && mergedCountry.currencyDisplay.trim()
         ? mergedCountry.currencyDisplay.trim()
         : "") || currencyCodes[0];
-    const usdFxRate = await settleWithin(fetchBestUsdFxSnapshot(fxCurrencyCandidates, iso), 14000, null);
+    const [usdFxRate, eurFxRate] = await Promise.all([
+      settleWithin(fetchBestUsdFxSnapshot(fxCurrencyCandidates, iso), 14000, null),
+      settleWithin(fetchBestEurFxSnapshot(fxCurrencyCandidates, iso), 14000, null),
+    ]);
     res.json({
       ...mergedCountry,
       currencies: currencyCodes,
@@ -635,6 +759,10 @@ app.get("/api/country/:cca3", async (req, res) => {
       usdFxRateAsOf: usdFxRate?.asOf,
       usdFxCurrency: usdFxRate?.target ?? currencyCodes[0] ?? null,
       usdFxSource: usdFxRate?.source,
+      eurFxRate: eurFxRate?.rate ?? null,
+      eurFxRateAsOf: eurFxRate?.asOf,
+      eurFxCurrency: eurFxRate?.target ?? currencyCodes[0] ?? null,
+      eurFxSource: eurFxRate?.source,
       area: areaResolved,
       totalAreaKm2,
       landAreaKm2,
@@ -658,6 +786,43 @@ app.get("/api/country/:cca3/wb-profile", async (req, res) => {
   }
 });
 
+app.get("/api/country/:cca3/fx-series", async (req, res) => {
+  try {
+    const iso = String(req.params.cca3 ?? "").toUpperCase();
+    if (!/^[A-Z]{3}$/.test(iso)) return res.status(400).json({ error: "Invalid ISO3 code" });
+    const { start, end } = clampYearRange(
+      req.query.start ? parseInt(String(req.query.start), 10) : MIN_DATA_YEAR,
+      req.query.end ? parseInt(String(req.query.end), 10) : currentDataYear()
+    );
+    const currencyQuery = String(req.query.currency ?? "").toUpperCase();
+    let candidates: string[] = [];
+    if (/^[A-Z]{3}$/.test(currencyQuery)) {
+      candidates = [currencyQuery];
+    } else {
+      const [listed, direct] = await Promise.all([
+        settleWithin(getCountry(iso), 8000, undefined),
+        settleWithin(fetchCountryByIso3Direct(iso), 7000, null),
+      ]);
+      const cca2 = listed?.cca2 ?? direct?.cca2;
+      const directCurrencyFallback =
+        cca2 && /^[A-Z]{2}$/.test(cca2)
+          ? (countryToCurrency[cca2 as keyof typeof countryToCurrency] as string | undefined)
+          : undefined;
+      candidates = buildFxCurrencyCandidates({
+        currencyCodes: listed?.currencies ?? direct?.currencies,
+        currencyDisplay: listed?.currencyDisplay ?? direct?.currencyDisplay,
+        directCurrencyFallback,
+        iso3: iso,
+      });
+    }
+    const data = await settleWithin(fetchCountryFxSeries(iso, candidates, start, end), 22_000, null);
+    if (!data) return res.status(404).json({ error: "FX series unavailable for this economy" });
+    res.json(data);
+  } catch (e) {
+    res.status(502).json({ error: String(e) });
+  }
+});
+
 app.get("/api/dashboard/comparison", async (req, res) => {
   try {
     const cca3 = String(req.query.cca3 ?? "").toUpperCase();
@@ -674,7 +839,7 @@ app.get("/api/dashboard/comparison", async (req, res) => {
       membersCount: 0,
       mode: "fallback",
     };
-    const data = await settleWithin(buildDashboardComparison(cca3, year), capServerlessTimeout(45_000), fallback);
+    const data = await settleWithin(buildDashboardComparison(cca3, year), capServerlessTimeout(55_000), fallback);
     if (!Array.isArray(data.rows) || data.rows.length === 0) {
       res.setHeader("x-cap-warning", "dashboard-comparison-fallback-empty");
     }
@@ -834,7 +999,7 @@ app.get("/api/global/table", async (req, res) => {
       : clampYear(currentDataYear() - 1);
     const region = String(req.query.region ?? "All");
     const category = String(req.query.category ?? "general") as TableCategory;
-    if (!["general", "financial", "health", "education"].includes(category)) {
+    if (!["general", "financial", "health", "education", "crime"].includes(category)) {
       return res.status(400).json({ error: "Invalid category" });
     }
     const fallbackTable: Awaited<ReturnType<typeof buildGlobalTable>> = {
@@ -976,7 +1141,10 @@ function formatAssistantMetricValue(id: string, value: number): string {
   if (pctIds.has(id)) return `${Number(value.toFixed(1))}%`;
   if (id === "life_expectancy") return `${value.toFixed(1)} years`;
   if (id === "birth_rate") return `${value.toFixed(1)} per 1,000`;
-  if (id === "tb_incidence") return `${value.toFixed(1)} per 100,000`;
+  if (id === "tb_incidence" || id === "homicide_rate" || id === "homicide_rate_female" || id === "homicide_rate_male") {
+    return `${value.toFixed(1)} per 100,000`;
+  }
+  if (id === "gbv_women_pct") return `${Number(value.toFixed(1))}%`;
   if (id === "population") {
     if (value >= 1e9) return `${(value / 1e9).toFixed(2)} billion`;
     if (value >= 1e6) return `${(value / 1e6).toFixed(2)} million`;

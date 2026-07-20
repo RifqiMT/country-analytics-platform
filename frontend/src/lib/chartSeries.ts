@@ -5,7 +5,7 @@ export type ChartRow = Record<string, number | string | null | undefined>;
 /** Per-row map of `metricKey → provenance` for chart tooltips (annual rows from `buildDenseYearRows`). */
 export const CHART_POINT_PROVENANCE_KEY = "__provenance" as const;
 
-export type ChartRowProvenance = Partial<Record<string, SeriesProvenance>>;
+type ChartRowProvenance = Partial<Record<string, SeriesProvenance>>;
 
 /** Headline flow series: only short carry-forward (WDI usually current within ~1–2y). */
 const CORE_CHART_KEYS = new Set([
@@ -22,7 +22,7 @@ const CORE_CHART_KEYS = new Set([
  * One row per calendar year in [rangeStart, rangeEnd] so the X-axis matches the selected range
  * even when some indicators have no observations yet.
  */
-export function buildDenseYearRows(
+function buildDenseYearRows(
   series: Record<string, SeriesPoint[]>,
   keys: readonly string[],
   rangeStart: number,
@@ -61,7 +61,7 @@ export type MergeLineChartOpts = {
  * Carry the last *reported* WDI value forward by up to N years so lines reach the chart end.
  * `lastObsYear` advances only on real (non-imputed) points — long gaps stay empty.
  */
-export function forwardFillDisplayGaps(
+function forwardFillDisplayGaps(
   rows: ChartRow[],
   keys: readonly string[],
   opts?: {

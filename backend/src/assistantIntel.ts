@@ -49,21 +49,8 @@ export function questionLooksMetricAnchored(message: string): boolean {
   return false;
 }
 
-export function questionLooksTimeSensitive(message: string): boolean {
-  const q = message.toLowerCase();
-  const y = String(new Date().getFullYear());
-  return (
-    /\b(latest|recent|today|right now|current events|breaking|news|this week|this month|happening|updated?|just announced)\b/.test(
-      q
-    ) ||
-    /\b(as of|right now|at present)\b/.test(q) ||
-    /\b20[2-3][0-9]\b/.test(q) ||
-    q.includes(y)
-  );
-}
-
 /** Four-digit years in the question (1800–2100). */
-export function explicitYearsInQuestion(message: string): number[] {
+function explicitYearsInQuestion(message: string): number[] {
   const out: number[] = [];
   const re = /\b(19\d{2}|20\d{2})\b/g;
   let m: RegExpExecArray | null;
@@ -78,7 +65,7 @@ export function explicitYearsInQuestion(message: string): number[] {
  * Past leadership / election questions where training data is an acceptable primary source
  * (no “web-only or refuse” behavior).
  */
-export function questionIsClearlyHistoricalOfficeholder(message: string): boolean {
+function questionIsClearlyHistoricalOfficeholder(message: string): boolean {
   const calY = new Date().getFullYear();
   const q = message.toLowerCase();
   if (/\bwho\s+was\b|\bwho\s+were\b/.test(q)) return true;
@@ -226,7 +213,7 @@ function cleanCountryFragment(raw: string): string {
     .trim();
 }
 
-export function resolveCountryMention(raw: string, countries: CountrySummary[]): string | null {
+function resolveCountryMention(raw: string, countries: CountrySummary[]): string | null {
   const q = raw.trim();
   if (!q) return null;
   if (/^[A-Za-z]{3}$/.test(q)) {
@@ -274,20 +261,20 @@ function dedupeCca3KeepOrder(codes: string[]): string[] {
 }
 
 /** Strip trailing `on GDP, population, …` so country lists parse cleanly. */
-export function stripComparisonMetricClause(message: string): string {
+function stripComparisonMetricClause(message: string): string {
   const m = message.match(/\s+on\s+/i);
   if (!m || m.index === undefined) return message.trim();
   return message.slice(0, m.index).trim();
 }
 
-export function messageAnchorsSelectedCountryForComparison(message: string): boolean {
+function messageAnchorsSelectedCountryForComparison(message: string): boolean {
   return (
     /(?:the\s+)?selected\s+country/i.test(message) || /\bmy\s+dashboard\s+country\b/i.test(message)
   );
 }
 
 /** Split RHS of compare … to … into name segments (commas, `and`, `&`). */
-export function splitComparisonRhsSegments(rhs: string): string[] {
+function splitComparisonRhsSegments(rhs: string): string[] {
   const cleaned = rhs.replace(/\s+and\s+etc\.?$/i, "").trim();
   const byComma = cleaned.split(/\s*,\s*/);
   const segments: string[] = [];
@@ -301,7 +288,7 @@ export function splitComparisonRhsSegments(rhs: string): string[] {
 /**
  * Resolve one RHS segment to one or more ISO3 codes (handles "France and Germany" without a comma).
  */
-export function resolveComparisonSegmentToCca3s(segment: string, countries: CountrySummary[]): string[] {
+function resolveComparisonSegmentToCca3s(segment: string, countries: CountrySummary[]): string[] {
   const full = resolveCountryMention(cleanCountryFragment(segment), countries);
   if (full) return [full];
   const parts = segment.split(/\s+and\s+/i).map((p) => p.trim()).filter(Boolean);

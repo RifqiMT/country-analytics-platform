@@ -1,4 +1,4 @@
-import type { SeriesPoint } from "./worldBank.js";
+import type { SeriesPoint } from "./series.js";
 import type { CountrySummary } from "./restCountries.js";
 import type { WbCountryProfile } from "./wbCountryProfile.js";
 
@@ -70,7 +70,7 @@ function bulletDedupeKey(s: string): string {
 }
 
 /** Exactly five distinct bullets: primary first, then fallback, then pads. */
-export function ensureFivePorterBullets(primary: string[], fallback: string[]): string[] {
+function ensureFivePorterBullets(primary: string[], fallback: string[]): string[] {
   const out: string[] = [];
   const seen = new Set<string>();
   const tryPush = (raw: string): boolean => {
@@ -103,7 +103,7 @@ function splitParagraphs(body: string): string[] {
 }
 
 /** Exactly two paragraphs for comprehensive `body`. */
-export function ensureTwoPorterParagraphs(primaryBody: string, fallbackBody: string): string {
+function ensureTwoPorterParagraphs(primaryBody: string, fallbackBody: string): string {
   const primary = splitParagraphs(primaryBody);
   const fallback = splitParagraphs(fallbackBody);
   const out: string[] = [];
@@ -236,7 +236,7 @@ function polishForce(f: PorterForce): PorterForce {
   };
 }
 
-export function polishPorterAnalysisForClient(a: PorterAnalysis): PorterAnalysis {
+function polishPorterAnalysisForClient(a: PorterAnalysis): PorterAnalysis {
   return {
     forces: a.forces.map(polishForce),
     comprehensiveSections: a.comprehensiveSections.map((s) => ({

@@ -2,8 +2,6 @@ import { getCache, setCache } from "./cache.js";
 import { fetchWithRetry } from "./httpClient.js";
 
 /** World Bank Country API — same ISO3 universe as WDI; used for operational income & lending groups. */
-export const WB_COUNTRY_API_URL = "https://api.worldbank.org/v2/country";
-
 export interface WbCountryProfile {
   iso3: string;
   name: string;

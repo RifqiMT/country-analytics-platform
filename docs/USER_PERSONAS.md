@@ -131,3 +131,28 @@ Each persona describes:
 
 **Success signals:**
 - User can toggle presentation mode and complete review/export in one uninterrupted flow.
+
+## Persona 7: Security & Risk Analyst
+
+**Primary goal:** assess country safety, governance quality, and conflict exposure using standardized crime and public safety indicators.
+
+**Jobs to be done:**
+- Compare homicide rates and gender-disaggregated violence metrics across peer countries
+- Monitor governance indices (rule of law, political stability, corruption control) for risk scoring
+- Track conflict-related displacement and battle deaths for operational security planning
+- Export crime/safety data for inclusion in country risk reports
+
+**Pain points:**
+- Fragmented crime statistics from multiple agencies with inconsistent definitions
+- Limited visibility into survey-based indicators (e.g., GBV) with sparse country coverage
+- Difficulty benchmarking governance perception indices against quantitative violence metrics
+
+**Evidence needs:**
+- Clear source attribution (UNODC, IDMC, UCDP, World Bank WGI)
+- Unit consistency (per 100,000 vs index scales vs absolute counts)
+- Data-year transparency for lagging crime statistics
+- Interpretation guardrails for perception-based vs event-based metrics
+
+**Success signals:**
+- Analyst can produce a country safety profile with homicide, governance, and conflict indicators in a single dashboard pass.
+- Global crime table enables regional benchmarking without manual data assembly.

@@ -11,7 +11,7 @@ export class CorrelationBudgetError extends Error {
   }
 }
 
-export interface CorrelationPoint {
+interface CorrelationPoint {
   countryIso3: string;
   countryName: string;
   region: string;
@@ -23,7 +23,7 @@ export interface CorrelationPoint {
   isIqrOutlier: boolean;
 }
 
-export interface SubgroupResult {
+interface SubgroupResult {
   region: string;
   r: number;
   n: number;

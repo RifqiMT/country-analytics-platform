@@ -1,11 +1,11 @@
-export type Attribution = {
+type Attribution = {
   sources: string[];
   model?: string;
   webSearchUsed?: boolean;
 };
 
 /** Legacy default when no `GROQ_MODEL` / use-case override (e.g. ad-hoc `groqChat` without model). */
-export const DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile";
+const DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile";
 
 import { capServerlessTimeout, isServerlessRuntime } from "./serverlessBudget.js";
 
@@ -40,7 +40,7 @@ function parseModelList(raw: string | undefined): string[] {
 }
 
 /** Primary model for a feature: `GROQ_MODEL_<USECASE>` → `GROQ_MODEL` (legacy) → built-in default for that use case. */
-export function resolveGroqModelPrimaryForUseCase(useCase: GroqUseCase): string {
+function resolveGroqModelPrimaryForUseCase(useCase: GroqUseCase): string {
   const envKey =
     useCase === "pestel"
       ? "GROQ_MODEL_PESTEL"
@@ -55,7 +55,7 @@ export function resolveGroqModelPrimaryForUseCase(useCase: GroqUseCase): string 
 /**
  * Ordered model ids for Groq retries: primary → per-use-case fallbacks → global `GROQ_FALLBACK_MODELS` → built-ins for that use case.
  */
-export function resolveGroqModelCandidatesForUseCase(useCase: GroqUseCase): string[] {
+function resolveGroqModelCandidatesForUseCase(useCase: GroqUseCase): string[] {
   const primary = resolveGroqModelPrimaryForUseCase(useCase);
   const fallbacksEnvKey =
     useCase === "pestel"
@@ -79,7 +79,7 @@ export function resolveGroqModelCandidatesForUseCase(useCase: GroqUseCase): stri
 }
 
 /** @deprecated Prefer `resolveGroqModelPrimaryForUseCase` or use-case candidates. Legacy: `GROQ_MODEL` or default 70B. */
-export function resolveGroqModel(): string {
+function resolveGroqModel(): string {
   const raw = process.env.GROQ_MODEL?.trim();
   return raw && raw.length > 0 ? raw : DEFAULT_GROQ_MODEL;
 }
@@ -100,7 +100,7 @@ function groqErrorMessage(status: number, bodyText: string): string {
  * Whether to try the next Groq model in the chain (or Tavily elsewhere).
  * Includes transient HTTP errors and 400s that indicate a bad/removed model id so env misconfig does not abort before later candidates.
  */
-export function groqFailureIsRetryable(status: number, errMessage?: string): boolean {
+function groqFailureIsRetryable(status: number, errMessage?: string): boolean {
   if ([408, 429, 500, 502, 503, 529].includes(status)) return true;
   if (status === 400 && errMessage) {
     const m = errMessage.toLowerCase();
@@ -130,7 +130,7 @@ export function groqFailureIsRetryable(status: number, errMessage?: string): boo
 }
 
 /** Network / timeout / DNS — status parse fails so the fallback loop must still advance to the next model. */
-export function groqTransportFailureIsRetryable(err: Error): boolean {
+function groqTransportFailureIsRetryable(err: Error): boolean {
   const n = err.name || "";
   const m = (err.message || "").toLowerCase();
   if (n === "AbortError") return true;
@@ -144,7 +144,7 @@ function sleepMs(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-export function parseGroqErrorStatus(err: unknown): number | null {
+function parseGroqErrorStatus(err: unknown): number | null {
   const msg = err instanceof Error ? err.message : String(err);
   const m = msg.match(/^Groq \((\d+)\):/);
   if (!m) return null;
@@ -152,14 +152,7 @@ export function parseGroqErrorStatus(err: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-/**
- * Legacy candidate list (Assistant-oriented). Prefer `resolveGroqModelCandidatesForUseCase("assistant")` in new code.
- */
-export function resolveGroqModelCandidates(): string[] {
-  return resolveGroqModelCandidatesForUseCase("assistant");
-}
-
-export type TavilyTimeRange = "day" | "week" | "month" | "year";
+type TavilyTimeRange = "day" | "week" | "month" | "year";
 
 export type TavilySearchOptions = {
   maxResults?: number;
@@ -199,7 +192,7 @@ export function utcDateDaysAgo(days: number, from = new Date()): string {
 }
 
 /** Appended to system prompts so the model weights retrieval over stale parametric knowledge. */
-export function analyticsRecencySystemSuffix(): string {
+function analyticsRecencySystemSuffix(): string {
   const iso = new Date().toISOString().slice(0, 10);
   return `Today’s date is ${iso} (UTC). The thread includes **live web excerpts**—treat them as the freshest evidence. For current officeholders, election outcomes, and fast-moving policy, prefer what those excerpts say (including any dates they cite) over undated training knowledge. Never “override” clearly dated reporting with stale guesses. If excerpts do not name who holds office, do not invent a name from memory—say verification is needed.`;
 }
@@ -352,7 +345,7 @@ export async function tavilySearch(
   return formattedBlock;
 }
 
-export async function groqChat(
+async function groqChat(
   system: string,
   user: string,
   options?: {
@@ -518,19 +511,4 @@ export async function groqChatWithFallbackForUseCase(
     }
   }
   throw lastErr ?? new Error("Groq: no models to try");
-}
-
-/** @deprecated Use `groqChatWithFallbackForUseCase("assistant", ...)` for explicit routing. Alias: Assistant stack. */
-export async function groqChatWithFallback(
-  system: string,
-  user: string,
-  options?: { jsonObject?: boolean; temperature?: number; topP?: number; analyticsRecencyHint?: boolean }
-): Promise<{ text: string; model: string; triedModels: string[]; primaryFailed: boolean }> {
-  const r = await groqChatWithFallbackForUseCase("assistant", system, user, options);
-  return {
-    text: r.text,
-    model: r.model,
-    triedModels: r.triedModels,
-    primaryFailed: r.primaryFailed,
-  };
 }

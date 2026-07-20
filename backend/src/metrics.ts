@@ -1,10 +1,11 @@
-export type MetricCategory =
+type MetricCategory =
   | "general"
   | "financial"
   | "health"
   | "education"
   | "labour"
-  | "demographics";
+  | "demographics"
+  | "crime";
 
 export interface MetricDef {
   id: string;
@@ -662,12 +663,103 @@ export const METRICS: MetricDef[] = [
     sourceUrl: "https://data.worldbank.org/indicator/SL.TLF.TOTL.IN",
     description: "Total economically active population.",
   },
+  {
+    id: "homicide_rate",
+    label: "Intentional homicides (per 100,000 people)",
+    unit: "per 100,000",
+    category: "crime",
+    worldBankCode: "VC.IHR.PSRC.P5",
+    sourceName: "World Bank WDI (UNODC International Homicide Statistics)",
+    sourceUrl: "https://data.worldbank.org/indicator/VC.IHR.PSRC.P5",
+    description:
+      "Unlawful death purposefully inflicted on a person by another (excludes armed conflict). Sourced from UN Office on Drugs and Crime (UNODC) via criminal justice records, public health data, and UN crime surveys.",
+  },
+  {
+    id: "homicide_rate_female",
+    label: "Intentional homicides, female (per 100,000 female)",
+    unit: "per 100,000",
+    category: "crime",
+    worldBankCode: "VC.IHR.PSRC.FE.P5",
+    sourceName: "World Bank WDI (UNODC International Homicide Statistics)",
+    sourceUrl: "https://data.worldbank.org/indicator/VC.IHR.PSRC.FE.P5",
+    description: "Female intentional homicide rate per 100,000 female population (UNODC via WDI).",
+  },
+  {
+    id: "homicide_rate_male",
+    label: "Intentional homicides, male (per 100,000 male)",
+    unit: "per 100,000",
+    category: "crime",
+    worldBankCode: "VC.IHR.PSRC.MA.P5",
+    sourceName: "World Bank WDI (UNODC International Homicide Statistics)",
+    sourceUrl: "https://data.worldbank.org/indicator/VC.IHR.PSRC.MA.P5",
+    description: "Male intentional homicide rate per 100,000 male population (UNODC via WDI).",
+  },
+  {
+    id: "gbv_women_pct",
+    label: "Women subjected to physical and/or sexual violence in last 12 months (% of ever-partnered women ages 15-49)",
+    unit: "%",
+    category: "crime",
+    worldBankCode: "SG.VAW.1549.ZS",
+    sourceName: "World Bank WDI (UN/WHO household surveys)",
+    sourceUrl: "https://data.worldbank.org/indicator/SG.VAW.1549.ZS",
+    description:
+      "Share of ever-partnered women ages 15–49 who experienced physical and/or sexual violence by a current or former intimate partner in the past 12 months.",
+  },
+  {
+    id: "idp_conflict_violence",
+    label: "Internally displaced persons, new displacement associated with conflict and violence (number of cases)",
+    unit: "cases",
+    category: "crime",
+    worldBankCode: "VC.IDP.NWCV",
+    sourceName: "World Bank WDI (Internal Displacement Monitoring Centre)",
+    sourceUrl: "https://data.worldbank.org/indicator/VC.IDP.NWCV",
+    description:
+      "New internal displacements triggered by conflict and violence during the reference year (IDMC via WDI).",
+  },
+  {
+    id: "battle_related_deaths",
+    label: "Battle-related deaths (number of people)",
+    unit: "people",
+    category: "crime",
+    worldBankCode: "VC.BTL.DETH",
+    sourceName: "World Bank WDI (Uppsala Conflict Data Program)",
+    sourceUrl: "https://data.worldbank.org/indicator/VC.BTL.DETH",
+    description:
+      "Fatalities from organized armed conflict during the year (UCDP Battle-Related Deaths Dataset via WDI).",
+  },
+  {
+    id: "rule_of_law_wgi",
+    label: "Rule of Law — governance estimate (approx. -2.5 to +2.5)",
+    unit: "index",
+    category: "crime",
+    worldBankCode: "GOV_WGI_RL_EST",
+    sourceName: "World Bank WDI (Worldwide Governance Indicators)",
+    sourceUrl: "https://data.worldbank.org/indicator/GOV_WGI_RL_EST",
+    description:
+      "Perceptions of confidence in and adherence to the rules of society — contract enforcement, property rights, police, courts, and crime (World Bank WGI). Higher is better.",
+  },
+  {
+    id: "political_stability_wgi",
+    label: "Political Stability — governance estimate (approx. -2.5 to +2.5)",
+    unit: "index",
+    category: "crime",
+    worldBankCode: "GOV_WGI_PV_EST",
+    sourceName: "World Bank WDI (Worldwide Governance Indicators)",
+    sourceUrl: "https://data.worldbank.org/indicator/GOV_WGI_PV_EST",
+    description:
+      "Likelihood that the government will be destabilized or overthrown by violence or terrorism (World Bank WGI). Higher is more stable.",
+  },
+  {
+    id: "corruption_control_wgi",
+    label: "Control of Corruption — governance estimate (approx. -2.5 to +2.5)",
+    unit: "index",
+    category: "crime",
+    worldBankCode: "GOV_WGI_CC_EST",
+    sourceName: "World Bank WDI (Worldwide Governance Indicators)",
+    sourceUrl: "https://data.worldbank.org/indicator/GOV_WGI_CC_EST",
+    description:
+      "Extent to which public power is exercised for private gain, including petty and grand corruption (World Bank WGI). Higher is better.",
+  },
 ];
 
 export const METRIC_BY_ID = Object.fromEntries(METRICS.map((m) => [m.id, m]));
-
-export const WB_CODE_TO_METRIC_ID: Record<string, string> = {};
-for (const m of METRICS) {
-  WB_CODE_TO_METRIC_ID[m.worldBankCode] = m.id;
-  if (m.fallbackWorldBankCode) WB_CODE_TO_METRIC_ID[m.fallbackWorldBankCode] = m.id;
-}

@@ -4,7 +4,7 @@ import type { SeriesPoint, SeriesProvenance } from "./series.js";
 import { isMissingMetricValue, isUsableNumber } from "./wdiParse.js";
 
 /** Linear interpolation for interior gaps up to this many years; wider gaps use step (LOCF) fill. */
-export const DEFAULT_MAX_INTERIOR_INTERP_GAP = 8;
+const DEFAULT_MAX_INTERIOR_INTERP_GAP = 8;
 
 const METRICS_LOCF_ONLY_INTERIOR = new Set<string>(["gdp_growth"]);
 

@@ -1,5 +1,35 @@
 # Changelog
 
+## 2026-07-20 (Comprehensive documentation audit + crime metrics sync)
+
+### Product & documentation
+- Completed **full codebase audit**: 131 source files, 68 metrics, 7 app modules, 20+ API routes
+- Created **`docs/PRODUCT_DOCUMENTATION.md`** — comprehensive product guide (overview, benefits, features, business/tech guidelines, stack)
+- Expanded root **`README.md`** with metric coverage table, repository structure, role-based doc map, and latest highlights
+- Updated **`docs/README.md`** with 2026-07-20 sync checkpoint and new document catalog entry
+- Expanded **`docs/PRD.md`** with crime & public safety scope (§14.3) and in-scope feature list
+- Added **Persona 7: Security & Risk Analyst** in `docs/USER_PERSONAS.md`
+- Added **Section 5: Crime & Public Safety Analytics** user stories (C1–C4) in `docs/USER_STORIES.md`
+- Expanded **`docs/VARIABLES.md`** with crime metric variable table and updated relationship chart
+- Expanded **`docs/METRIC_CATALOG.md`** with category summary table and metric relationship Mermaid chart
+- Expanded **`docs/DESIGN_GUIDELINES.md`** with brand tokens, PESTEL/Porter/SWOT palettes, crime dashboard patterns
+- Added **FR-26–FR-28** to `docs/TRACEABILITY_MATRIX.md` for crime dashboard, global crime table, and Sources attribution
+- Added **BG-04** crime interpretation guardrail to `docs/GUARDRAILS.md`
+- Added **Objective 4** and crime adoption metrics to `docs/METRICS_AND_OKRS.md`
+- Updated **`docs/EXECUTIVE_DOCUMENTATION_SUMMARY.md`** with 2026-07-20 release highlights
+
+### Implementation (crime & public safety metrics)
+- Added **9 crime & public safety metrics** sourced from credible institutions via World Bank WDI:
+  - **UNODC**: intentional homicide rates (total, female, male)
+  - **UN/WHO surveys**: intimate-partner violence against women
+  - **IDMC**: new internal displacement from conflict and violence
+  - **UCDP**: battle-related deaths
+  - **World Bank WGI**: rule of law, political stability, control of corruption
+- New **Crime & public safety** dashboard accordion with KPI cards and trend charts
+- Global Analytics: new **Crime & safety** table tab; homicide rate available on choropleth map
+- Sources page: crime category, UNODC/IDMC/UCDP/WGI source chips
+- Updated `METRIC_CATALOG.md` (68 metrics total)
+
 ## 2026-04-29 (Business reliability + source governance sync)
 
 - Upgraded Country Dashboard exchange-rate logic:

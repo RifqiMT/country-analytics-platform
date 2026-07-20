@@ -6,7 +6,7 @@ import {
   splitAssistantWebContextHeadAndBullets,
 } from "./assistantTavilyFallback.js";
 
-export type AssistantWebCitation = { title: string; url: string; snippet: string };
+type AssistantWebCitation = { title: string; url: string; snippet: string };
 
 export type AssistantChatCitations = {
   /** Tooltip text per id (keys "1", "2", … match [D1], [D2] in the model reply). */

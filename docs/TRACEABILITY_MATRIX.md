@@ -42,6 +42,9 @@ It is not meant to replace testing. Instead, it provides a release-ready mapping
 | FR-23 | Business Analytics supports strict mode vs reliability fallback delivery | `frontend/src/pages/BusinessAnalytics.tsx` | `backend/src/correlationGlobal.ts` batched fetch, `/api/analysis/correlation-global` | QA both modes: strict (no fallback), reliability (narrow-window fallback with delivery note) |
 | FR-24 | Business Analytics presentation mode and keyboard toggle | `frontend/src/pages/BusinessAnalytics.tsx` | keydown handler + view toggle | Keyboard `P` toggles mode; typing in input/select/textarea/contenteditable does not toggle |
 | FR-25 | Sources page supports collapsible major sections and metric sub-sections | `frontend/src/pages/Sources.tsx` | accordion state controls (`providersOpen`, `accordionOpen`, category + card disclosure states) | Verify top sections collapsed by default and all chevrons toggle open/close states |
+| FR-26 | Dashboard crime & public safety section with KPI cards and trend charts | `frontend/src/pages/Dashboard.tsx` (crime accordion, chart groups) | `backend/src/metrics.ts` (crime category), `backend/src/index.ts` series routes | Select country with crime data; verify 9 KPI cards and 3 chart groups render with correct units |
+| FR-27 | Global Analytics crime table tab and homicide choropleth | `frontend/src/pages/GlobalAnalytics.tsx` | `backend/src/globalTable.ts` (crime category), `backend/src/globalSnapshot.ts` | Switch to Crime & safety tab; select homicide_rate on map; verify sortable table columns |
+| FR-28 | Crime metrics documented in Sources with institutional source attribution | `frontend/src/pages/Sources.tsx` | `GET /api/metrics`, `GET /api/data-providers` | Verify crime category shows UNODC/IDMC/UCDP/WGI source chips and metric definitions match catalog |
 
 ## 2) Non-functional requirements (NFR)
 

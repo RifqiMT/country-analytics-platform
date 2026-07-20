@@ -12,7 +12,7 @@ import {
   ChartTooltipTitle,
 } from "../charts/ChartTooltipShell";
 
-export type FlagMeta = { emoji: string; flagPng?: string };
+type FlagMeta = { emoji: string; flagPng?: string };
 
 const TOPO_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json";
 

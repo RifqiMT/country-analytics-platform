@@ -1,4 +1,4 @@
-import type { SeriesPoint } from "./worldBank.js";
+import type { SeriesPoint } from "./series.js";
 import type {
   ComprehensiveSection,
   PestelAnalysis,
@@ -27,7 +27,7 @@ function extractYears(s: string): number[] {
   return out;
 }
 
-export function collectDataYearsFromBundle(bundle: Record<string, SeriesPoint[]>): Set<number> {
+function collectDataYearsFromBundle(bundle: Record<string, SeriesPoint[]>): Set<number> {
   const s = new Set<number>();
   for (const k of PESTEL_DIGEST_KEYS) {
     for (const p of bundle[k] ?? []) {
@@ -139,7 +139,7 @@ function populationOrScaleMagnitudesGrounded(s: string, corpus: string): boolean
  * Drop LLM prose that cites years or figures absent from SOURCE A / static profile / web corpus.
  * Qualitative-only lines (no stat heuristics) pass through.
  */
-export function proseIsGrounded(text: string, ctx: PestelGroundingContext, corpus: string): boolean {
+function proseIsGrounded(text: string, ctx: PestelGroundingContext, corpus: string): boolean {
   const t = text.trim();
   if (!t) return false;
   const lexical = lexicalGroundedness(t, corpus);

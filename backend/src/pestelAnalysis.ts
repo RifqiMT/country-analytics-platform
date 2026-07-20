@@ -1,4 +1,4 @@
-import type { SeriesPoint } from "./worldBank.js";
+import type { SeriesPoint } from "./series.js";
 import { inferHeadOfGovernmentFromGovernmentType } from "./countryMetaEnrichment.js";
 import type { CountrySummary } from "./restCountries.js";
 import type { WbCountryProfile } from "./wbCountryProfile.js";
@@ -632,7 +632,7 @@ function polishPestelProse(s: string): string {
     .trim();
 }
 
-export function polishPestelAnalysisForClient(a: PestelAnalysis): PestelAnalysis {
+function polishPestelAnalysisForClient(a: PestelAnalysis): PestelAnalysis {
   return {
     pestelDimensions: a.pestelDimensions.map((d) => ({
       ...d,

@@ -12,7 +12,7 @@ import { fetchWikidataGovernmentMap } from "./wikidataGovernmentMap.js";
 import { resolveEezSqKmMap } from "./eezResolve.js";
 import { fetchMetricSeriesForCountry } from "./worldBank.js";
 
-export type TableCategory = "general" | "financial" | "health" | "education";
+export type TableCategory = "general" | "financial" | "health" | "education" | "crime";
 
 export interface TableColumn {
   id: string;
@@ -24,7 +24,7 @@ export interface TableColumn {
   description?: string;
 }
 
-export interface TableCell {
+interface TableCell {
   value: number | null;
   yoyPct: number | null;
   yoyBps: number | null;
@@ -452,6 +452,18 @@ const EDU_METRICS = [
   "completion_tertiary",
 ] as const;
 
+const CRIME_METRICS = [
+  "homicide_rate",
+  "homicide_rate_female",
+  "homicide_rate_male",
+  "gbv_women_pct",
+  "idp_conflict_violence",
+  "battle_related_deaths",
+  "rule_of_law_wgi",
+  "political_stability_wgi",
+  "corruption_control_wgi",
+] as const;
+
 function columnsForCategory(cat: TableCategory): TableColumn[] {
   if (cat === "general") {
     return [
@@ -506,6 +518,19 @@ function columnsForCategory(cat: TableCategory): TableColumn[] {
         label: getMetricShortLabel(id),
         format: numericMetric ? "number" : "percent",
         yoyBps,
+        description: def?.description,
+      };
+    });
+  }
+  if (cat === "crime") {
+    return CRIME_METRICS.map((id) => {
+      const def = METRIC_BY_ID[id];
+      const pctMetric = ["gbv_women_pct"].includes(id);
+      return {
+        id,
+        label: getMetricShortLabel(id),
+        format: pctMetric ? "percent" : "number",
+        yoyBps: pctMetric,
         description: def?.description,
       };
     });
@@ -642,12 +667,4 @@ export async function buildGlobalTable(
     rows,
     wdiLookbackYears: ladderYears.length,
   };
-}
-
-export function listRegionsFromCountries(countries: CountrySummary[]): string[] {
-  const s = new Set<string>();
-  for (const c of countries) {
-    if (c.region) s.add(c.region);
-  }
-  return ["All", ...[...s].sort()];
 }

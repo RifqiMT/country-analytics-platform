@@ -38,7 +38,73 @@ In this product, metrics power:
 - Formula (when derived): only shown for metrics explicitly derived in the platform
 - Source summary (short): short description of origin and fill behavior
 
-## Full metric list (59 metrics)
+## Category summary (68 metrics)
+
+| Category | Metric count | Primary use in app | Key source institutions |
+| --- | --- | --- | --- |
+| financial | 13 | Dashboard accordion, global financial table, Business Analytics | World Bank WDI, IMF WEO |
+| demographics | 4 | Dashboard accordion, global general table | World Bank WDI, IMF WEO |
+| health | 14 | Dashboard accordion, global health table | World Bank WDI (WHO/UNICEF) |
+| education | 25 | Dashboard accordion, global education table | World Bank WDI, UNESCO UIS |
+| labour | 3 | Dashboard accordion, global general table | World Bank WDI / ILO |
+| crime | 9 | Dashboard safety accordion, global crime table, choropleth map | UNODC, IDMC, UCDP, World Bank WGI |
+| general | — | Global table grouping (cross-domain composite views) | Multiple |
+
+## Metric relationship chart
+
+This chart shows how metric categories connect to application modules and analysis flows.
+
+```mermaid
+flowchart TB
+  subgraph Catalog["Metric Catalog (68 metrics)"]
+    FIN[Financial · 13]
+    DEMO[Demographics · 4]
+    HLTH[Health · 14]
+    EDU[Education · 25]
+    LAB[Labour · 3]
+    CRM[Crime & Safety · 9]
+  end
+
+  subgraph Pipeline["Data Pipeline"]
+    WDI[World Bank WDI]
+    IMF[IMF WEO gap-fill]
+    UIS[UNESCO UIS gap-fill]
+    DER[Derived calculations]
+  end
+
+  subgraph Modules["Application Modules"]
+    DASH[Country Dashboard]
+    GLOB[Global Analytics]
+    ASST[Analytics Assistant]
+    PEST[PESTEL Analysis]
+    PORT[Porter Five Forces]
+    BIZ[Business Analytics]
+    SRC[Sources Explorer]
+  end
+
+  WDI --> FIN & DEMO & HLTH & EDU & LAB & CRM
+  IMF --> FIN & DEMO
+  UIS --> EDU
+  FIN & DEMO --> DER
+
+  FIN & DEMO & HLTH & EDU & LAB & CRM --> DASH
+  FIN & HLTH & EDU & CRM --> GLOB
+  FIN & DEMO & HLTH & EDU & LAB & CRM --> ASST
+  FIN & DEMO & HLTH & LAB & CRM --> PEST
+  FIN & LAB --> PORT
+  FIN & DEMO & HLTH & EDU & LAB & CRM --> BIZ
+  FIN & DEMO & HLTH & EDU & LAB & CRM --> SRC
+```
+
+### Derived metric dependencies
+
+| Derived metric | Depends on | Formula |
+| --- | --- | --- |
+| `gdp_per_capita` | `gdp`, `population` | GDP / Population |
+| `gdp_per_capita_ppp` | `gdp_ppp`, `population` | GDP (PPP) / Population |
+| `gov_debt_usd` | `gov_debt_pct_gdp`, `gdp` | (Debt % GDP / 100) × GDP (nominal US$) |
+
+## Full metric list (68 metrics)
 
 | Metric ID | Friendly Name | Unit | Category | World Bank Code | Fallback WB Code | Formula (when derived) | Source summary (short) |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -101,6 +167,15 @@ In this product, metrics power:
 | `teachers_tertiary_count` | Teachers in tertiary education programmes, total | people | education | SE.TER.TCHR | — | — | Total teachers in tertiary education. |
 | `pop_15_64_pct` | Population ages 15-64 (% of total) | % | demographics | SP.POP.1564.TO.ZS | — | — | Working-age population share. |
 | `labor_force_total` | Labor force, total | people | labour | SL.TLF.TOTL.IN | — | — | Total economically active population. |
+| `homicide_rate` | Intentional homicides (per 100,000 people) | per 100,000 | crime | VC.IHR.PSRC.P5 | — | — | UNODC intentional homicide rate via WDI (SDG 16.1.1). |
+| `homicide_rate_female` | Intentional homicides, female (per 100,000 female) | per 100,000 | crime | VC.IHR.PSRC.FE.P5 | — | — | Female intentional homicide rate (UNODC via WDI). |
+| `homicide_rate_male` | Intentional homicides, male (per 100,000 male) | per 100,000 | crime | VC.IHR.PSRC.MA.P5 | — | — | Male intentional homicide rate (UNODC via WDI). |
+| `gbv_women_pct` | Women subjected to physical and/or sexual violence in last 12 months (% of ever-partnered women ages 15-49) | % | crime | SG.VAW.1549.ZS | — | — | Intimate-partner violence prevalence from UN/WHO surveys via WDI. |
+| `idp_conflict_violence` | Internally displaced persons, new displacement associated with conflict and violence (number of cases) | cases | crime | VC.IDP.NWCV | — | — | New conflict/violence IDP cases (IDMC via WDI). |
+| `battle_related_deaths` | Battle-related deaths (number of people) | people | crime | VC.BTL.DETH | — | — | Organized armed-conflict fatalities (UCDP via WDI). |
+| `rule_of_law_wgi` | Rule of Law — governance estimate (approx. -2.5 to +2.5) | index | crime | GOV_WGI_RL_EST | — | — | Perceptions of rule adherence and crime enforcement (World Bank WGI). |
+| `political_stability_wgi` | Political Stability — governance estimate (approx. -2.5 to +2.5) | index | crime | GOV_WGI_PV_EST | — | — | Likelihood of violence/terror destabilizing government (WGI). |
+| `corruption_control_wgi` | Control of Corruption — governance estimate (approx. -2.5 to +2.5) | index | crime | GOV_WGI_CC_EST | — | — | Extent public power is exercised for private gain (WGI). |
 
 ## Maintenance rule
 

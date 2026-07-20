@@ -19,7 +19,6 @@ function pad2(n: number): string {
   return String(n).padStart(2, "0");
 }
 
-/** 24h wall time for a fixed offset from UTC (no DST). */
 function formatFixedOffsetTime(date: Date, offsetMinutes: number): string {
   const utcMs = date.getTime();
   const totalSec = Math.floor(utcMs / 1000) + offsetMinutes * 60;
@@ -67,26 +66,25 @@ export default function TimezoneClockCard({ timezone }: Props) {
         : formatIanaTime24h(now, label);
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+    <div className="relative overflow-hidden rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-sm transition hover:border-slate-300 hover:shadow-md sm:p-4">
+      <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-indigo-400 to-indigo-200" aria-hidden />
+      <div className="flex flex-wrap items-end justify-between gap-3 pl-2">
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Timezone</p>
-          <p className="mt-2 text-lg font-semibold text-slate-900">{label || "—"}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Timezone</p>
+          <p className="mt-2 truncate text-base font-semibold text-slate-900">{label || "—"}</p>
         </div>
         {clock ? (
           <div className="shrink-0 text-right">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Local time</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Local time</p>
             <p
-              className="mt-1 font-mono text-xl font-semibold tabular-nums tracking-tight text-slate-900 sm:text-2xl"
+              className="mt-1 font-mono text-xl font-bold tabular-nums tracking-tight text-slate-900 sm:text-2xl"
               suppressHydrationWarning
             >
               {clock}
             </p>
           </div>
         ) : label ? (
-          <p className="shrink-0 max-w-[10rem] text-right text-[10px] text-slate-400">
-            Clock unavailable for this label.
-          </p>
+          <p className="shrink-0 max-w-[10rem] text-right text-[10px] text-slate-400">Clock unavailable</p>
         ) : null}
       </div>
     </div>

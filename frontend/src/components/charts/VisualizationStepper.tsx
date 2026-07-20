@@ -6,7 +6,7 @@ import {
   VizGalleryStepIndexContext,
 } from "./VizGalleryContext";
 
-export type VizStep = {
+type VizStep = {
   id: string;
   title: string;
   /** One line for prev/next hints (what the neighbour shows). */
@@ -90,7 +90,7 @@ function StepperNavFooter(props: {
   );
 }
 
-export default function VisualizationStepper({ steps, className = "", groupLabel }: Props) {
+function VisualizationStepper({ steps, className = "", groupLabel }: Props) {
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [slideIndex, setSlideIndex] = useState(0);
   const [nestedFsOpen, setNestedFsOpen] = useState(false);

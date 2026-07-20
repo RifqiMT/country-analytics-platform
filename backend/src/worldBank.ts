@@ -19,10 +19,8 @@ import {
   mergeWldFallbackDense,
 } from "./seriesCompletion.js";
 
-export type { SeriesPoint, SeriesProvenance };
-
 /** Fetched alongside requested metrics so cross-metric gap-fills can run (dashboard, compare, WLD). */
-export const ENRICHMENT_ANCHOR_METRIC_IDS: readonly string[] = [
+const ENRICHMENT_ANCHOR_METRIC_IDS: readonly string[] = [
   "gdp",
   "gdp_ppp",
   "population",
@@ -78,7 +76,7 @@ function emptyDenseSeries(startYear: number, endYear: number): SeriesPoint[] {
 }
 
 /** One entry per year in [startYear, endYear]; missing observations are explicit null */
-export function densifySeries(points: SeriesPoint[], startYear: number, endYear: number): SeriesPoint[] {
+function densifySeries(points: SeriesPoint[], startYear: number, endYear: number): SeriesPoint[] {
   const byYear = new Map<number, SeriesPoint>();
   for (const p of points) {
     const cur = byYear.get(p.year);
@@ -155,7 +153,7 @@ export async function fetchIndicatorSeries(
 }
 
 /** Merge primary + fallback series: use fallback value when primary is null/NaN */
-export function mergeSeries(
+function mergeSeries(
   primary: SeriesPoint[],
   fallback: SeriesPoint[],
   fallbackProvenance: SeriesProvenance

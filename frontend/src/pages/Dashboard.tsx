@@ -5,6 +5,10 @@ import AccordionSection from "../components/dashboard/AccordionSection";
 import DashboardComparisonTable, {
   type ComparisonRow,
 } from "../components/dashboard/DashboardComparisonTable";
+import DashboardHero, { type HeroKpi } from "../components/dashboard/DashboardHero";
+import DashboardInfoCard from "../components/dashboard/DashboardInfoCard";
+import DashboardLoadingState from "../components/dashboard/DashboardLoadingState";
+import DashboardSectionNav, { type DashboardNavItem } from "../components/dashboard/DashboardSectionNav";
 import MetricCard from "../components/dashboard/MetricCard";
 import TimezoneClockCard from "../components/dashboard/TimezoneClockCard";
 import YearRangePresetDropdown, {
@@ -12,7 +16,7 @@ import YearRangePresetDropdown, {
 } from "../components/dashboard/YearRangePresetDropdown";
 import ToggleLineChart, { type SeriesSpec } from "../components/dashboard/ToggleLineChart";
 import { VisualizationStepperFromChildren } from "../components/charts/VisualizationStepper";
-import { getJson, postJson, type CountrySummary, type MetricDef, type SeriesPoint } from "../api";
+import { getJson, postJson, type CountrySummary, type FxSeriesPayload, type MetricDef, type SeriesPoint } from "../api";
 import { downloadCsv } from "../lib/csv";
 import { metricDisplayLabelFromId } from "../lib/metricDisplay";
 import { formatCompactNumber, formatYoY } from "../lib/formatValue";
@@ -26,8 +30,18 @@ import { labourChartRows, mergeSeriesForLineChart } from "../lib/chartSeries";
 import { chunkMetricIds, COUNTRY_SERIES_CHUNK_SIZE } from "../lib/metricChunks";
 import { readStoredDashboardCountry, writeStoredDashboardCountry } from "../dashboardCountryStorage";
 
-const LINE_CHARTS_NOTE =
-  "After WB/IMF/UIS merges and cross-metric fills, the API densifies each year in your range: short tails use the last published value; leading/trailing gaps use the nearest real observation; interior gaps up to eight years are linearly interpolated (GDP growth uses step fill instead). Remaining nulls for a country are filled from the WLD (world) aggregate for the same year when available. PPP GDP uses the latest PPP/nominal ratio when needed; gov. debt (US$) uses WDI or nominal GDP × (debt % of GDP).";
+const DASHBOARD_SECTION_IDS = {
+  general: "section-general",
+  financial: "section-financial",
+  health: "section-health",
+  education: "section-education",
+  crime: "section-crime",
+  labour: "section-labour",
+  comparison: "section-comparison",
+} as const;
+
+const LINE_CHARTS_NOTE_SHORT =
+  "Series are densified across your year range; sparse tails use last published values, with WLD fallback where national data is missing.";
 
 const DASHBOARD_FIN_VIZ_META = [
   {
@@ -75,6 +89,21 @@ const DASHBOARD_EDU_VIZ_META = [
   {
     title: "Enrollment & gross ratios",
     summary: "Enrollment headcounts and gross enrollment–style percentage series.",
+  },
+] as const;
+
+const DASHBOARD_CRIME_VIZ_META = [
+  {
+    title: "Intentional homicide rates (UNODC)",
+    summary: "Total, female, and male homicide rates per 100,000 population.",
+  },
+  {
+    title: "Gender-based violence & conflict harm",
+    summary: "Intimate-partner violence, conflict displacement, and battle-related deaths.",
+  },
+  {
+    title: "Governance & rule of law (WGI)",
+    summary: "Rule of law, political stability, and corruption control estimates.",
   },
 ] as const;
 
@@ -160,8 +189,26 @@ const DASHBOARD_EDU_METRIC_IDS: readonly string[] = [
   "teachers_tertiary_count",
 ];
 
+/** Crime & public safety (UNODC, IDMC, UCDP, WGI via WDI). */
+const DASHBOARD_CRIME_METRIC_IDS: readonly string[] = [
+  "homicide_rate",
+  "homicide_rate_female",
+  "homicide_rate_male",
+  "gbv_women_pct",
+  "idp_conflict_violence",
+  "battle_related_deaths",
+  "rule_of_law_wgi",
+  "political_stability_wgi",
+  "corruption_control_wgi",
+];
+
 const DASHBOARD_ALL_METRIC_IDS: readonly string[] = Array.from(
-  new Set([...DASHBOARD_CORE_METRIC_IDS, ...DASHBOARD_HEALTH_METRIC_IDS, ...DASHBOARD_EDU_METRIC_IDS])
+  new Set([
+    ...DASHBOARD_CORE_METRIC_IDS,
+    ...DASHBOARD_HEALTH_METRIC_IDS,
+    ...DASHBOARD_EDU_METRIC_IDS,
+    ...DASHBOARD_CRIME_METRIC_IDS,
+  ])
 );
 
 function buildSeriesPath(country: string, start: number, end: number, metricIds: readonly string[]): string {
@@ -251,9 +298,12 @@ export default function Dashboard() {
   const [start, setStart] = useState(MIN_DATA_YEAR);
   const [end, setEnd] = useState(maxYear);
   const [meta, setMeta] = useState<CountrySummary | null>(null);
+  const [fxSeries, setFxSeries] = useState<FxSeriesPayload | null>(null);
   const [bundle, setBundle] = useState<Record<string, SeriesPoint[]>>({});
   const [comparison, setComparison] = useState<ComparisonRow[]>([]);
   const [compYear, setCompYear] = useState(maxYear);
+  const [compDataYear, setCompDataYear] = useState<number | undefined>(undefined);
+  const [compMembersCount, setCompMembersCount] = useState<number | undefined>(undefined);
   const [compName, setCompName] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingExtras, setLoadingExtras] = useState(false);
@@ -278,6 +328,104 @@ export default function Dashboard() {
 
   const wbProfile = meta?.worldBankProfile ?? null;
 
+  const heroKpis = useMemo((): HeroKpi[] => {
+    const pop = latest(bundle.population ?? []);
+    const gdpPc = latest(bundle.gdp_per_capita ?? []);
+    const life = latest(bundle.life_expectancy ?? []);
+    const infl = latest(bundle.inflation ?? []);
+    const yoyPop = yoyPct(bundle.population ?? []);
+    const yoyGdp = yoyPct(bundle.gdp_per_capita ?? []);
+    const yoyLife = yoyPct(bundle.life_expectancy ?? []);
+    const yoyInfl = yoyPct(bundle.inflation ?? []);
+    return [
+      {
+        id: "population",
+        label: lbl("population"),
+        value: pop ? formatCompactNumber(pop.value, { maxFrac: 2 }) : "—",
+        sub: yoyPop != null ? formatYoY(yoyPop, null, false).text : undefined,
+        subTone: yoyPop != null ? formatYoY(yoyPop, null, false).tone : undefined,
+      },
+      {
+        id: "gdp_pc",
+        label: lbl("gdp_per_capita"),
+        value: gdpPc ? formatCompactNumber(gdpPc.value, { maxFrac: 2 }) : "—",
+        sub: yoyGdp != null ? formatYoY(yoyGdp, null, false).text : undefined,
+        subTone: yoyGdp != null ? formatYoY(yoyGdp, null, false).tone : undefined,
+      },
+      {
+        id: "life",
+        label: lbl("life_expectancy"),
+        value: life ? `${life.value.toFixed(1)} yrs` : "—",
+        sub: yoyLife != null ? formatYoY(yoyLife, null, false).text : undefined,
+        subTone: yoyLife != null ? formatYoY(yoyLife, null, false).tone : undefined,
+      },
+      {
+        id: "inflation",
+        label: lbl("inflation"),
+        value: infl ? `${infl.value.toFixed(1)}%` : "—",
+        sub: yoyInfl != null ? formatYoY(yoyInfl, yoyBpsRate(bundle.inflation ?? []), true).text : undefined,
+        subTone: yoyInfl != null ? formatYoY(yoyInfl, yoyBpsRate(bundle.inflation ?? []), true).tone : undefined,
+      },
+    ];
+  }, [bundle, lbl]);
+
+  const sectionNavItems = useMemo((): DashboardNavItem[] => {
+    const base: DashboardNavItem[] = [
+      { id: DASHBOARD_SECTION_IDS.general, label: "Overview" },
+      { id: DASHBOARD_SECTION_IDS.financial, label: "Financial" },
+      { id: DASHBOARD_SECTION_IDS.health, label: "Health" },
+      { id: DASHBOARD_SECTION_IDS.education, label: "Education" },
+      { id: DASHBOARD_SECTION_IDS.crime, label: "Safety" },
+      { id: DASHBOARD_SECTION_IDS.labour, label: "Labour" },
+    ];
+    if (comparison.length > 0 || loadingExtras) {
+      base.push({ id: DASHBOARD_SECTION_IDS.comparison, label: "Compare" });
+    }
+    return base;
+  }, [comparison.length, loadingExtras]);
+
+  const fxCurrencyCode =
+    fxSeries?.currency ?? meta?.usdFxCurrency ?? meta?.eurFxCurrency ?? meta?.currencies?.[0] ?? "LCU";
+
+  const fxChartData = useMemo(() => {
+    if (!fxSeries) return [];
+    return mergeSeriesForLineChart(
+      { usd_to_local: fxSeries.usdToLocal, eur_to_local: fxSeries.eurToLocal },
+      ["usd_to_local", "eur_to_local"],
+      start,
+      end
+    );
+  }, [fxSeries, start, end]);
+
+  const fxChartSeries: SeriesSpec[] = useMemo(
+    () => [
+      {
+        key: "usd_to_local",
+        label: `1 USD → ${fxCurrencyCode}`,
+        color: "#2563eb",
+        yAxisId: "left" as const,
+      },
+      {
+        key: "eur_to_local",
+        label: `1 EUR → ${fxCurrencyCode}`,
+        color: "#059669",
+        yAxisId: "left" as const,
+      },
+    ],
+    [fxCurrencyCode]
+  );
+
+  const fxChartHasData = useMemo(
+    () =>
+      fxSeries != null &&
+      (fxSeries.usdToLocal.some((p) => p.value != null) || fxSeries.eurToLocal.some((p) => p.value != null)),
+    [fxSeries]
+  );
+
+  const fxChartFootnote = fxSeries
+    ? `USD: ${fxSeries.usdSource}. EUR: ${fxSeries.eurSource}. Annual year-end ECB reference rates where available; World Bank PA.NUS.FCRF for longer USD history.`
+    : undefined;
+
   const load = useCallback(async () => {
     if (!country) return;
     setLoading(true);
@@ -285,15 +433,18 @@ export default function Dashboard() {
     setMainLoadProgress(8);
     setExtrasLoadProgress(0);
     setErr(null);
+    setFxSeries(null);
     const mainProgressTimer = window.setInterval(() => {
       setMainLoadProgress((prev) => (prev < 92 ? prev + 6 : 92));
     }, 250);
     try {
-      const [m, allSeriesBundle] = await Promise.all([
+      const [m, allSeriesBundle, fx] = await Promise.all([
         getJson<CountrySummary>(`/api/country/${country}`),
         fetchCountrySeriesBatched(country, start, end, DASHBOARD_ALL_METRIC_IDS, setMainLoadProgress),
+        getJson<FxSeriesPayload>(`/api/country/${country}/fx-series?start=${start}&end=${end}`).catch(() => null),
       ]);
       setMeta(m);
+      setFxSeries(fx);
       setBundle(allSeriesBundle);
       setMainLoadProgress(100);
     } catch (e) {
@@ -312,14 +463,20 @@ export default function Dashboard() {
     }, 250);
     try {
       const cmp = await withTimeout(
-        getJson<{ rows: ComparisonRow[]; year: number; countryName: string }>(
-          `/api/dashboard/comparison?cca3=${country}&year=${end}`
-        ),
-        12_000,
+        getJson<{
+          rows: ComparisonRow[];
+          year: number;
+          dataYear?: number;
+          membersCount?: number;
+          countryName: string;
+        }>(`/api/dashboard/comparison?cca3=${country}&year=${end}`),
+        35_000,
         "Dashboard comparison"
       );
       setComparison(cmp.rows);
       setCompYear(cmp.year);
+      setCompDataYear(cmp.dataYear);
+      setCompMembersCount(cmp.membersCount);
       setCompName(cmp.countryName);
       setExtrasLoadProgress(100);
     } catch (e) {
@@ -746,6 +903,69 @@ export default function Dashboard() {
     [lbl]
   );
 
+  const crimeHomicideChartData = useMemo(
+    () =>
+      mergeSeriesForLineChart(
+        bundle,
+        ["homicide_rate", "homicide_rate_female", "homicide_rate_male"],
+        start,
+        end
+      ),
+    [bundle, start, end]
+  );
+
+  const crimeHomicideSeries: SeriesSpec[] = useMemo(
+    () =>
+      [
+        { key: "homicide_rate", color: "#b91c1c", yAxisId: "left" as const },
+        { key: "homicide_rate_female", color: "#db2777", yAxisId: "left" as const },
+        { key: "homicide_rate_male", color: "#1d4ed8", yAxisId: "left" as const },
+      ].map((s) => ({ ...s, label: lbl(s.key) })),
+    [lbl]
+  );
+
+  const crimeConflictChartData = useMemo(
+    () =>
+      mergeSeriesForLineChart(
+        bundle,
+        ["gbv_women_pct", "idp_conflict_violence", "battle_related_deaths"],
+        start,
+        end
+      ),
+    [bundle, start, end]
+  );
+
+  const crimeConflictSeries: SeriesSpec[] = useMemo(
+    () =>
+      [
+        { key: "gbv_women_pct", color: "#be185d", yAxisId: "left" as const, tooltipFormat: "percent" as const },
+        { key: "idp_conflict_violence", color: "#ea580c", yAxisId: "right" as const },
+        { key: "battle_related_deaths", color: "#7c2d12", yAxisId: "right" as const },
+      ].map((s) => ({ ...s, label: lbl(s.key) })),
+    [lbl]
+  );
+
+  const crimeGovernanceChartData = useMemo(
+    () =>
+      mergeSeriesForLineChart(
+        bundle,
+        ["rule_of_law_wgi", "political_stability_wgi", "corruption_control_wgi"],
+        start,
+        end
+      ),
+    [bundle, start, end]
+  );
+
+  const crimeGovernanceSeries: SeriesSpec[] = useMemo(
+    () =>
+      [
+        { key: "rule_of_law_wgi", color: "#0f766e", yAxisId: "left" as const },
+        { key: "political_stability_wgi", color: "#2563eb", yAxisId: "left" as const },
+        { key: "corruption_control_wgi", color: "#7c3aed", yAxisId: "left" as const },
+      ].map((s) => ({ ...s, label: lbl(s.key) })),
+    [lbl]
+  );
+
   const ageChartData = useMemo(
     () => mergeSeriesForLineChart(bundle, ["pop_age_0_14", "pop_15_64_pct", "pop_age_65_plus"], start, end),
     [bundle, start, end]
@@ -761,18 +981,31 @@ export default function Dashboard() {
     [lbl]
   );
 
-  const badge = (text: string) => (
-    <span className="inline-flex rounded-full bg-rose-50 px-2.5 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-100">
-      {text}
-    </span>
-  );
+  const pill = (text: string, tone: "rose" | "slate" | "teal" = "rose") => {
+    const tones = {
+      rose: "bg-rose-50 text-rose-800 ring-rose-100",
+      slate: "bg-slate-100 text-slate-700 ring-slate-200",
+      teal: "bg-teal-50 text-teal-800 ring-teal-100",
+    };
+    return (
+      <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ${tones[tone]}`}>
+        {text}
+      </span>
+    );
+  };
+
+  const hasUsdFx =
+    typeof meta?.usdFxRate === "number" && Number.isFinite(meta.usdFxRate) && meta.usdFxRate > 0;
+  const hasEurFx =
+    typeof meta?.eurFxRate === "number" && Number.isFinite(meta.eurFxRate) && meta.eurFxRate > 0;
 
   return (
-    <div className="space-y-4">
+    <div className="cap-dashboard-page mx-auto max-w-7xl space-y-4 pb-8 sm:space-y-5">
       <CollapsibleToolbar
         title="Dashboard controls"
         summary={`${country} · ${start}–${end}`}
         forceOpen={loading || loadingExtras}
+        className="border-slate-200/80 shadow-sm"
       >
         <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto sm:gap-2 md:gap-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <div className="min-w-[6.5rem] flex-1 shrink basis-0 sm:min-w-[8rem] md:max-w-md lg:max-w-lg">
@@ -781,7 +1014,7 @@ export default function Dashboard() {
               onChange={setCountry}
               variant="light"
               showLabel={false}
-              className="gap-0 [&_input]:h-9 [&_input]:truncate [&_input]:py-1.5 [&_input]:pl-2.5 [&_input]:pr-8 [&_input]:text-xs sm:[&_input]:pl-3 sm:[&_input]:pr-10 sm:[&_input]:text-sm"
+              className="gap-0 [&_input]:h-9 [&_input]:truncate [&_input]:rounded-lg [&_input]:border-slate-200 [&_input]:py-1.5 [&_input]:pl-2.5 [&_input]:pr-8 [&_input]:text-xs sm:[&_input]:pl-3 sm:[&_input]:pr-10 sm:[&_input]:text-sm"
             />
           </div>
 
@@ -830,7 +1063,7 @@ export default function Dashboard() {
             <button
               type="button"
               onClick={refreshAll}
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-600 text-white shadow-sm transition hover:bg-red-700 active:scale-[0.98] sm:w-auto sm:gap-1.5 sm:px-3"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-900 text-white shadow-sm transition hover:bg-slate-800 active:scale-[0.98] sm:w-auto sm:gap-1.5 sm:px-3"
               title="Refresh all data"
             >
               <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
@@ -864,230 +1097,190 @@ export default function Dashboard() {
         </div>
       </CollapsibleToolbar>
 
-      {err && <p className="text-sm text-red-600">{err}</p>}
+      {err ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">
+          {err}
+        </div>
+      ) : null}
+
       {(loading || loadingExtras) && (
-        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-sm font-medium text-slate-700">
-            {loading ? "Loading charts & country data…" : "Loading comparison data…"}
-          </p>
-          <div className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
-            <div
-              className="h-full rounded-full bg-red-600 transition-all duration-300"
-              style={{ width: `${loading ? mainLoadProgress : extrasLoadProgress}%` }}
-              role="progressbar"
-              aria-valuenow={loading ? mainLoadProgress : extrasLoadProgress}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-label={loading ? "Country dashboard main loading progress" : "Country dashboard extras loading progress"}
-            />
-          </div>
-          <p className="mt-2 text-xs text-slate-500">
-            {loading ? mainLoadProgress : extrasLoadProgress}% loaded
-          </p>
-        </section>
+        <DashboardLoadingState
+          label={loading ? "Loading country profile & metrics…" : "Loading cross-country comparison…"}
+          progress={loading ? mainLoadProgress : extrasLoadProgress}
+        />
       )}
 
-      {meta && (
-        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-          <div className="grid grid-cols-1 gap-3 border-b border-slate-100 pb-3">
-            <div className="grid min-w-0 grid-cols-1 gap-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Country analytics overview
-              </p>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-900">
-                  {start}–{end}
-                </span>
-              </div>
-              <h2 className="font-display text-xl font-bold text-slate-900 sm:text-2xl">
-                {meta.name}{" "}
-                <span className="text-amber-600">({meta.cca3})</span>
-              </h2>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Data sources</p>
-              <div className="flex flex-wrap gap-1.5">
-                {["World Bank", "UN", "UNESCO", "WHO", "IMF"].map((t) => (
-                  <span
-                    key={t}
-                    className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs font-medium text-slate-700"
-                  >
-                    {t}
-                  </span>
-                ))}
-              </div>
-            </div>
-            {meta.flags?.png && (
-              <img
-                src={meta.flags.png}
-                alt=""
-                className="h-12 w-fit shrink-0 rounded-md border border-slate-200 shadow-sm sm:h-14"
-              />
-            )}
-          </div>
+      {meta ? (
+        <>
+          <DashboardHero
+            meta={meta}
+            yearStart={start}
+            yearEnd={end}
+            kpis={heroKpis}
+            incomeLevel={wbProfile?.incomeLevel}
+          />
+          <DashboardSectionNav items={sectionNavItems} />
 
-          <div className="mt-4 space-y-3">
+          <div className="space-y-3">
             <AccordionSection
-              title="Summary"
-              onDownload={() =>
-                exportKeys("summary", ["population", "gdp_per_capita", "life_expectancy", "gov_debt_pct_gdp"])
-              }
+              id={DASHBOARD_SECTION_IDS.general}
+              title="Country overview"
+              subtitle="Location, government, economy & geography"
+              accent="teal"
+              defaultOpen
+              onDownload={() => exportKeys("general", ["population", "gdp", "life_expectancy"])}
             >
-              <AccordionSection
-                title="General"
-                onDownload={() => exportKeys("general", ["population", "gdp", "life_expectancy"])}
-              >
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                      Location &amp; classification
-                    </p>
-                    <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                      <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3">
-                        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Region</p>
-                        <div className="mt-2">{badge(meta.region || "—")}</div>
+              <div className="space-y-6">
+                <div>
+                  <p className="dash-section-label">Location & classification</p>
+                  <div className="dash-subsection-grid lg:grid-cols-2">
+                    <DashboardInfoCard label="Region" accent="rose">
+                      {pill(meta.region || "—")}
+                    </DashboardInfoCard>
+                    <DashboardInfoCard
+                      label="Income level"
+                      accent="teal"
+                      hint="World Bank operational group from the Country API."
+                    >
+                      <div className="space-y-1">
+                        {pill(wbProfile?.incomeLevel || "—", "teal")}
+                        {wbProfile?.incomeLevelId ? (
+                          <p className="text-xs font-mono text-slate-500">WB code: {wbProfile.incomeLevelId}</p>
+                        ) : null}
                       </div>
-                      <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3">
-                        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
-                          Income level
-                        </p>
-                        <div className="mt-2 space-y-1">
-                          {badge(wbProfile?.incomeLevel || "—")}
-                          {wbProfile?.incomeLevelId ? (
-                            <p className="text-xs font-mono text-slate-500">WB code: {wbProfile.incomeLevelId}</p>
-                          ) : null}
-                          <p className="text-[11px] leading-snug text-slate-400">
-                            Operational group from the{" "}
-                            <a
-                              href="https://datahelpdesk.worldbank.org/knowledgebase/articles/906519-world-bank-country-and-lending-groups"
-                              target="_blank"
-                              rel="noreferrer"
-                              className="font-medium text-red-800 underline decoration-red-200 underline-offset-2 hover:text-red-950"
-                            >
-                              World Bank Country API
-                            </a>
-                            . GNI per capita (Atlas, US$) in Financial metrics is the WDI series used with annual
-                            thresholds for these classifications.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Government</p>
-                    <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                      <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3">
-                        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
-                          Government type
-                        </p>
-                        <div className="mt-2">{badge(meta.government || "—")}</div>
-                      </div>
-                      <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3">
-                        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
-                          Head of government
-                        </p>
-                        <p className="mt-2 text-lg font-semibold text-slate-900">
-                          {meta.headOfGovernmentTitle ?? headOfGovernment(meta.government)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Administrative</p>
-                    <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                      <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3">
-                        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
-                          Capital city
-                        </p>
-                        <p className="mt-2 text-lg font-semibold text-slate-900">
-                          {meta.capital?.[0] ?? wbProfile?.capitalCity ?? "—"}
-                        </p>
-                      </div>
-                      <TimezoneClockCard timezone={meta.ianaTimezone ?? meta.timezones?.[0]} />
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Economy</p>
-                    <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50/80 p-3">
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <div className="rounded-lg border border-slate-200 bg-white/70 p-3">
-                          <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Currency</p>
-                          <p className="mt-2 text-lg font-semibold text-slate-900">
-                            {meta.currencyDisplay?.trim() ||
-                              (meta.currencies && meta.currencies.length > 0 ? meta.currencies.join(", ") : "—")}
-                          </p>
-                        </div>
-                        <div className="rounded-lg border border-slate-200 bg-white/70 p-3">
-                          <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Exchange rate</p>
-                          {typeof meta.usdFxRate === "number" && Number.isFinite(meta.usdFxRate) && meta.usdFxRate > 0 ? (
-                            <>
-                              <p className="mt-2 text-sm font-semibold text-slate-900">
-                                {`1 USD = ${meta.usdFxRate.toLocaleString(undefined, {
-                                  minimumFractionDigits: 2,
-                                  maximumFractionDigits: 2,
-                                })} ${meta.usdFxCurrency ?? meta.currencies?.[0] ?? ""}`}
-                              </p>
-                              {meta.usdFxRateAsOf ? (
-                                <p className="mt-1 text-xs text-slate-500">
-                                  {meta.usdFxRateAsOf}
-                                  {meta.usdFxSource ? ` · ${meta.usdFxSource}` : ""}
-                                </p>
-                              ) : null}
-                            </>
-                          ) : (
-                            <p className="mt-2 text-sm text-slate-500">—</p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Geography</p>
-                    <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                      <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3">
-                        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Land area</p>
-                        <p className="mt-2 text-lg font-semibold text-slate-900">
-                          {formatCompactNumber(meta.landAreaKm2 ?? meta.area, { suffix: " km²", maxFrac: 2 })}
-                        </p>
-                      </div>
-                      <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3">
-                        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Total area</p>
-                        <p className="mt-2 text-lg font-semibold text-slate-900">
-                          {formatCompactNumber(meta.totalAreaKm2 ?? meta.area, { suffix: " km²", maxFrac: 2 })}
-                        </p>
-                      </div>
-                      <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3">
-                        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">EEZ</p>
-                        {meta.landlocked ? (
-                          <>
-                            <p className="mt-2 text-lg font-semibold text-slate-600">—</p>
-                            <p className="mt-1 text-xs text-slate-400">Landlocked — no exclusive economic zone.</p>
-                          </>
-                        ) : meta.eezSqKm != null && Number.isFinite(meta.eezSqKm) ? (
-                          <>
-                            <p className="mt-2 text-lg font-semibold text-slate-900">
-                              {formatCompactNumber(meta.eezSqKm, { suffix: " km²", maxFrac: 2 })}
-                            </p>
-                            <p className="mt-1 text-xs text-slate-400">
-                              Exclusive economic zone (Sea Around Us where available; otherwise rounded public maritime
-                              references).
-                            </p>
-                          </>
-                        ) : (
-                          <>
-                            <p className="mt-2 text-lg font-semibold text-slate-400">—</p>
-                            <p className="mt-1 text-xs text-slate-400">
-                              No EEZ figure in our reference set for this country yet.
-                            </p>
-                          </>
-                        )}
-                      </div>
-                    </div>
+                    </DashboardInfoCard>
                   </div>
                 </div>
-              </AccordionSection>
+
+                <div>
+                  <p className="dash-section-label">Government</p>
+                  <div className="dash-subsection-grid lg:grid-cols-2">
+                    <DashboardInfoCard label="Government type">{pill(meta.government || "—", "slate")}</DashboardInfoCard>
+                    <DashboardInfoCard label="Head of government">
+                      <p className="text-base font-semibold text-slate-900">
+                        {meta.headOfGovernmentTitle ?? headOfGovernment(meta.government)}
+                      </p>
+                    </DashboardInfoCard>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="dash-section-label">Administrative</p>
+                  <div className="dash-subsection-grid lg:grid-cols-2">
+                    <DashboardInfoCard label="Capital city">
+                      <p className="text-base font-semibold text-slate-900">
+                        {meta.capital?.[0] ?? wbProfile?.capitalCity ?? "—"}
+                      </p>
+                    </DashboardInfoCard>
+                    <TimezoneClockCard timezone={meta.ianaTimezone ?? meta.timezones?.[0]} />
+                  </div>
+                </div>
+
+                <div>
+                  <p className="dash-section-label">Economy</p>
+                  <div className="dash-subsection-grid lg:grid-cols-2">
+                    <DashboardInfoCard label="Currency" accent="amber">
+                      <p className="text-base font-semibold text-slate-900">
+                        {meta.currencyDisplay?.trim() ||
+                          (meta.currencies && meta.currencies.length > 0 ? meta.currencies.join(", ") : "—")}
+                      </p>
+                    </DashboardInfoCard>
+                    <DashboardInfoCard label="Exchange rates" className="sm:col-span-2 lg:col-span-1">
+                      <div className="space-y-2.5">
+                        {hasUsdFx ? (
+                          <div>
+                            <p className="text-sm font-semibold tabular-nums text-slate-900">
+                              {`1 USD = ${meta.usdFxRate!.toLocaleString(undefined, {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })} ${meta.usdFxCurrency ?? meta.currencies?.[0] ?? ""}`}
+                            </p>
+                            {meta.usdFxRateAsOf ? (
+                              <p className="mt-0.5 text-xs text-slate-500">
+                                {meta.usdFxRateAsOf}
+                                {meta.usdFxSource ? ` · ${meta.usdFxSource}` : ""}
+                              </p>
+                            ) : null}
+                          </div>
+                        ) : null}
+                        {hasEurFx ? (
+                          <div>
+                            <p className="text-sm font-semibold tabular-nums text-slate-900">
+                              {`1 EUR = ${meta.eurFxRate!.toLocaleString(undefined, {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })} ${meta.eurFxCurrency ?? meta.currencies?.[0] ?? ""}`}
+                            </p>
+                            {meta.eurFxRateAsOf ? (
+                              <p className="mt-0.5 text-xs text-slate-500">
+                                {meta.eurFxRateAsOf}
+                                {meta.eurFxSource ? ` · ${meta.eurFxSource}` : ""}
+                              </p>
+                            ) : null}
+                          </div>
+                        ) : null}
+                        {!hasUsdFx && !hasEurFx ? <p className="text-sm text-slate-500">—</p> : null}
+                      </div>
+                    </DashboardInfoCard>
+                  </div>
+                  {fxChartHasData ? (
+                    <div className="mt-4">
+                      <ToggleLineChart
+                        title={`Exchange rate evolution (${fxCurrencyCode})`}
+                        data={fxChartData}
+                        series={fxChartSeries}
+                        dualAxis={false}
+                        leftTickFormatter={(v) =>
+                          formatCompactNumber(v, { maxFrac: v >= 1000 ? 0 : 2 })
+                        }
+                        footnote={fxChartFootnote}
+                      />
+                    </div>
+                  ) : null}
+                </div>
+
+                <div>
+                  <p className="dash-section-label">Geography</p>
+                  <div className="dash-subsection-grid">
+                    <DashboardInfoCard label="Land area">
+                      <p className="text-base font-semibold tabular-nums text-slate-900">
+                        {formatCompactNumber(meta.landAreaKm2 ?? meta.area, { suffix: " km²", maxFrac: 2 })}
+                      </p>
+                    </DashboardInfoCard>
+                    <DashboardInfoCard label="Total area">
+                      <p className="text-base font-semibold tabular-nums text-slate-900">
+                        {formatCompactNumber(meta.totalAreaKm2 ?? meta.area, { suffix: " km²", maxFrac: 2 })}
+                      </p>
+                    </DashboardInfoCard>
+                    <DashboardInfoCard
+                      label="EEZ"
+                      hint={
+                        meta.landlocked
+                          ? "Landlocked — no exclusive economic zone."
+                          : "Sea Around Us or public maritime references."
+                      }
+                    >
+                      {meta.landlocked ? (
+                        <p className="text-base font-semibold text-slate-500">—</p>
+                      ) : meta.eezSqKm != null && Number.isFinite(meta.eezSqKm) ? (
+                        <p className="text-base font-semibold tabular-nums text-slate-900">
+                          {formatCompactNumber(meta.eezSqKm, { suffix: " km²", maxFrac: 2 })}
+                        </p>
+                      ) : (
+                        <p className="text-base font-semibold text-slate-400">—</p>
+                      )}
+                    </DashboardInfoCard>
+                  </div>
+                </div>
+              </div>
             </AccordionSection>
 
             <AccordionSection
+              id={DASHBOARD_SECTION_IDS.financial}
               title="Financial metrics"
+              subtitle="GDP, debt, inflation, poverty & trends"
+              accent="rose"
+              defaultOpen={false}
               onDownload={() =>
                 exportKeys("financial", [
                   "gdp",
@@ -1108,8 +1301,8 @@ export default function Dashboard() {
             >
               <div className="space-y-8">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">GDP &amp; income</p>
-                    <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-2">
+                  <p className="dash-section-label">GDP &amp; income</p>
+                  <div className="dash-subsection-grid lg:grid-cols-2 xl:grid-cols-3">
                     {finCards.slice(0, 5).map((c) => {
                       const lv = c.series.length ? latest(c.series) : null;
                       const isComputed = c.metricId === "unemployed_number";
@@ -1126,8 +1319,8 @@ export default function Dashboard() {
                   </div>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Debt</p>
-                  <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                  <p className="dash-section-label">Debt</p>
+                  <div className="dash-subsection-grid lg:grid-cols-2">
                     {finCards.slice(5, 7).map((c) => {
                       const lv = latest(c.series);
                       const val = lv ? c.fmt(lv.value) : "—";
@@ -1137,10 +1330,8 @@ export default function Dashboard() {
                   </div>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                    Inflation &amp; rates
-                  </p>
-                  <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  <p className="dash-section-label">Inflation &amp; rates</p>
+                  <div className="dash-subsection-grid lg:grid-cols-3">
                     {finCards.slice(7, 12).map((c) => {
                       const lv = c.series.length ? latest(c.series) : null;
                       const isComputed = c.metricId === "unemployed_number";
@@ -1157,8 +1348,8 @@ export default function Dashboard() {
                   </div>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Poverty</p>
-                  <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                  <p className="dash-section-label">Poverty</p>
+                  <div className="dash-subsection-grid lg:grid-cols-2">
                     {finCards.slice(12, 14).map((c) => {
                       const lv = latest(c.series);
                       const val = lv ? c.fmt(lv.value) : "—";
@@ -1167,7 +1358,7 @@ export default function Dashboard() {
                     })}
                   </div>
                 </div>
-                <p className="text-xs leading-relaxed text-slate-400">{LINE_CHARTS_NOTE}</p>
+                <p className="text-xs leading-relaxed text-slate-400">{LINE_CHARTS_NOTE_SHORT}</p>
                 <VisualizationStepperFromChildren groupLabel="Financial charts" meta={DASHBOARD_FIN_VIZ_META}>
                   <ToggleLineChart
                     title="GDP & government debt (US$)"
@@ -1194,7 +1385,11 @@ export default function Dashboard() {
             </AccordionSection>
 
             <AccordionSection
+              id={DASHBOARD_SECTION_IDS.health}
               title="Health & demographics"
+              subtitle="Population, mortality, systems & age structure"
+              accent="teal"
+              defaultOpen={false}
               onDownload={() =>
                 exportKeys("health", [
                   "population",
@@ -1220,8 +1415,8 @@ export default function Dashboard() {
             >
               <div className="space-y-8">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Population</p>
-                  <div className="mt-3 max-w-sm">
+                  <p className="dash-section-label">Population</p>
+                  <div className="mt-3 max-w-xs sm:max-w-sm">
                     <MetricCard
                       label={lbl("population")}
                       value={popLatest ? formatCompactNumber(popLatest.value, { maxFrac: 2 }) : "—"}
@@ -1230,8 +1425,8 @@ export default function Dashboard() {
                   </div>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Health</p>
-                  <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                  <p className="dash-section-label">Health</p>
+                  <div className="dash-subsection-grid lg:grid-cols-2">
                     <MetricCard
                       label={lbl("life_expectancy")}
                       value={
@@ -1275,10 +1470,8 @@ export default function Dashboard() {
                   </div>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                    Health systems, coverage & risk
-                  </p>
-                  <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                  <p className="dash-section-label">Health systems, coverage & risk</p>
+                  <div className="dash-subsection-grid lg:grid-cols-2">
                     {(
                       [
                         "birth_rate",
@@ -1318,8 +1511,8 @@ export default function Dashboard() {
                   </div>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Age structure</p>
-                  <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  <p className="dash-section-label">Age structure</p>
+                  <div className="dash-subsection-grid">
                     {(["pop_age_0_14", "pop_15_64_pct", "pop_age_65_plus"] as const).map((key) => {
                       const s = bundle[key] ?? [];
                       const lv = latest(s);
@@ -1382,7 +1575,11 @@ export default function Dashboard() {
             </AccordionSection>
 
             <AccordionSection
+              id={DASHBOARD_SECTION_IDS.education}
               title="Education"
+              subtitle="Enrollment, completion, literacy & investment"
+              accent="amber"
+              defaultOpen={false}
               onDownload={() =>
                 exportKeys("education", [
                   "oosc_primary",
@@ -1459,8 +1656,8 @@ export default function Dashboard() {
                   ] as const
                 ).map((block) => (
                   <div key={block.title}>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{block.title}</p>
-                    <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                    <p className="dash-section-label">{block.title}</p>
+                    <div className="dash-subsection-grid lg:grid-cols-2">
                       {block.keys.map((key) => {
                         const s = bundle[key] ?? [];
                         const lv = latest(s);
@@ -1515,7 +1712,105 @@ export default function Dashboard() {
             </AccordionSection>
 
             <AccordionSection
-              title="Labour"
+              id={DASHBOARD_SECTION_IDS.crime}
+              title="Crime & public safety"
+              subtitle="UNODC, IDMC, UCDP & governance indicators"
+              accent="indigo"
+              defaultOpen={false}
+              onDownload={() =>
+                exportKeys("crime", [
+                  "homicide_rate",
+                  "homicide_rate_female",
+                  "homicide_rate_male",
+                  "gbv_women_pct",
+                  "idp_conflict_violence",
+                  "battle_related_deaths",
+                  "rule_of_law_wgi",
+                  "political_stability_wgi",
+                  "corruption_control_wgi",
+                ])
+              }
+            >
+              <div className="space-y-8">
+                <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                  Homicide rates from UNODC (WDI); gender-based violence from UN/WHO; conflict data from IDMC & UCDP;
+                  governance from World Bank WGI.
+                </p>
+                <div>
+                  <p className="dash-section-label">Key indicators</p>
+                  <div className="dash-subsection-grid lg:grid-cols-2">
+                    <MetricCard
+                      label={lbl("homicide_rate")}
+                      value={
+                        latest(bundle.homicide_rate ?? [])?.value != null
+                          ? `${latest(bundle.homicide_rate ?? [])!.value.toFixed(1)} per 100k`
+                          : "—"
+                      }
+                      yoy={formatYoY(yoyPct(bundle.homicide_rate ?? []), null, false)}
+                    />
+                    <MetricCard
+                      label={lbl("gbv_women_pct")}
+                      value={
+                        latest(bundle.gbv_women_pct ?? [])?.value != null
+                          ? `${latest(bundle.gbv_women_pct ?? [])!.value.toFixed(1)}%`
+                          : "—"
+                      }
+                      yoy={formatYoY(
+                        yoyPct(bundle.gbv_women_pct ?? []),
+                        yoyBpsRate(bundle.gbv_women_pct ?? []),
+                        true
+                      )}
+                    />
+                    <MetricCard
+                      label={lbl("rule_of_law_wgi")}
+                      value={
+                        latest(bundle.rule_of_law_wgi ?? [])?.value != null
+                          ? latest(bundle.rule_of_law_wgi ?? [])!.value.toFixed(2)
+                          : "—"
+                      }
+                      yoy={formatYoY(yoyPct(bundle.rule_of_law_wgi ?? []), null, false)}
+                    />
+                    <MetricCard
+                      label={lbl("political_stability_wgi")}
+                      value={
+                        latest(bundle.political_stability_wgi ?? [])?.value != null
+                          ? latest(bundle.political_stability_wgi ?? [])!.value.toFixed(2)
+                          : "—"
+                      }
+                      yoy={formatYoY(yoyPct(bundle.political_stability_wgi ?? []), null, false)}
+                    />
+                  </div>
+                </div>
+                <VisualizationStepperFromChildren groupLabel="Crime & safety charts" meta={DASHBOARD_CRIME_VIZ_META}>
+                  <ToggleLineChart
+                    title="Intentional homicide rates (UNODC)"
+                    data={crimeHomicideChartData}
+                    series={crimeHomicideSeries}
+                    dualAxis={false}
+                  />
+                  <ToggleLineChart
+                    title="Gender-based violence & conflict harm"
+                    data={crimeConflictChartData}
+                    series={crimeConflictSeries}
+                    leftTickFormatter={(v) => `${v.toFixed(1)}%`}
+                    rightTickFormatter={(v) => formatCompactNumber(v, { maxFrac: 0 })}
+                  />
+                  <ToggleLineChart
+                    title="Governance & rule of law (WGI)"
+                    data={crimeGovernanceChartData}
+                    series={crimeGovernanceSeries}
+                    dualAxis={false}
+                  />
+                </VisualizationStepperFromChildren>
+              </div>
+            </AccordionSection>
+
+            <AccordionSection
+              id={DASHBOARD_SECTION_IDS.labour}
+              title="Labour market"
+              subtitle="Unemployment & labour force trends"
+              accent="slate"
+              defaultOpen={false}
               onDownload={() => exportKeys("labour", ["unemployment_ilo", "labor_force_total"])}
             >
               <ToggleLineChart
@@ -1526,17 +1821,19 @@ export default function Dashboard() {
               />
             </AccordionSection>
           </div>
-        </section>
-      )}
+        </>
+      ) : null}
 
       {(comparison.length > 0 || loadingExtras) && (
-        <div className="space-y-2">
+        <div id={DASHBOARD_SECTION_IDS.comparison} className="scroll-mt-24 space-y-2">
           {loadingExtras && comparison.length === 0 && (
             <p className="text-sm text-slate-400">Preparing comparison table…</p>
           )}
           {comparison.length > 0 && (
             <DashboardComparisonTable
               year={compYear}
+              dataYear={compDataYear}
+              membersCount={compMembersCount}
               countryName={compName || meta?.name || country}
               rows={comparison}
               onExport={exportComparison}

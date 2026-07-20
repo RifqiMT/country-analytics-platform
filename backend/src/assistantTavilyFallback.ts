@@ -221,7 +221,7 @@ export function splitAssistantWebContextHeadAndBullets(raw: string): {
   return { head: headLines.join("\n").replace(/\s+$/, ""), resultLines: bullets };
 }
 
-export function formatTavilyResultAsBullet(r: TavilyWebResult): string {
+function formatTavilyResultAsBullet(r: TavilyWebResult): string {
   const when = r.published_date ? ` · published/updated: ${r.published_date}` : "";
   return `- ${r.title} (${r.url})${when}: ${r.content}`;
 }

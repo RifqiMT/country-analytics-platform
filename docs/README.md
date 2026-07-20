@@ -14,7 +14,8 @@ The documentation set must enable readers to:
 
 ### Product leadership and strategy
 
-1. `PRD.md`
+1. `PRODUCT_DOCUMENTATION.md`
+2. `PRD.md`
 2. `USER_PERSONAS.md`
 3. `USER_STORIES.md`
 4. `METRICS_AND_OKRS.md`
@@ -41,6 +42,7 @@ The documentation set must enable readers to:
 
 ## Document catalog and ownership intent
 
+- `PRODUCT_DOCUMENTATION.md`: comprehensive product guide (overview, benefits, features, business/tech guidelines, stack)
 - `PRD.md`: product goals, scope, requirements, risk framing
 - `USER_PERSONAS.md`: target user archetypes and evidence needs
 - `USER_STORIES.md`: user-level requirements and acceptance expectations
@@ -68,6 +70,18 @@ If implementation or behavior changes, update affected docs in the same PR and v
 - traceability mappings and changelog entries are updated.
 
 ## Latest sync checkpoint
+
+### 2026-07-20 comprehensive documentation audit included:
+
+- Full codebase audit: 68 metrics, 7 app modules, 20+ API routes, 131 source files
+- **Crime & public safety** category: 9 new metrics (UNODC, IDMC, UCDP, WGI) integrated across dashboard, global analytics, and sources
+- New `PRODUCT_DOCUMENTATION.md` — master product guide for all stakeholders
+- Expanded root `README.md` with metric coverage table, repository structure, and role-based doc map
+- Updated PRD, personas (Security/Risk Analyst), user stories (crime/safety workflows)
+- Expanded `VARIABLES.md` and `METRIC_CATALOG.md` with category relationship charts
+- Updated design guidelines (brand tokens, PESTEL/Porter/SWOT palettes, crime dashboard patterns)
+- Updated traceability matrix (FR-26–FR-28), guardrails (BG-04 crime interpretation), metrics/OKRs
+- Synchronized executive summary, product documentation standard, and changelog
 
 ### 2026-04-29 implementation-to-doc sync included:
 

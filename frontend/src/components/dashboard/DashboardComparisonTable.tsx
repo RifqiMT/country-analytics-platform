@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { formatCompactNumber, formatYoY, yoYClass } from "../../lib/formatValue";
 import { COUNTRY_COMPARISON_METHODOLOGY_PATH } from "../../lib/countryComparisonMethodology";
+import { comparisonMethodLabel } from "../../lib/comparisonMethodLabels";
 import { cmpNullableNumber, cmpString, toggleColumnSort, type SortDir } from "../../lib/tableSort";
 import SortableTh from "../ui/SortableTh";
 
@@ -17,10 +18,14 @@ export type ComparisonRow = {
   country: ComparisonCell;
   avgCountry: ComparisonCell;
   global: ComparisonCell;
+  avgMethod?: string;
+  globalMethod?: string;
 };
 
 type Props = {
   year: number;
+  dataYear?: number;
+  membersCount?: number;
   countryName: string;
   rows: ComparisonRow[];
   onExport: () => void;
@@ -40,8 +45,15 @@ function formatMetricValue(id: string, v: number): string {
     "immunization_measles",
     "health_expenditure_gdp",
     "smoking_prevalence",
+    "gbv_women_pct",
   ]);
   if (pct.has(id)) return `${v.toFixed(1)}%`;
+  if (id === "homicide_rate" || id === "homicide_rate_female" || id === "homicide_rate_male") {
+    return `${v.toFixed(1)} per 100k`;
+  }
+  if (id === "rule_of_law_wgi" || id === "political_stability_wgi" || id === "corruption_control_wgi") {
+    return v.toFixed(2);
+  }
   if (id === "gdp" || id === "gdp_ppp") return formatCompactNumber(v, { maxFrac: 2 });
   if (id === "gdp_per_capita" || id === "gdp_per_capita_ppp" || id === "gni_per_capita_atlas")
     return formatCompactNumber(v, { maxFrac: 2 });
@@ -59,24 +71,40 @@ function preferBps(id: string): boolean {
     "immunization_measles",
     "health_expenditure_gdp",
     "smoking_prevalence",
+    "gbv_women_pct",
   ].includes(id);
 }
 
-function cellBlock(id: string, c: ComparisonCell): { main: string; sub?: string; subClass?: string } {
-  if (c.value === null || Number.isNaN(c.value)) return { main: "—" };
+function cellBlock(
+  id: string,
+  c: ComparisonCell,
+  method?: string
+): { main: string; sub?: string; subClass?: string; methodHint?: string } {
+  if (c.value === null || Number.isNaN(c.value)) {
+    return { main: "Not reported", methodHint: comparisonMethodLabel(method) };
+  }
   const main = formatMetricValue(id, c.value);
   const y = formatYoY(c.yoyPct, c.yoyBps, preferBps(id));
-  if (y.text === "—") return { main };
+  const methodHint = comparisonMethodLabel(method);
+  if (y.text === "—") return { main, methodHint };
   return {
     main,
     sub: `(${y.text.replace(" YoY", "")})`,
     subClass: yoYClass(y.tone),
+    methodHint,
   };
 }
 
 type SortCol = "metric" | "country" | "avgCountry" | "global";
 
-export default function DashboardComparisonTable({ year, countryName, rows, onExport }: Props) {
+export default function DashboardComparisonTable({
+  year,
+  dataYear,
+  membersCount,
+  countryName,
+  rows,
+  onExport,
+}: Props) {
   const [sortKey, setSortKey] = useState<SortCol | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [fullscreen, setFullscreen] = useState(false);
@@ -118,6 +146,12 @@ export default function DashboardComparisonTable({ year, countryName, rows, onEx
     return copy;
   }, [rows, sortKey, sortDir]);
 
+  const snapshotYear = dataYear ?? year;
+  const economyNote =
+    membersCount != null && membersCount > 0
+      ? `${membersCount} sovereign economies in cross-country aggregates (REST Countries, ISO3).`
+      : "Cross-country aggregates use World Bank WDI snapshots for sovereign economies.";
+
   return (
     <div
       className={
@@ -133,7 +167,7 @@ export default function DashboardComparisonTable({ year, countryName, rows, onEx
         className={
           fullscreen
             ? "flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
-            : "rounded-2xl border border-slate-200 bg-white shadow-sm"
+            : "rounded-2xl border border-slate-200/80 bg-white shadow-sm"
         }
       >
         {fullscreen ? (
@@ -157,7 +191,9 @@ export default function DashboardComparisonTable({ year, countryName, rows, onEx
                 Country comparison (year {year})
               </h2>
               <p className="text-sm text-slate-500">
-                {countryName} versus cross-country aggregates and world (WLD) benchmarks — methodology varies by row.
+                {countryName} versus cross-country benchmarks at WDI snapshot year{" "}
+                <strong>{snapshotYear}</strong>
+                {snapshotYear !== year ? ` (requested ${year})` : ""}. {economyNote}
               </p>
             </div>
           ) : (
@@ -229,6 +265,9 @@ export default function DashboardComparisonTable({ year, countryName, rows, onEx
                 align="right"
               >
                 Avg country
+                <span className="mt-0.5 block text-[10px] font-normal normal-case text-slate-400">
+                  Median / weighted mean
+                </span>
               </SortableTh>
               <SortableTh
                 columnKey="global"
@@ -238,7 +277,10 @@ export default function DashboardComparisonTable({ year, countryName, rows, onEx
                 className="px-5 py-3 font-medium normal-case"
                 align="right"
               >
-                Global
+                Global (WLD)
+                <span className="mt-0.5 block text-[10px] font-normal normal-case text-slate-400">
+                  World aggregate or sum
+                </span>
               </SortableTh>
             </tr>
           </thead>
@@ -247,11 +289,16 @@ export default function DashboardComparisonTable({ year, countryName, rows, onEx
               <tr key={r.id} className="border-b border-slate-50 hover:bg-slate-50/80">
                 <td className="px-4 py-2.5 text-slate-700">{r.label}</td>
                 {[r.country, r.avgCountry, r.global].map((cell, i) => {
-                  const f = cellBlock(r.id, cell);
+                  const method =
+                    i === 1 ? r.avgMethod : i === 2 ? r.globalMethod : undefined;
+                  const f = cellBlock(r.id, cell, method);
                   return (
                     <td key={i} className="px-5 py-3 text-right align-top">
                       <div className="font-semibold text-slate-900">{f.main}</div>
                       {f.sub && <div className={`text-xs ${f.subClass}`}>{f.sub}</div>}
+                      {f.methodHint && i > 0 ? (
+                        <div className="mt-0.5 text-[10px] leading-snug text-slate-400">{f.methodHint}</div>
+                      ) : null}
                     </td>
                   );
                 })}
@@ -264,9 +311,11 @@ export default function DashboardComparisonTable({ year, countryName, rows, onEx
           className={`shrink-0 border-t border-slate-100 px-4 py-3 ${fullscreen ? "" : ""}`}
         >
           <p className="text-xs leading-relaxed text-slate-500">
-            <span className="font-medium text-slate-700">Avg country</span> and{" "}
-            <span className="font-medium text-slate-700">Global</span> use different aggregation rules than your
-            country column.{" "}
+            <span className="font-medium text-slate-700">Avg country</span> uses median or
+            population-/labour-weighted means across reporting economies;{" "}
+            <span className="font-medium text-slate-700">Global (WLD)</span> prefers the World Bank
+            world aggregate, then credible fallbacks (sum, weighted, or median). Hover cells for
+            per-metric method notes.{" "}
             <Link
               to={COUNTRY_COMPARISON_METHODOLOGY_PATH}
               className="font-semibold text-red-600 hover:text-red-700 hover:underline"

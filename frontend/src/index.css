@@ -6,6 +6,20 @@ body {
   @apply min-h-screen bg-slate-100 text-slate-900;
 }
 
+@layer utilities {
+  .dash-section-label {
+    @apply mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500;
+  }
+
+  .dash-subsection-grid {
+    @apply grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3;
+  }
+
+  .cap-dashboard-page {
+    @apply w-full;
+  }
+}
+
 .glass {
   @apply rounded-2xl border border-slate-200 bg-white shadow-sm;
 }
@@ -136,4 +150,47 @@ body {
   width: 100% !important;
   height: 100% !important;
   max-height: 100%;
+}
+
+/** Portal chart tooltips — viewport-placed, never clipped by chart overflow shells. */
+.cap-chart-tooltip-portal {
+  box-sizing: border-box;
+  overflow: visible;
+  opacity: 0;
+  transition: opacity 100ms ease-out;
+}
+
+.cap-chart-tooltip-portal--visible {
+  opacity: 1;
+}
+
+.cap-chart-tooltip-shell {
+  font-feature-settings: "tnum" 1;
+  overflow: visible;
+}
+
+.cap-tooltip-series-list {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(203 213 225) transparent;
+  overflow-x: visible;
+}
+
+.cap-tooltip-series-list::-webkit-scrollbar {
+  width: 5px;
+}
+
+.cap-tooltip-series-list::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background: rgb(203 213 225);
+}
+
+.cap-line-chart-shell .cap-chart-inner-shell,
+.cap-line-chart-shell .recharts-responsive-container,
+.cap-line-chart-shell .recharts-wrapper,
+.cap-line-chart-shell .recharts-surface {
+  overflow: visible !important;
+}
+
+.cap-tooltip-series-list::-webkit-scrollbar-thumb:hover {
+  background: rgb(148 163 184);
 }

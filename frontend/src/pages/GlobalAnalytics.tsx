@@ -16,7 +16,7 @@ import { flagEmojiFromAlpha2 } from "../lib/flagEmoji";
 import { cmpNullableNumber, cmpString, toggleColumnSort, type SortDir } from "../lib/tableSort";
 
 type ViewMode = "map" | "table" | "charts";
-type TableCategory = "general" | "financial" | "health" | "education";
+type TableCategory = "general" | "financial" | "health" | "education" | "crime";
 
 type TableColumn = {
   id: string;
@@ -63,6 +63,7 @@ const MAP_METRIC_FALLBACK_ORDER = [
   "gni_per_capita_atlas",
   "population",
   "life_expectancy",
+  "homicide_rate",
   "gov_debt_pct_gdp",
   "inflation",
 ] as const;
@@ -85,6 +86,7 @@ const MAP_METRIC_VALUE_PERCENT = new Set([
   "pop_age_0_14",
   "pop_15_64_pct",
   "pop_age_65_plus",
+  "gbv_women_pct",
 ]);
 
 function missingWdiCellLabel(_cat: TableCategory): string {
@@ -752,6 +754,15 @@ export default function GlobalAnalytics() {
                     the mean of male and female WDI series when the total is missing. YoY uses the next older non-null
                     step in that ladder.
                   </>
+                ) : tableCat === "crime" ? (
+                  <>
+                    {" "}
+                    Crime &amp; safety columns scan <strong>every year from {MIN_DATA_YEAR}</strong> through{" "}
+                    {tableDataYear} until a value is found. Homicide rates are sourced from <strong>UNODC</strong> via WDI;
+                    gender-based violence from UN/WHO surveys; conflict displacement from <strong>IDMC</strong>; battle
+                    deaths from <strong>UCDP</strong>; governance scores from World Bank <strong>WGI</strong>. Coverage
+                    varies by country and indicator — many economies report homicide sporadically.
+                  </>
                 ) : (
                   <>
                     {" "}
@@ -817,6 +828,7 @@ export default function GlobalAnalytics() {
                 ["financial", "Financial"],
                 ["health", "Health & demographics"],
                 ["education", "Education"],
+                ["crime", "Crime & safety"],
               ] as const
             ).map(([id, label]) => (
               <button
@@ -933,6 +945,16 @@ export default function GlobalAnalytics() {
                 ) : null}{" "}
                 Maternal mortality and undernourishment are often sparse for small economies — those cells may show “
                 {missingWdiCellLabel("health")}”.
+              </>
+            ) : tableCat === "crime" ? (
+              <>
+                Sources: World Bank WDI republishing UNODC (homicide), UN/WHO surveys (gender-based violence), IDMC
+                (conflict displacement), UCDP (battle deaths), and World Bank WGI (governance).{" "}
+                {tableData.wdiLookbackYears != null && tableData.wdiLookbackYears > 0 ? (
+                  <>Up to {tableData.wdiLookbackYears} calendar years are considered per cell.</>
+                ) : null}{" "}
+                Homicide and survey-based violence indicators are often reported intermittently — those cells may show “
+                {missingWdiCellLabel("crime")}”.
               </>
             ) : (
               <>

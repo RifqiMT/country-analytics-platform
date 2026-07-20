@@ -5,7 +5,7 @@ import type { CountrySummary } from "../api";
  * We bridge map labels → ISO3 using REST Countries (common + official names),
  * World Bank snapshot country names, and a few Natural Earth quirks.
  */
-export function normalizeGeoName(raw: string): string {
+function normalizeGeoName(raw: string): string {
   let s = raw.normalize("NFKD").replace(/\p{M}/gu, "");
   s = s
     .toLowerCase()

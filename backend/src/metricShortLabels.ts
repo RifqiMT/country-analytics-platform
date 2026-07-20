@@ -72,6 +72,17 @@ const SHORT: Record<string, string> = {
   trained_teachers_ter: "Trained teachers, tertiary (%)",
   edu_expenditure_gdp: "Education expenditure (% GDP)",
 
+  // Crime & public safety
+  homicide_rate: "Homicide rate (per 100k)",
+  homicide_rate_female: "Homicide rate, female (per 100k)",
+  homicide_rate_male: "Homicide rate, male (per 100k)",
+  gbv_women_pct: "Intimate-partner violence, women (%)",
+  idp_conflict_violence: "IDP displacement, conflict (cases)",
+  battle_related_deaths: "Battle-related deaths",
+  rule_of_law_wgi: "Rule of law (WGI)",
+  political_stability_wgi: "Political stability (WGI)",
+  corruption_control_wgi: "Control of corruption (WGI)",
+
   // Geography / derived (not always in METRICS)
   land_area: "Land area (km²)",
   total_area: "Total area (km²)",

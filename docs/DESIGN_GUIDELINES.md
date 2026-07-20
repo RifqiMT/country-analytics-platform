@@ -35,6 +35,72 @@ The current UI ships with a light-first palette.
 | Critical / error | Errors, failed calls, destructive states | `red-*` (e.g., `red-50`, `red-600`) |
 | Info / analytic accent | Accent headings, teal/cyan highlights | `teal-*` and `sky-*` |
 
+### 2.2 Brand accent tokens (Tailwind custom colors)
+
+Defined in `frontend/tailwind.config.js`:
+
+| Token | Hex | Usage |
+| --- | --- | --- |
+| `ink-950` | `#0c1222` | Deepest text/background accent |
+| `ink-900` | `#121a2e` | Primary dark surfaces |
+| `ink-800` | `#1a2540` | Secondary dark surfaces |
+| `ink-700` | `#243056` | Tertiary dark text |
+| `sea-500` | `#2dd4bf` | Teal accent (highlights, links) |
+| `sea-600` | `#14b8a6` | Teal hover/active |
+| `sea-700` | `#0d9488` | Teal emphasis |
+| `coral-500` | `#fb7185` | Coral accent (secondary highlights) |
+| `coral-600` | `#f43f5e` | Coral emphasis |
+
+### 2.3 Typography tokens
+
+| Token | Font stack | Usage |
+| --- | --- | --- |
+| `font-sans` | Inter, DM Sans, system-ui | Body text, labels, controls |
+| `font-display` | Outfit, Inter, system-ui | Headings, hero titles |
+
+### 2.4 PESTEL dimension theme colors
+
+Defined in `frontend/src/components/pestel/pestelTheme.ts`:
+
+| Dimension | Header color | Tint (content background) |
+| --- | --- | --- |
+| POLITICAL | `#1e3a5f` | `#e8eef5` |
+| ECONOMIC | `#2d5a4c` | `#e9f2ef` |
+| SOCIOCULTURAL | `#9a7340` | `#f4efe6` |
+| TECHNOLOGICAL | `#b8573a` | `#f7ece8` |
+| ENVIRONMENTAL | `#6b2d38` | `#f0e8ea` |
+| LEGAL | `#4a4568` | `#ebeaf2` |
+
+### 2.5 SWOT quadrant theme colors
+
+| Quadrant | Header color | Tint | Title |
+| --- | --- | --- | --- |
+| Strengths | `#2D5A4C` | `#E9F2EF` | Strengths |
+| Weaknesses | `#A04A26` | `#F7EEEA` | Weaknesses |
+| Opportunities | `#1D6391` | `#E8F1F6` | Opportunities |
+| Threats | `#B01E43` | `#F6E8EB` | Threats |
+
+### 2.6 Porter Five Forces accent colors
+
+Defined in `frontend/src/components/porter/porterTheme.ts`:
+
+| Force | Accent color |
+| --- | --- |
+| Threat of new entry | `#dc2626` (red-600) |
+| Supplier power | `#2563eb` (blue-600) |
+| Buyer power | `#2563eb` (blue-600) |
+| Threat of substitutes | `#0ea5e9` (sky-500) |
+| Competitive rivalry | `#64748b` (slate-500) |
+
+### 2.7 Crime & safety dashboard section
+
+The dashboard **Crime & public safety** accordion follows standard section patterns:
+- Section label: "Safety" in dashboard navigation
+- Three chart groups: Homicide rates, Conflict indicators, Governance indices
+- KPI cards use standard metric card component with unit-aware formatting
+- Trend charts use the shared `ToggleLineChart` with chart/table toggle and PNG export
+- No custom color theme—uses platform semantic palette (slate backgrounds, teal accents)
+
 ## 3) Component standards
 
 ### 3.1 Surfaces and cards

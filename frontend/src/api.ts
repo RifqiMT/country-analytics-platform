@@ -299,13 +299,30 @@ export type CountrySummary = {
   usdFxCurrency?: string | null;
   /** Institution/provider used for exchange-rate quote. */
   usdFxSource?: string;
+  /** Latest available quote for 1 EUR in local currency units. */
+  eurFxRate?: number | null;
+  /** Upstream EUR quote date (YYYY-MM-DD) when available. */
+  eurFxRateAsOf?: string;
+  /** Currency code used for the EUR quote. */
+  eurFxCurrency?: string | null;
+  /** Institution/provider used for EUR exchange-rate quote. */
+  eurFxSource?: string;
   /** ISO 3166-1 alpha-2 (REST Countries) — flag emoji / map patterns */
   cca2?: string;
   /** World Bank Country API — income & lending groups aligned with WDI (same request as profile metadata). */
   worldBankProfile?: WbCountryProfile | null;
 };
 
-export type WbCountryProfile = {
+/** Annual USD/EUR → local currency series for dashboard charts. */
+export type FxSeriesPayload = {
+  currency: string;
+  usdToLocal: SeriesPoint[];
+  eurToLocal: SeriesPoint[];
+  usdSource: string;
+  eurSource: string;
+};
+
+type WbCountryProfile = {
   iso3: string;
   name: string;
   capitalCity: string;
@@ -355,7 +372,7 @@ export type SeriesPoint = {
 };
 
 /** Institutions and APIs (`GET /api/data-providers`). */
-export type DataProviderDto = {
+type DataProviderDto = {
   id: string;
   institution: string;
   name: string;

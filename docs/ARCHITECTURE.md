@@ -60,7 +60,7 @@ If evidence quality or scope constraints fail, the system uses deterministic fal
 
 #### B) Global analytics (snapshot/table/world series)
 
-1. UI selects a `metric`, `year`, and optionally `region`/`category`.
+1. UI selects a `metric`, `year`, and optionally `region`/`category` (including `crime`).
 2. Frontend requests:
    - `GET /api/global/snapshot`
    - `GET /api/global/table`

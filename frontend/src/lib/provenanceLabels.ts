@@ -16,8 +16,3 @@ export function provenanceLabel(p: SeriesProvenance | undefined): string | null 
   if (!p) return null;
   return LABELS[p] ?? p;
 }
-
-export function provenanceFootnote(p: SeriesProvenance | undefined): string | null {
-  const l = provenanceLabel(p);
-  return l ? `Data: ${l}` : null;
-}

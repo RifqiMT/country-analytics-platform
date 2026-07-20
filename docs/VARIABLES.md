@@ -109,7 +109,7 @@ Request variables are the fields you send to endpoints. Backend validation rules
 | --- | --- | --- | --- | --- | --- |
 | `year` | Data Year Target | Target year | Clamped; if missing uses `currentDataYear()-1` | Global table route | `2023` |
 | `region` | Region Filter | Region grouping | Defaults to `"All"` | Global table route | `"All"` |
-| `category` | Category | Table category | One of `general|financial|health|education` | Global table route | `health` |
+| `category` | Category | Table category | One of `general|financial|health|education|crime` | Global table route | `health` |
 
 #### `GET /api/global/wld-series`
 
@@ -259,22 +259,46 @@ flowchart TD
   U[User input / UI controls] --> K1[Header key manager: Groq/Tavily keys]
   K1 --> K2[Frontend API transport headers]
   K2 --> E0[Backend key resolver]
-  U[User input / UI controls] --> A1[Assistant: message + mode + countryCode]
+  U --> A1[Assistant: message + mode + countryCode]
   U --> B1[Business: metricX + metricY + start/end + excludeIqr + highlight]
   U --> C1[PESTEL: countryCode + year]
   U --> D1[Porter: countryCode + year + industrySector]
+  U --> F1[Dashboard: cca3 + year range + metric sections incl. crime]
+  U --> G1[Global: metric + year + region + category incl. crime]
 
-  E0 --> E1
-  E0 --> E5
-  E0 --> E6
-  E0 --> E4
-  A1 --> E1[backend /api/assistant/chat]
-  B1 --> E2[backend GET /api/analysis/correlation-global]
+  E0 --> E1 & E4 & E5 & E6
+  A1 --> E1[POST /api/assistant/chat]
+  B1 --> E2[GET /api/analysis/correlation-global]
   E2 --> E3[Compute r, pValue, rSquared, slope, intercept, residual, ciBand]
   E3 --> E4[POST /api/analysis/business/correlation-narrative]
   C1 --> E5[POST /api/analysis/pestel]
   D1 --> E6[POST /api/analysis/porter]
+  F1 --> E7[GET /api/country/:cca3/series + /api/dashboard/comparison]
+  G1 --> E8[GET /api/global/snapshot + /api/global/table]
+
+  E7 --> M1[(Metric catalog: 68 indicators)]
+  E8 --> M1
+  E2 --> M1
+  E1 --> M1
+  E5 --> M1
+  E6 --> M1
 ```
+
+## 5.1 Crime & public safety metric variables
+
+These metric IDs are used in dashboard KPI cards, global crime table, and choropleth map selection.
+
+| Variable Name | Friendly Name | Definition | Formula / Rule | Location in the apps | Example |
+| --- | --- | --- | --- | --- | --- |
+| `homicide_rate` | Intentional homicide rate | Unlawful deaths per 100,000 people (UNODC via WDI) | Direct WDI series `VC.IHR.PSRC.P5` | Dashboard crime section, global crime table, choropleth map | `6.2` |
+| `homicide_rate_female` | Female homicide rate | Female intentional homicides per 100,000 female | WDI `VC.IHR.PSRC.FE.P5` | Dashboard crime chart group | `1.8` |
+| `homicide_rate_male` | Male homicide rate | Male intentional homicides per 100,000 male | WDI `VC.IHR.PSRC.MA.P5` | Dashboard crime chart group | `10.4` |
+| `gbv_women_pct` | Intimate-partner violence | % of ever-partnered women ages 15–49 experiencing physical/sexual violence in last 12 months | WDI `SG.VAW.1549.ZS` | Dashboard crime KPI card | `23.5` |
+| `idp_conflict_violence` | New IDP from conflict | New internal displacements from conflict/violence (cases) | WDI `VC.IDP.NWCV` (IDMC) | Dashboard conflict chart group | `125000` |
+| `battle_related_deaths` | Battle-related deaths | Fatalities from organized armed conflict | WDI `VC.BTL.DETH` (UCDP) | Dashboard conflict chart group | `4500` |
+| `rule_of_law_wgi` | Rule of Law (WGI) | Governance estimate for rule adherence (-2.5 to +2.5) | WDI `GOV_WGI_RL_EST` | Dashboard governance chart group | `0.42` |
+| `political_stability_wgi` | Political Stability (WGI) | Likelihood of violence/terror destabilizing government | WDI `GOV_WGI_PV_EST` | Dashboard governance chart group | `-0.15` |
+| `corruption_control_wgi` | Control of Corruption (WGI) | Extent public power exercised for private gain | WDI `GOV_WGI_CC_EST` | Dashboard governance chart group | `-0.08` |
 
 ## 6) Practical examples (copy-friendly)
 
@@ -299,3 +323,5 @@ flowchart TD
 - Always confirm that metric units match when comparing values.
 - “Data year” may be earlier than “requested year” due to coverage and gap-fill logic.
 - When `GROQ_API_KEY` or `TAVILY_API_KEY` is missing, the backend may switch to deterministic fallbacks.
+- Crime metrics use different units: per 100,000 (rates), % (GBV survey), cases/people (conflict counts), index (WGI -2.5 to +2.5). Do not compare across unit types without normalization.
+- WGI governance indices are perception-based estimates, not direct event counts.

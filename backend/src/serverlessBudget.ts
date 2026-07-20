@@ -12,7 +12,7 @@ export function isServerlessRuntime(): boolean {
 }
 
 /** Max wall-clock budget for a single serverless invocation (ms). */
-export function serverlessInvocationBudgetMs(): number {
+function serverlessInvocationBudgetMs(): number {
   const fromEnv = process.env.CAP_SERVERLESS_BUDGET_MS;
   if (fromEnv) {
     const parsed = parseInt(fromEnv, 10);

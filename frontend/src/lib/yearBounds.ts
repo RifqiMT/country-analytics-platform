@@ -3,21 +3,6 @@ export function maxSelectableYear(): number {
   return new Date().getFullYear();
 }
 
-/**
- * Prior calendar year — useful when a caller wants a conservative WDI ceiling without offering “this year” yet.
- * Global Analytics uses {@link maxSelectableYear} / {@link clampPickerYear} like the country dashboard.
- */
-export function maxGlobalDataYear(): number {
-  return Math.max(MIN_DATA_YEAR, new Date().getFullYear() - 1);
-}
-
-export function clampGlobalDataYear(y: number): number {
-  const maxY = maxGlobalDataYear();
-  const v = Math.floor(y);
-  if (!Number.isFinite(v)) return maxY;
-  return Math.min(Math.max(v, MIN_DATA_YEAR), maxY);
-}
-
 export const MIN_DATA_YEAR = 2000;
 
 /** Single year in a picker: [MIN_DATA_YEAR, maxSelectableYear()]. */

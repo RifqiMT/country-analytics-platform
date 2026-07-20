@@ -136,7 +136,7 @@ export default function ChartTableToggle({
             : "min-h-0 flex-1 overflow-auto rounded-xl border border-slate-100 bg-white"
           : fullscreen
             ? "cap-viz-fullscreen flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white p-2 shadow-sm sm:p-3"
-            : "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+            : "flex min-h-0 min-w-0 flex-1 flex-col overflow-visible"
       }
     >
       {fullscreen && mode === "chart" ? (
@@ -146,8 +146,8 @@ export default function ChartTableToggle({
           </div>
         </div>
       ) : mode === "chart" ? (
-        <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
-          <div className="cap-chart-inner-shell h-full min-h-[240px] w-full min-w-0">{chart}</div>
+        <div className="min-h-0 min-w-0 flex-1 overflow-visible">
+          <div className="cap-chart-inner-shell h-full min-h-[240px] w-full min-w-0 overflow-visible">{chart}</div>
         </div>
       ) : (
         table

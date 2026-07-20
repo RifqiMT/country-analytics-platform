@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { SeriesProvenance } from "../../api";
 import { CHART_POINT_PROVENANCE_KEY, type ChartRow } from "../../lib/chartSeries";
@@ -9,8 +9,12 @@ import {
   yearAxisTicksFromAnnualRows,
   type ChartGranularity,
 } from "../../lib/chartGranularity";
+import { growthLabelForGranularity } from "../../lib/chartTooltipGrowth";
 import { formatCompactNumber } from "../../lib/formatValue";
+import { computeChartPointGrowth } from "../../lib/chartTooltipGrowth";
+import { ChartTooltipPortal } from "../charts/ChartTooltipPortal";
 import {
+  ChartTooltipFootnote,
   ChartTooltipHeading,
   ChartTooltipSeriesList,
   ChartTooltipSeriesRow,
@@ -29,6 +33,8 @@ export type SeriesSpec = {
   tickFormatter?: (v: number) => string;
   /** Tooltip: `percent` → fixed decimals + %; default compact K / Mn / Bn / Tn. */
   tooltipFormat?: "compact" | "percent";
+  /** Use basis points for tooltip growth badge on rate-like metrics. */
+  changePreferBps?: boolean;
 };
 
 type Props = {
@@ -55,8 +61,10 @@ function LineChartTooltipBody(props: {
   }>;
   specByKey: Record<string, SeriesSpec>;
   formatTooltipValue: (dataKey: string, raw: unknown) => string;
+  chartData: ChartRow[];
+  granularity: ChartGranularity;
 }) {
-  const { active, payload, label, specByKey, formatTooltipValue } = props;
+  const { active, payload, label, specByKey, formatTooltipValue, chartData, granularity } = props;
   if (!active || !payload?.length) return null;
   const row = payload[0]?.payload;
   const provBag = row
@@ -66,27 +74,62 @@ function LineChartTooltipBody(props: {
     : undefined;
   const periodLabel =
     row && typeof row.periodLabel === "string" ? row.periodLabel : `Year ${label ?? ""}`;
+  const scrollable = payload.length > 4;
+  const growthHint = growthLabelForGranularity(granularity);
+
+  const rows = payload
+    .map((item, i) => {
+      const key = String(item.dataKey ?? "");
+      const name = String(item.name ?? specByKey[key]?.label ?? key);
+      const pl = provenanceLabel(provBag?.[key]);
+      const entry = item as { color?: string };
+      const dot = specByKey[key]?.color ?? entry.color;
+      const growth = computeChartPointGrowth(chartData, row, key, granularity, {
+        preferBps: specByKey[key]?.changePreferBps,
+      });
+      const formatted = formatTooltipValue(key, item.value);
+      return { i, key, name, pl, dot, growth, formatted, raw: item.value };
+    })
+    .filter((r) => r.formatted !== "—" || r.growth != null)
+    .sort((a, b) => {
+      const av = Number(a.raw);
+      const bv = Number(b.raw);
+      if (Number.isFinite(av) && Number.isFinite(bv)) return bv - av;
+      if (Number.isFinite(av)) return -1;
+      if (Number.isFinite(bv)) return 1;
+      return 0;
+    });
+
+  if (rows.length === 0) return null;
+
   return (
     <ChartTooltipShell>
-      <ChartTooltipHeading>{periodLabel}</ChartTooltipHeading>
-      <ChartTooltipSeriesList>
-        {payload.map((item, i) => {
-          const key = String(item.dataKey ?? "");
-          const name = String(item.name ?? specByKey[key]?.label ?? key);
-          const pl = provenanceLabel(provBag?.[key]);
-          const entry = item as { color?: string };
-          const dot = specByKey[key]?.color ?? entry.color;
-          return (
-            <ChartTooltipSeriesRow
-              key={i}
-              label={name}
-              value={formatTooltipValue(key, item.value)}
-              color={typeof dot === "string" ? dot : undefined}
-              meta={pl ?? undefined}
-            />
-          );
-        })}
+      <ChartTooltipHeading
+        sticky={scrollable}
+        hint="Period"
+        trailing={
+          <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[0.625rem] font-semibold uppercase tracking-wide text-slate-600">
+            {growthHint}
+          </span>
+        }
+      >
+        {periodLabel}
+      </ChartTooltipHeading>
+      <ChartTooltipSeriesList scrollable={scrollable}>
+        {rows.map((r) => (
+          <ChartTooltipSeriesRow
+            key={r.i}
+            label={r.name}
+            value={r.formatted}
+            color={typeof r.dot === "string" ? r.dot : undefined}
+            meta={r.pl ?? undefined}
+            change={r.growth}
+          />
+        ))}
       </ChartTooltipSeriesList>
+      {granularity !== "annual" ? (
+        <ChartTooltipFootnote>Sub-annual points are interpolated from annual source data.</ChartTooltipFootnote>
+      ) : null}
     </ChartTooltipShell>
   );
 }
@@ -101,6 +144,7 @@ export default function ToggleLineChart({
   connectNulls = false,
   footnote,
 }: Props) {
+  const chartAnchorRef = useRef<HTMLDivElement>(null);
   const [granularity, setGranularity] = useState<ChartGranularity>("annual");
   const [on, setOn] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(series.map((s) => [s.key, true]))
@@ -144,15 +188,12 @@ export default function ToggleLineChart({
   );
 
   return (
-    <div className="cap-line-chart-root rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
-      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{title}</p>
-        <div className="flex flex-col items-stretch gap-2 sm:items-end">
-          <ChartGranularityToggle value={granularity} onChange={setGranularity} />
-          <p className="text-xs text-slate-400">Tap to show or hide indicators</p>
-        </div>
+    <div className="cap-line-chart-root rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
+      <div className="mb-3 flex flex-col gap-2 border-b border-slate-100 pb-3 sm:flex-row sm:items-center sm:justify-between">
+        <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
+        <ChartGranularityToggle value={granularity} onChange={setGranularity} />
       </div>
-      <div className="mb-4 flex flex-wrap gap-2">
+      <div className="mb-3 flex flex-wrap gap-1.5">
         {series.map((s) => {
           const active = on[s.key];
           return (
@@ -160,14 +201,14 @@ export default function ToggleLineChart({
               key={s.key}
               type="button"
               onClick={() => toggle(s.key)}
-              className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium transition ${
+              className={`inline-flex max-w-full items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition ${
                 active
-                  ? "border-slate-300 bg-white text-slate-800 shadow-sm"
-                  : "border-slate-200 bg-slate-50 text-slate-400 line-through"
+                  ? "border-slate-300 bg-slate-50 text-slate-800"
+                  : "border-transparent bg-transparent text-slate-400 line-through opacity-60"
               }`}
             >
-              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: s.color }} />
-              {s.label}
+              <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: s.color }} />
+              <span className="truncate">{s.label}</span>
             </button>
           );
         })}
@@ -177,8 +218,9 @@ export default function ToggleLineChart({
           className="h-full w-full"
           vizTitle={title}
           chart={
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+            <div ref={chartAnchorRef} className="h-full w-full min-h-0 min-w-0">
+              <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData} margin={{ top: 12, right: dualAxis && hasRight ? 20 : 12, left: 4, bottom: 4 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                 <XAxis
                   type="number"
@@ -202,16 +244,26 @@ export default function ToggleLineChart({
                   />
                 )}
                 <Tooltip
-                  wrapperStyle={RECHARTS_TOOLTIP_WRAPPER}
+                  wrapperStyle={{ ...RECHARTS_TOOLTIP_WRAPPER, display: "none" }}
+                  allowEscapeViewBox={{ x: true, y: true }}
+                  isAnimationActive={false}
                   cursor={{ stroke: "#94a3b8", strokeWidth: 1, strokeDasharray: "5 5" }}
                   content={(tooltipProps) => (
-                    <LineChartTooltipBody
+                    <ChartTooltipPortal
                       active={tooltipProps.active}
-                      label={tooltipProps.label}
-                      payload={tooltipProps.payload}
-                      specByKey={specByKey}
-                      formatTooltipValue={formatTooltipValue}
-                    />
+                      coordinate={tooltipProps.coordinate}
+                      anchorRef={chartAnchorRef}
+                    >
+                      <LineChartTooltipBody
+                        active={tooltipProps.active}
+                        label={tooltipProps.label}
+                        payload={tooltipProps.payload}
+                        specByKey={specByKey}
+                        formatTooltipValue={formatTooltipValue}
+                        chartData={chartData}
+                        granularity={granularity}
+                      />
+                    </ChartTooltipPortal>
                   )}
                 />
                 {series.map((s) =>
@@ -231,6 +283,7 @@ export default function ToggleLineChart({
                 )}
               </LineChart>
             </ResponsiveContainer>
+            </div>
           }
           table={
             <SeriesLineDataTable rows={chartData as Record<string, unknown>[]} columns={tableColumns} />

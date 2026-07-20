@@ -27,60 +27,8 @@ export const PESTEL_CREDIBLE_DOMAINS: readonly string[] = [
   "economist.com",
 ];
 
-/** Publication windows (Tavily start_date / end_date, UTC). Labels are for model routing—output prose must not copy them verbatim. */
-const TEMPORAL_WINDOWS: { label: string; days: number; topic: "general" | "news" }[] = [
-  { label: "Very recent (~1 week)", days: 7, topic: "news" },
-  { label: "Recent month", days: 30, topic: "news" },
-  { label: "Half-year lens", days: 180, topic: "general" },
-  { label: "Annual lens", days: 365, topic: "general" },
-  { label: "Five-year lens", days: 1825, topic: "general" },
-];
-
 /** Shown to the model only; instruct it not to echo these headings in JSON output. */
-export const PESTEL_TEMPORAL_SECTION_MARKER = "## Multi-horizon web research";
-
-/**
- * Five parallel Tavily searches over 7d / 30d / 180d / 365d / 5y windows (same cross-PESTEL query, date-bounded).
- * Gives the LLM explicit horizons instead of a single “recent only” slice.
- */
-export async function fetchPestelTemporalHorizonWeb(
-  countryName: string,
-  cca3: string,
-  year: number,
-  tavilyApiKey?: string
-): Promise<string> {
-  if (!(tavilyApiKey?.trim() || process.env.TAVILY_API_KEY?.trim())) return "";
-  const today = utcDateISO();
-  const y = String(year);
-  const calY = String(new Date().getUTCFullYear());
-  const baseQ = `${countryName} (${cca3}) PESTEL-relevant developments: governance politics institutions elections; economy fiscal monetary inflation GDP trade investment; society demographics education health labour; technology digital innovation infrastructure; environment climate energy sustainability; legal regulatory compliance business. Context ${y} ${calY}.`;
-
-  const rows = await Promise.all(
-    TEMPORAL_WINDOWS.map(async ({ label, days, topic }) => {
-      const start = utcDateDaysAgo(days);
-      const meta = await tavilySearchWithMeta(baseQ, 4, {
-        searchDepth: "advanced",
-        includeAnswer: "advanced",
-        topic,
-        startDate: start,
-        endDate: today,
-        preferNewestSourcesFirst: true,
-        allowedDomains: [...PESTEL_CREDIBLE_DOMAINS],
-        apiKey: tavilyApiKey,
-      });
-      // Use retrieved snippets only; skip Tavily synthesized answer to reduce second-order hallucinations.
-      const inner = meta.formattedBlock.trim();
-      const clipped = inner.slice(0, 2000);
-      const header = `### ${label} (indexed ~${start}–${today})`;
-      if (!clipped.trim()) {
-        return `${header}\n[Model note: thin hits for this slice—use other excerpts or platform indicators.]`;
-      }
-      return `${header}\n${clipped}`;
-    })
-  );
-
-  return [PESTEL_TEMPORAL_SECTION_MARKER, ...rows].join("\n\n");
-}
+const PESTEL_TEMPORAL_SECTION_MARKER = "## Multi-horizon web research";
 
 /** Keep Groq JSON requests under provider limits; full `web` stays available for grounding / Tavily-only paths. */
 export function truncatePestelSourceBForLlm(web: string, maxChars: number): { text: string; truncated: boolean } {
@@ -96,7 +44,7 @@ function escapeRe(s: string): string {
 }
 
 /** Extract markdown subsection body after `### Title` until next `###` or EOF. */
-export function extractTavilyWebSection(web: string, sectionTitle: string): string {
+function extractTavilyWebSection(web: string, sectionTitle: string): string {
   const re = new RegExp(`### ${escapeRe(sectionTitle)}\\s*\\n([\\s\\S]*?)(?=\\n### |$)`);
   const m = web.match(re);
   return m ? m[1]!.trim() : "";
@@ -134,7 +82,7 @@ function recencyScoreFromText(text: string): number {
 /**
  * Turn a Tavily formatted block (snippets + optional synthesis line) into short bullets.
  */
-export function chunkToTavilyBullets(block: string, max: number): string[] {
+function chunkToTavilyBullets(block: string, max: number): string[] {
   const out: string[] = [];
   const seen = new Set<string>();
   const ranked: { text: string; score: number }[] = [];
@@ -245,38 +193,6 @@ export function buildPartialPestelFromTavilyWeb(web: string): Partial<PestelAnal
     }
   }
   return partial;
-}
-
-/**
- * Prepends a Tavily **answer**-field synthesis so Groq (or the grounding filter) can mix retrieval + model.
- */
-export async function fetchPestelTavilyExecutiveLayer(
-  countryName: string,
-  cca3: string,
-  year: number,
-  tavilyApiKey?: string
-): Promise<string> {
-  if (!(tavilyApiKey?.trim() || process.env.TAVILY_API_KEY?.trim())) return "";
-  const y = String(year);
-  const today = utcDateISO();
-  const start = utcDateDaysAgo(120);
-  const q = `Factual PESTEL-style snapshot for ${countryName} (${cca3}): political stability and institutions; macro economy; society and labour; technology and digital policy; environment and energy; legal and regulatory risks. Emphasize developments from the past several months. Context year: ${y}.`;
-  const meta = await tavilySearchWithMeta(q, 8, {
-    searchDepth: "advanced",
-    includeAnswer: "advanced",
-    topic: "general",
-    timeRange: "month",
-    startDate: start,
-    endDate: today,
-    preferNewestSourcesFirst: true,
-    allowedDomains: [...PESTEL_CREDIBLE_DOMAINS],
-    apiKey: tavilyApiKey,
-  });
-  // Keep only direct retrieval snippets; do not prepend generated synthesis.
-  const parts: string[] = [`### ${EXEC_HEADER}`];
-  if (meta.formattedBlock.trim()) parts.push(meta.formattedBlock.trim().slice(0, 2400));
-  const block = parts.join("\n\n").trim();
-  return block.length > 40 ? `${block}\n\n` : "";
 }
 
 /** SWOT quadrants from a dedicated Tavily pass when Groq JSON is unavailable. */

@@ -245,7 +245,7 @@ Purpose: return a global analytics table for a `year`, `region`, and `category`.
 Query params:
 - `year` (optional): requested year (clamped; defaults to `currentDataYear()-1`)
 - `region` (optional): defaults to `"All"`
-- `category` (optional): one of `general|financial|health|education` (defaults to `"general"`)
+- `category` (optional): one of `general|financial|health|education|crime` (defaults to `"general"`)
 
 Response shape:
 ```json

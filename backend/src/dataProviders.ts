@@ -2,7 +2,7 @@
  * Canonical list of external institutions and APIs used by the platform.
  * Shown in the UI (`/api/data-providers`) and summarized in the README.
  */
-export type DataProvider = {
+type DataProvider = {
   id: string;
   institution: string;
   name: string;
@@ -15,10 +15,10 @@ export type DataProvider = {
 };
 
 /** Order for country-level indicator series: primary WDI → alternate WDI code → IMF WEO (per metric). */
-export const SERIES_MERGE_PIPELINE =
+const SERIES_MERGE_PIPELINE =
   "World Bank WDI (primary) → WDI alternate code (fallbackWorldBankCode) → IMF WEO DataMapper (imfWeoIndicator) → UNESCO UIS Data API (uisIndicatorId, selected education metrics); only null years are filled at each step. After that, the API may derive values from other series in the same year: GDP ÷ population for per-capita metrics; one missing population age-band share from the other two; out-of-school rates from 100% minus adjusted net or gross enrollment where direct OOSC is null; life expectancy and under-five mortality from the mean of male and female WDI series when the total is null. Then: short terminal carry-forward, range completion (edge fill / interpolation / step), optional WLD world-aggregate proxy, and % clamping where applicable. Each yearly point may include a `provenance` field (`reported`, `imf_weo`, `interpolated`, `wld_proxy`, etc.) for audit trails and chart tooltips.";
 
-export const DATA_PROVIDERS: DataProvider[] = [
+const DATA_PROVIDERS: DataProvider[] = [
   {
     id: "wb-wdi",
     institution: "World Bank",
@@ -31,7 +31,7 @@ export const DATA_PROVIDERS: DataProvider[] = [
       "Global map/table snapshots",
       "Correlation and comparison tables",
     ],
-    notes: "Indicators are paginated per country; responses are cached server-side. UNESCO UIS, WHO, UN, ILO, and FAO series that the Bank republishes are consumed here as WDI indicator codes.",
+    notes: "Indicators are paginated per country; responses are cached server-side. UNESCO UIS, WHO, UN, UNODC, IDMC, UCDP, ILO, and FAO series that the Bank republishes are consumed here as WDI indicator codes.",
   },
   {
     id: "wb-wdi-alt",
@@ -114,6 +114,24 @@ export const DATA_PROVIDERS: DataProvider[] = [
     url: "https://uis.unesco.org/",
     usedFor: ["Enrollment, completion, literacy, and related education metrics in the metric catalog"],
     notes: "See also `unesco-uis-api` for the explicit fallback chain on oosc_*, completion_*, school_primary_completion, and literacy_adult.",
+  },
+  {
+    id: "unodc-wdi",
+    institution: "UN Office on Drugs and Crime (UNODC)",
+    name: "International Homicide Statistics (via WDI)",
+    role: "Intentional homicide rates — total, male, and female",
+    url: "https://dataunodc.un.org/",
+    usedFor: ["Crime dashboard charts", "Global map/table for homicide metrics"],
+    notes: "Republished in World Bank WDI as VC.IHR.PSRC.* series. Primary source for SDG 16.1.1 intentional homicide indicator.",
+  },
+  {
+    id: "wgi-wdi",
+    institution: "World Bank",
+    name: "Worldwide Governance Indicators (via WDI)",
+    role: "Rule of law, political stability, and corruption control estimates",
+    url: "https://www.worldbank.org/en/publication/worldwide-governance-indicators",
+    usedFor: ["Crime & safety context metrics in dashboard and global table"],
+    notes: "GOV_WGI_* estimate series in WDI; composite scores from surveys and expert assessments.",
   },
 ];
 
