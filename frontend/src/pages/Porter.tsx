@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import CollapsibleToolbar from "../components/layout/CollapsibleToolbar";
 import PageIntro from "../components/layout/PageIntro";
 import CountrySelect from "../components/CountrySelect";
+import LoadingProgressSection from "../components/ui/LoadingProgressSection";
 import { getJson, postJson } from "../api";
+import { startSimulatedLoadProgress } from "../lib/loadProgress";
 import type { PorterAnalysis, IloIsicDivision } from "../types/porter";
 import PorterForcesHub from "../components/porter/PorterForcesHub";
 import PorterComprehensiveCard from "../components/porter/PorterComprehensiveCard";
@@ -37,6 +39,7 @@ export default function Porter() {
   const [analysis, setAnalysis] = useState<PorterAnalysis | null>(null);
   const [attr, setAttr] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadProgress, setLoadProgress] = useState(0);
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
@@ -68,6 +71,7 @@ export default function Porter() {
     if (!country) return;
     setLoading(true);
     setErr(null);
+    const stopProgress = startSimulatedLoadProgress(setLoadProgress);
     try {
       const industryValue = industryForApi;
       const res = await postJson<{ analysis: PorterAnalysis; attribution: string[] }>(
@@ -77,9 +81,12 @@ export default function Porter() {
       setAnalysis(res.analysis);
       setAttr(res.attribution);
       savePorterToCache(country, industryValue, res.analysis, res.attribution);
+      setLoadProgress(100);
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
+      setLoadProgress(0);
     } finally {
+      stopProgress();
       setLoading(false);
     }
   };
@@ -162,6 +169,10 @@ export default function Porter() {
         <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
           {err}
         </p>
+      )}
+
+      {loading && (
+        <LoadingProgressSection label="Generating Porter Five Forces analysis…" progress={loadProgress} />
       )}
 
       {attr.length > 0 && (

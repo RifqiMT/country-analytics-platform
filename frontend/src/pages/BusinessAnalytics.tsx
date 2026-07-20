@@ -4,6 +4,8 @@ import { metricDisplayLabel } from "../lib/metricDisplay";
 import { formatCompactCount } from "../lib/formatValue";
 import { cmpNullableNumber, cmpString, toggleColumnSort, type SortDir } from "../lib/tableSort";
 import SortableTh from "../components/ui/SortableTh";
+import LoadingProgressSection from "../components/ui/LoadingProgressSection";
+import { startSimulatedLoadProgress } from "../lib/loadProgress";
 import {
   MIN_DATA_YEAR,
   clampSpanEnd,
@@ -206,9 +208,7 @@ export default function BusinessAnalytics() {
     setAnalysisDiag({ status: "running" });
     setAnalysisDeliveryNote(null);
     setErr(null);
-    const progressTimer = window.setInterval(() => {
-      setAnalysisLoadProgress((prev) => (prev < 92 ? prev + 6 : 92));
-    }, 250);
+    const stopAnalysisProgress = startSimulatedLoadProgress(setAnalysisLoadProgress);
     try {
       const attemptRanges: Array<{ start: number; end: number; timeoutMs: number; note?: string }> = [
         { start: startYear, end: endYear, timeoutMs: 55_000 },
@@ -271,7 +271,7 @@ export default function BusinessAnalytics() {
       setAnalysisLoadProgress(0);
       setAnalysisDiag({ status: "error", ms: Math.round(performance.now() - startedAt) });
     } finally {
-      window.clearInterval(progressTimer);
+      stopAnalysisProgress();
       if (reqSeq !== analysisReqSeqRef.current) return;
       setLoading(false);
     }
@@ -489,12 +489,10 @@ export default function BusinessAnalytics() {
     const reqSeq = ++narrativeReqSeqRef.current;
     const startedAt = performance.now();
     setBizNarrativeLoading(true);
-    setNarrativeLoadProgress(10);
+    setNarrativeLoadProgress(8);
     setNarrativeDiag({ status: "running" });
     setBizNarrativeErr(null);
-    const progressTimer = window.setInterval(() => {
-      setNarrativeLoadProgress((prev) => (prev < 94 ? prev + 5 : 94));
-    }, 250);
+    const stopNarrativeProgress = startSimulatedLoadProgress(setNarrativeLoadProgress);
 
     void (async () => {
       try {
@@ -537,13 +535,13 @@ export default function BusinessAnalytics() {
         setNarrativeLoadProgress(0);
         setNarrativeDiag({ status: "error", ms: Math.round(performance.now() - startedAt) });
       } finally {
-        window.clearInterval(progressTimer);
+        stopNarrativeProgress();
         if (reqSeq !== narrativeReqSeqRef.current) return;
         setBizNarrativeLoading(false);
       }
     })();
     return () => {
-      window.clearInterval(progressTimer);
+      stopNarrativeProgress();
     };
   }, [
     res,
@@ -782,23 +780,12 @@ export default function BusinessAnalytics() {
         <div className="mt-6 rounded-xl border border-slate-100 bg-slate-50/50 p-4">
           {loading ? (
             <div className="flex h-[420px] items-center justify-center">
-              <div className="w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                <p className="text-sm font-medium text-slate-700">
-                  Loading global metrics for {yearCount} years…
-                </p>
-                <div className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
-                  <div
-                    className="h-full rounded-full bg-red-600 transition-all duration-300"
-                    style={{ width: `${analysisLoadProgress}%` }}
-                    role="progressbar"
-                    aria-valuenow={analysisLoadProgress}
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                    aria-label="Business analytics loading progress"
-                  />
-                </div>
-                <p className="mt-2 text-xs text-slate-500">{analysisLoadProgress}% loaded</p>
-              </div>
+              <LoadingProgressSection
+                className="w-full max-w-xl"
+                variant="card"
+                label={`Loading global metrics for ${yearCount} years…`}
+                progress={analysisLoadProgress}
+              />
             </div>
           ) : err ? (
             <div className="space-y-3 py-8 text-center">
@@ -1065,21 +1052,12 @@ export default function BusinessAnalytics() {
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-slate-100/70 sm:p-5">
               <h3 className="font-bold text-slate-900">Causation &amp; context</h3>
               {bizNarrativeLoading ? (
-                <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
-                  <p className="text-sm text-slate-600">Generating analyst narrative...</p>
-                  <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-200">
-                    <div
-                      className="h-full rounded-full bg-red-600 transition-all duration-300"
-                      style={{ width: `${narrativeLoadProgress}%` }}
-                      role="progressbar"
-                      aria-valuenow={narrativeLoadProgress}
-                      aria-valuemin={0}
-                      aria-valuemax={100}
-                      aria-label="Narrative generation loading progress"
-                    />
-                  </div>
-                  <p className="mt-1 text-xs text-slate-500">{narrativeLoadProgress}% loaded</p>
-                </div>
+                <LoadingProgressSection
+                  className="mt-3"
+                  variant="muted"
+                  label="Generating analyst narrative…"
+                  progress={narrativeLoadProgress}
+                />
               ) : bizNarrative ? (
                 <>
                   <p className="mt-3 text-sm leading-relaxed text-slate-600">{bizNarrative.causationParagraph}</p>

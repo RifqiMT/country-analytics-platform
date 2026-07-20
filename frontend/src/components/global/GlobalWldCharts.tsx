@@ -13,6 +13,8 @@ import { metricDisplayLabelFromId } from "../../lib/metricDisplay";
 import { formatCompactNumber } from "../../lib/formatValue";
 import { MIN_DATA_YEAR, maxSelectableYear } from "../../lib/yearBounds";
 import { chunkMetricIds, COUNTRY_SERIES_CHUNK_SIZE } from "../../lib/metricChunks";
+import { chunkLoadProgress } from "../../lib/loadProgress";
+import LoadingProgressSection from "../ui/LoadingProgressSection";
 import type { ChartRow } from "../../lib/chartSeries";
 import { labourChartRows, mergeSeriesForLineChart } from "../../lib/chartSeries";
 import {
@@ -290,7 +292,7 @@ export default function GlobalWldCharts() {
           // Continue loading remaining chunks so one failure does not blank charts.
         } finally {
           if (!active) return;
-          const pct = Math.min(95, Math.round(((i + 1) / metricChunks.length) * 95));
+          const pct = chunkLoadProgress(i + 1, metricChunks.length);
           setLoadProgress(pct);
         }
       }
@@ -405,21 +407,11 @@ export default function GlobalWldCharts() {
 
   if (loading) {
     return (
-      <section className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
-        <p className="text-sm font-medium text-slate-700">Loading global chart data…</p>
-        <div className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
-          <div
-            className="h-full rounded-full bg-red-600 transition-all duration-300"
-            style={{ width: `${loadProgress}%` }}
-            role="progressbar"
-            aria-valuenow={loadProgress}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-label="Global chart data loading progress"
-          />
-        </div>
-        <p className="mt-2 text-xs text-slate-500">{loadProgress}% loaded</p>
-      </section>
+      <LoadingProgressSection
+        variant="muted"
+        label="Loading global chart data…"
+        progress={loadProgress}
+      />
     );
   }
   if (err) return <p className="text-sm text-red-600">{err}</p>;

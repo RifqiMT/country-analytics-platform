@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import CollapsibleToolbar from "../components/layout/CollapsibleToolbar";
 import PageIntro from "../components/layout/PageIntro";
 import CountrySelect from "../components/CountrySelect";
+import LoadingProgressSection from "../components/ui/LoadingProgressSection";
 import { postJson } from "../api";
+import { startSimulatedLoadProgress } from "../lib/loadProgress";
 import type { PestelAnalysis } from "../types/pestel";
 import { loadPestelFromCache, savePestelToCache } from "../lib/pestelAnalysisCache";
 import PestelDimensionCard from "../components/pestel/PestelDimensionCard";
@@ -30,6 +32,7 @@ export default function Pestel() {
   const [analysis, setAnalysis] = useState<PestelAnalysis | null>(() => loadPestelFromCache("IDN")?.analysis ?? null);
   const [attr, setAttr] = useState<string[]>(() => loadPestelFromCache("IDN")?.attribution ?? []);
   const [loading, setLoading] = useState(false);
+  const [loadProgress, setLoadProgress] = useState(0);
   const [err, setErr] = useState<string | null>(null);
   const pestelChartRef = useRef<HTMLDivElement | null>(null);
 
@@ -49,6 +52,7 @@ export default function Pestel() {
     if (!country) return;
     setLoading(true);
     setErr(null);
+    const stopProgress = startSimulatedLoadProgress(setLoadProgress);
     try {
       const res = await postJson<{ analysis: PestelAnalysis; attribution: string[] }>("/api/analysis/pestel", {
         countryCode: country,
@@ -57,9 +61,12 @@ export default function Pestel() {
       setAnalysis(res.analysis);
       setAttr(res.attribution);
       savePestelToCache(country, res.analysis, res.attribution);
+      setLoadProgress(100);
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
+      setLoadProgress(0);
     } finally {
+      stopProgress();
       setLoading(false);
     }
   };
@@ -111,6 +118,10 @@ export default function Pestel() {
 
       {err && (
         <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{err}</p>
+      )}
+
+      {loading && (
+        <LoadingProgressSection label="Generating PESTEL analysis…" progress={loadProgress} />
       )}
 
       {attr.length > 0 && (

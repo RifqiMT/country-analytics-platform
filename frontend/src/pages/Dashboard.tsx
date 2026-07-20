@@ -28,6 +28,7 @@ import {
 } from "../lib/yearBounds";
 import { labourChartRows, mergeSeriesForLineChart } from "../lib/chartSeries";
 import { chunkMetricIds, COUNTRY_SERIES_CHUNK_SIZE } from "../lib/metricChunks";
+import { chunkLoadProgress, startSimulatedLoadProgress } from "../lib/loadProgress";
 import { readStoredDashboardCountry, writeStoredDashboardCountry } from "../dashboardCountryStorage";
 
 const DASHBOARD_SECTION_IDS = {
@@ -235,7 +236,7 @@ async function fetchCountrySeriesBatched(
     );
     Object.assign(merged, part);
     completed += 1;
-    onProgress?.(Math.min(95, Math.round((completed / chunks.length) * 95)));
+    onProgress?.(chunkLoadProgress(completed, chunks.length));
   }
   return merged;
 }
@@ -434,9 +435,6 @@ export default function Dashboard() {
     setExtrasLoadProgress(0);
     setErr(null);
     setFxSeries(null);
-    const mainProgressTimer = window.setInterval(() => {
-      setMainLoadProgress((prev) => (prev < 92 ? prev + 6 : 92));
-    }, 250);
     try {
       const [m, allSeriesBundle, fx] = await Promise.all([
         getJson<CountrySummary>(`/api/country/${country}`),
@@ -453,14 +451,10 @@ export default function Dashboard() {
       setLoadingExtras(false);
       return;
     } finally {
-      window.clearInterval(mainProgressTimer);
       setLoading(false);
     }
 
-    setExtrasLoadProgress(10);
-    const extrasProgressTimer = window.setInterval(() => {
-      setExtrasLoadProgress((prev) => (prev < 94 ? prev + 5 : 94));
-    }, 250);
+    const stopExtrasProgress = startSimulatedLoadProgress(setExtrasLoadProgress);
     try {
       const cmp = await withTimeout(
         getJson<{
@@ -484,7 +478,7 @@ export default function Dashboard() {
       setComparison([]);
       setExtrasLoadProgress(0);
     } finally {
-      window.clearInterval(extrasProgressTimer);
+      stopExtrasProgress();
       setLoadingExtras(false);
     }
   }, [country, start, end, tick]);
@@ -1826,9 +1820,6 @@ export default function Dashboard() {
 
       {(comparison.length > 0 || loadingExtras) && (
         <div id={DASHBOARD_SECTION_IDS.comparison} className="scroll-mt-24 space-y-2">
-          {loadingExtras && comparison.length === 0 && (
-            <p className="text-sm text-slate-400">Preparing comparison table…</p>
-          )}
           {comparison.length > 0 && (
             <DashboardComparisonTable
               year={compYear}

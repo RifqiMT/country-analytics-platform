@@ -6,6 +6,8 @@ import AccordionSection from "../components/dashboard/AccordionSection";
 import GlobalChoropleth from "../components/global/GlobalChoropleth";
 import GlobalWldCharts from "../components/global/GlobalWldCharts";
 import SortableTh from "../components/ui/SortableTh";
+import LoadingProgressSection from "../components/ui/LoadingProgressSection";
+import { startSimulatedLoadProgress } from "../lib/loadProgress";
 import { getJson, type CountrySummary, type MetricDef } from "../api";
 import { metricDisplayLabel } from "../lib/metricDisplay";
 import { downloadCsv } from "../lib/csv";
@@ -350,9 +352,7 @@ export default function GlobalAnalytics() {
     setErr(null);
     setSnapshot(null);
     setMapLoadProgress(8);
-    const progressTimer = window.setInterval(() => {
-      setMapLoadProgress((prev) => (prev < 90 ? prev + 7 : 90));
-    }, 250);
+    const stopMapProgress = startSimulatedLoadProgress(setMapLoadProgress);
     getJson<Snapshot>(`/api/global/snapshot?metric=${mapMetric}&year=${year}`)
       .then((data) => {
         if (!active) return;
@@ -366,12 +366,12 @@ export default function GlobalAnalytics() {
       })
       .finally(() => {
         if (!active) return;
-        window.clearInterval(progressTimer);
+        stopMapProgress();
         setLoading(false);
       });
     return () => {
       active = false;
-      window.clearInterval(progressTimer);
+      stopMapProgress();
     };
   }, [view, mapMetric, year]);
 
@@ -381,10 +381,8 @@ export default function GlobalAnalytics() {
     setLoading(true);
     setErr(null);
     setTableData(null);
-    setTableLoadProgress(10);
-    const progressTimer = window.setInterval(() => {
-      setTableLoadProgress((prev) => (prev < 92 ? prev + 6 : 92));
-    }, 250);
+    setTableLoadProgress(8);
+    const stopTableProgress = startSimulatedLoadProgress(setTableLoadProgress);
     const q = new URLSearchParams({ year: String(year), region, category: tableCat });
     getJson<GlobalTablePayload>(`/api/global/table?${q}`)
       .then((payload) => {
@@ -399,12 +397,12 @@ export default function GlobalAnalytics() {
       })
       .finally(() => {
         if (!active) return;
-        window.clearInterval(progressTimer);
+        stopTableProgress();
         setLoading(false);
       });
     return () => {
       active = false;
-      window.clearInterval(progressTimer);
+      stopTableProgress();
     };
   }, [view, year, region, tableCat]);
 
@@ -601,24 +599,9 @@ export default function GlobalAnalytics() {
       </CollapsibleToolbar>
 
       {err && <p className="text-sm text-red-600">{err}</p>}
-      {loading && view !== "charts" && <p className="text-sm text-slate-500">Loading…</p>}
 
       {view === "map" && loading ? (
-        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-sm font-medium text-slate-700">Loading global map data…</p>
-          <div className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
-            <div
-              className="h-full rounded-full bg-red-600 transition-all duration-300"
-              style={{ width: `${mapLoadProgress}%` }}
-              role="progressbar"
-              aria-valuenow={mapLoadProgress}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-label="Global map data loading progress"
-            />
-          </div>
-          <p className="mt-2 text-xs text-slate-500">{mapLoadProgress}% loaded</p>
-        </section>
+        <LoadingProgressSection label="Loading global map data…" progress={mapLoadProgress} />
       ) : null}
 
       {view === "map" && !loading && snapshot && (
@@ -675,21 +658,7 @@ export default function GlobalAnalytics() {
       ) : null}
 
       {view === "table" && loading ? (
-        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-sm font-medium text-slate-700">Loading global table data…</p>
-          <div className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
-            <div
-              className="h-full rounded-full bg-red-600 transition-all duration-300"
-              style={{ width: `${tableLoadProgress}%` }}
-              role="progressbar"
-              aria-valuenow={tableLoadProgress}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-label="Global table data loading progress"
-            />
-          </div>
-          <p className="mt-2 text-xs text-slate-500">{tableLoadProgress}% loaded</p>
-        </section>
+        <LoadingProgressSection label="Loading global table data…" progress={tableLoadProgress} />
       ) : null}
 
       {view === "table" && tableData && (
