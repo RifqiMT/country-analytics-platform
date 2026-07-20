@@ -101,6 +101,32 @@ The dashboard **Crime & public safety** accordion follows standard section patte
 - Trend charts use the shared `ToggleLineChart` with chart/table toggle and PNG export
 - No custom color theme—uses platform semantic palette (slate backgrounds, teal accents)
 
+### 2.8 Dashboard chart series colors
+
+Dashboard trend charts assign **per-metric hex colors** in `frontend/src/pages/Dashboard.tsx` for visual distinction within multi-series charts. Colors follow a domain-consistent palette:
+
+| Domain | Color range | Example hex values |
+| --- | --- | --- |
+| Financial (rates) | Orange/brown/red | `#ea580c`, `#78350f`, `#dc2626`, `#991b1b` |
+| Financial (levels) | Red/brown/teal | `#991b1b`, `#92400e`, `#0d9488`, `#0f172a` |
+| Health | Teal/green/blue/red | `#0f766e`, `#22c55e`, `#2563eb`, `#dc2626` |
+| Education | Rose/amber/violet | `#be123c`, `#d97706`, `#7c3aed` |
+| Labour | Blue/green | `#2563eb`, `#059669`, `#16a34a` |
+| Crime & safety | Red/slate/amber | `#dc2626`, `#64748b`, `#f59e0b` |
+| FX series | Blue/green | `#2563eb` (USD), `#059669` (EUR) |
+
+**Rules:**
+- Multi-axis charts use `yAxisId: "left"` for primary metrics and `"right"` for secondary scale (e.g. population alongside per-capita).
+- Percentage metrics use `tooltipFormat: "percent"` for consistent tooltip rendering.
+- Colors are assigned at chart-group level—not globally unique across the entire dashboard—to keep related metrics visually grouped.
+
+### 2.9 Global choropleth map scale
+
+Defined in `frontend/src/components/global/GlobalChoropleth.tsx`:
+- No-data fill: `#e2e8f0` (slate-200)
+- Data range: light `#fef3c7` → dark `#c2410c` (amber-to-orange sequential scale)
+- Highlighted country border: `#0f172a` (slate-900)
+
 ## 3) Component standards
 
 ### 3.1 Surfaces and cards

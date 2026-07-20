@@ -38,7 +38,22 @@ In this product, metrics power:
 - Formula (when derived): only shown for metrics explicitly derived in the platform
 - Source summary (short): short description of origin and fill behavior
 
-## Category summary (68 metrics)
+### Gap-fill fields (available via `GET /api/metrics`, not in table below)
+
+Many metrics support controlled gap-fill beyond the primary WDI code. These fields appear in the API response and `backend/src/metrics.ts`:
+
+| Field | Friendly Name | Definition | Example |
+| --- | --- | --- | --- |
+| `imfWeoIndicator` | IMF WEO Indicator ID | IMF DataMapper series used to fill null WDI years | `NGDPD` (GDP in billions US$) |
+| `imfWeoScale` | IMF Scale Multiplier | Multiplier applied to IMF values (e.g. `1e9` for billions) | `1000000000` |
+| `uisIndicatorId` | UNESCO UIS Indicator ID | UIS API series used for education gap-fill | `LR.GALP.AG15T99` (adult literacy) |
+| `shortLabel` | Chart Short Label | Compact display name computed at runtime | `GDP per capita` |
+
+For the complete machine-readable catalog including gap-fill fields, call `GET /api/metrics` or read `backend/src/metrics.ts`.
+
+## Category summary (68 metrics across 6 data categories)
+
+The platform uses **6 metric categories** in the catalog plus **1 UI-only global table grouping** (`general`):
 
 | Category | Metric count | Primary use in app | Key source institutions |
 | --- | --- | --- | --- |
@@ -48,7 +63,7 @@ In this product, metrics power:
 | education | 25 | Dashboard accordion, global education table | World Bank WDI, UNESCO UIS |
 | labour | 3 | Dashboard accordion, global general table | World Bank WDI / ILO |
 | crime | 9 | Dashboard safety accordion, global crime table, choropleth map | UNODC, IDMC, UCDP, World Bank WGI |
-| general | — | Global table grouping (cross-domain composite views) | Multiple |
+| general (UI only) | — | Global table grouping for cross-domain composite views — not a metric category | Multiple |
 
 ## Metric relationship chart
 

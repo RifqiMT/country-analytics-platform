@@ -11,7 +11,7 @@ export type PestelDimension = {
   bullets: string[];
 };
 
-export type PestelSwot = {
+type PestelSwot = {
   strengths: string[];
   weaknesses: string[];
   opportunities: string[];
@@ -40,14 +40,6 @@ const DIMENSION_TEMPLATE: { letter: PestelDimension["letter"]; label: string }[]
   { letter: "E", label: "ENVIRONMENTAL" },
   { letter: "L", label: "LEGAL" },
 ];
-
-function strArray(x: unknown): string[] {
-  if (!Array.isArray(x)) return [];
-  return x
-    .filter((i): i is string => typeof i === "string")
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
 
 function latest(bundle: Record<string, SeriesPoint[]>, id: string): { year: number; value: number } | null {
   const pts = bundle[id] ?? [];
@@ -89,86 +81,6 @@ function canonicalDimensionLabel(raw: string): string | null {
 function normalizeLabelKey(label: string): string {
   const c = canonicalDimensionLabel(label);
   return c ?? label.toUpperCase().replace(/\s+/g, " ").trim();
-}
-
-export function parsePestelAnalysisFromLlm(text: string): Partial<PestelAnalysis> | null {
-  let t = text.trim();
-  const fence = /^```(?:json)?\s*\n?([\s\S]*?)\n?```$/im.exec(t);
-  if (fence) t = fence[1].trim();
-  try {
-    const o = JSON.parse(t) as unknown;
-    if (!o || typeof o !== "object") return null;
-    return extractPartial(o as Record<string, unknown>);
-  } catch {
-    return null;
-  }
-}
-
-function extractPartial(r: Record<string, unknown>): Partial<PestelAnalysis> {
-  const rawDims = (r.pestelDimensions ?? r.pestel ?? r.dimensions) as unknown;
-  const pestelDimensions: PestelDimension[] = [];
-  if (Array.isArray(rawDims)) {
-    for (const item of rawDims) {
-      if (!item || typeof item !== "object") continue;
-      const o = item as Record<string, unknown>;
-      const letter = typeof o.letter === "string" && o.letter.length === 1 ? (o.letter.toUpperCase() as PestelDimension["letter"]) : "P";
-      const label = typeof o.label === "string" ? o.label.toUpperCase() : "POLITICAL";
-      const bullets = strArray(o.bullets);
-      if (bullets.length) pestelDimensions.push({ letter, label, bullets });
-    }
-  }
-
-  const swotRaw = r.swot as Record<string, unknown> | undefined;
-  const swot: PestelSwot | undefined = swotRaw
-    ? {
-        strengths: strArray(swotRaw.strengths),
-        weaknesses: strArray(swotRaw.weaknesses),
-        opportunities: strArray(swotRaw.opportunities),
-        threats: strArray(swotRaw.threats),
-      }
-    : undefined;
-
-  const compRaw = r.comprehensiveSections ?? r.comprehensive;
-  const comprehensiveSections: ComprehensiveSection[] = [];
-  if (Array.isArray(compRaw)) {
-    for (const item of compRaw) {
-      if (!item || typeof item !== "object") continue;
-      const o = item as Record<string, unknown>;
-      const title = typeof o.title === "string" ? o.title : "Section";
-      let body = typeof o.body === "string" ? o.body : "";
-      const paras = strArray(o.paragraphs);
-      if (paras.length) body = paras.join("\n\n");
-      if (body.trim()) comprehensiveSections.push({ title, body: body.trim() });
-    }
-  }
-
-  const stratRaw = r.strategicBusiness ?? r.strategicImplications ?? r.pestelSwotNarrative;
-  const strategicBusiness: StrategicSection[] = [];
-  if (Array.isArray(stratRaw)) {
-    for (const item of stratRaw) {
-      if (!item || typeof item !== "object") continue;
-      const o = item as Record<string, unknown>;
-      const title = typeof o.title === "string" ? o.title : "Section";
-      let paragraphs = strArray(o.paragraphs);
-      if (!paragraphs.length && typeof o.body === "string") {
-        paragraphs = o.body
-          .split(/\n\n+/)
-          .map((s) => s.trim())
-          .filter(Boolean);
-      }
-      if (paragraphs.length) strategicBusiness.push({ title, paragraphs });
-    }
-  }
-
-  return {
-    pestelDimensions: pestelDimensions.length ? pestelDimensions : undefined,
-    swot,
-    comprehensiveSections: comprehensiveSections.length ? comprehensiveSections : undefined,
-    strategicBusiness: strategicBusiness.length ? strategicBusiness : undefined,
-    newMarketAnalysis: strArray(r.newMarketAnalysis).length ? strArray(r.newMarketAnalysis) : undefined,
-    keyTakeaways: strArray(r.keyTakeaways).length ? strArray(r.keyTakeaways) : undefined,
-    recommendations: strArray(r.recommendations).length ? strArray(r.recommendations) : undefined,
-  };
 }
 
 function mapParsedDimensions(parsed: PestelDimension[]): Map<string, string[]> {
@@ -236,12 +148,6 @@ function hasEvidenceAnchor(text: string): boolean {
     /\b(gdp|inflation|unemployment|population|debt|life expectancy|literacy|enrollment|education|series|indicator)\b/.test(
       t
     )
-  );
-}
-
-function hasBusinessImplicationAnchor(text: string): boolean {
-  return /\b(implication|implies|suggests|therefore|so this means|for business|for operators|for investors|risk|opportunity|margin|pricing|entry|capex|opex|compliance|execution)\b/i.test(
-    text
   );
 }
 
@@ -661,7 +567,6 @@ function polishPestelAnalysisForClient(a: PestelAnalysis): PestelAnalysis {
 export function buildDataOnlyPestel(
   countryName: string,
   cca3: string,
-  digest: string,
   bundle: Record<string, SeriesPoint[]>,
   meta: CountrySummary | undefined,
   profile: WbCountryProfile | null

@@ -1000,7 +1000,7 @@ export default function Dashboard() {
     typeof meta?.eurFxRate === "number" && Number.isFinite(meta.eurFxRate) && meta.eurFxRate > 0;
 
   return (
-    <div className="cap-dashboard-page mx-auto max-w-7xl space-y-4 pb-8 sm:space-y-5">
+    <div className="space-y-4">
       <CollapsibleToolbar
         title="Dashboard controls"
         summary={`${country} · ${start}–${end}`}

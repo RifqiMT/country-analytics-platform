@@ -83,6 +83,15 @@ If implementation or behavior changes, update affected docs in the same PR and v
 - Updated traceability matrix (FR-26–FR-28), guardrails (BG-04 crime interpretation), metrics/OKRs
 - Synchronized executive summary, product documentation standard, and changelog
 
+### 2026-07-20 second pass — gap closure audit included:
+
+- Closed API contract gap: `GET /api/country/:cca3/fx-series` documented in API_REFERENCE and VARIABLES
+- Added missing env vars: `VITE_API_BASE_URL`, `CAP_SERVERLESS_BUDGET_MS`, `AWS_LAMBDA_FUNCTION_NAME`
+- Added client storage keys, EUR FX fields, response headers, chart color guidelines
+- Expanded RELEASE_READINESS_CHECKLIST, DEPLOYMENT_VERCEL, ARCHITECTURE
+- Corrected category terminology: 6 data categories + UI-only `general` grouping
+- Updated `.env.example` with business model vars and serverless budget
+
 ### 2026-04-29 implementation-to-doc sync included:
 
 - Country dashboard FX source hierarchy and fallback documentation

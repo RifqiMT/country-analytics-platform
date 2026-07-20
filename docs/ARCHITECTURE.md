@@ -114,7 +114,38 @@ If evidence quality or scope constraints fail, the system uses deterministic fal
 4. Frontend may request narrative:
    - `POST /api/analysis/business/correlation-narrative`
 
-### 4) Evidence model (what the user sees)
+#### F) FX exchange-rate pipeline
+
+1. Dashboard loads country profile via `GET /api/country/:cca3` for snapshot USD/EUR quotes.
+2. Dashboard loads FX trend chart via `GET /api/country/:cca3/fx-series?start=&end=`.
+3. Backend resolves currency candidates from REST Countries metadata + `country-to-currency` fallback.
+4. `backend/src/fxSeries.ts` merges:
+   - ECB daily quotes (via Frankfurter) for recent years
+   - World Bank official annual FX (`PA.NUS.FCRF`) for gaps and validation
+5. Anomaly guard: if daily quote deviates significantly from WB baseline, fallback is applied.
+6. Response includes `usdToLocal`, `eurToLocal` series arrays with source labels.
+
+#### G) Bootstrap and data warmup
+
+1. On first app load, frontend calls `POST /api/bootstrap/warm` (once per tab via `cap-app-bootstrap-v1` flag).
+2. Backend `dataWarmup.ts` prefetches metric bundles for all countries in background.
+3. On serverless (`VERCEL=1` or `AWS_LAMBDA_FUNCTION_NAME`), warmup is **skipped** to avoid timeout.
+4. Disable locally with `DISABLE_BOOTSTRAP_WARMUP=1`.
+
+#### H) Serverless budget and timeout governance
+
+- `backend/src/serverlessBudget.ts` caps outbound work to stay within Vercel/Lambda limits.
+- Default budget: 55s on serverless, 120s locally (`CAP_SERVERLESS_BUDGET_MS` override).
+- Correlation uses batched year processing with `correlationYearConcurrency()` (8 on serverless, 4 locally).
+- Individual route timeouts (e.g. FX series 22s) use `settleWithin()` pattern.
+
+### 4) Frontend observability layer
+
+- `frontend/src/api.ts` — HTTP client with transport event dispatch for toast/diagnostics panel
+- `frontend/src/components/ApiToastStack.tsx` — surfaces request success/failure to users
+- Request timing and status visible in header API transport widget
+
+### 5) Evidence model (what the user sees)
 
 The system uses labeled evidence blocks conceptually:
 - `[D#]` platform evidence references (metric series and deterministic comparison structures)

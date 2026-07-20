@@ -105,6 +105,13 @@ Primary NFR themes:
 3. Use narrative (when generated) as hypothesis guidance; confirm with robustness checks.
 4. If long-range requests are slow, users can choose strict-range mode or reliability mode (automatic shorter-window fallback).
 
+### Journey E: Crime & safety assessment
+1. Select a focus country on the Dashboard.
+2. Open the **Crime & public safety** accordion section.
+3. Review homicide, conflict, and governance KPI cards and trend charts.
+4. Switch to Global Analytics **Crime & safety** tab for regional benchmarking.
+5. Export or screenshot findings for risk reports; consult Sources for institutional attribution.
+
 ## 9) Evidence and AI Strategy (high level)
 
 The platform uses an evidence hierarchy:
@@ -178,7 +185,7 @@ For governance details, see `docs/PRODUCT_DOCUMENTATION_STANDARD.md`.
 
 ### 14.3 Crime & public safety metrics (2026-07-20)
 
-- Platform metric catalog expanded to **68 indicators** across 7 categories (including crime).
+- Platform metric catalog expanded to **68 indicators** across **6 data categories** (financial, demographics, health, education, labour, crime) plus a **UI-only `general` global table grouping**.
 - Dashboard adds **Crime & public safety** accordion section with KPI cards and three trend chart groups:
   - Homicide rates (total, female, male)
   - Conflict indicators (IDP displacement, battle-related deaths)

@@ -122,7 +122,7 @@ Purpose: return enriched country profile.
 Path params:
 - `cca3`: ISO3 code
 
-Response (high-level):
+Response (high-level; full shape in `frontend/src/api.ts` `CountrySummary`):
 ```json
 {
   "cca3": "IDN",
@@ -134,14 +134,23 @@ Response (high-level):
   "area": 1910000,
   "government": "President ...",
   "headOfGovernmentTitle": "President",
-  "eezSqKm": 0,
+  "ianaTimezone": "Asia/Jakarta",
+  "eezSqKm": 6150000,
+  "usdFxRate": 15420,
+  "usdFxRateAsOf": "2026-04-29",
+  "usdFxCurrency": "IDR",
+  "usdFxSource": "ECB via Frankfurter",
+  "eurFxRate": 16850,
+  "eurFxRateAsOf": "2026-04-29",
+  "eurFxCurrency": "IDR",
+  "eurFxSource": "ECB via Frankfurter",
   "worldBankProfile": {
     "iso3": "IDN",
     "name": "Indonesia",
-    "incomeLevel": "...',
-    "lendingType": "...",
-    "latitude": "...",
-    "longitude": "..."
+    "incomeLevel": "Upper middle income",
+    "lendingType": "IBRD",
+    "latitude": "-6.17",
+    "longitude": "106.82"
   }
 }
 ```
@@ -156,6 +165,44 @@ Purpose: return only the World Bank country profile object.
 
 Errors:
 - `500` internal retrieval error
+
+#### GET `/api/country/:cca3/fx-series`
+
+Purpose: return annual USD/EUR → local currency exchange-rate time series for dashboard FX trend charts.
+
+Path params:
+- `cca3`: ISO3 code
+
+Query params:
+- `start` (optional): start year (clamped; default `2000`)
+- `end` (optional): end year (clamped; default `currentDataYear()`)
+- `currency` (optional): ISO 4217 override (e.g. `IDR`); skips auto-detection when valid
+
+Response (`FxSeriesPayload` from `frontend/src/api.ts`):
+```json
+{
+  "currency": "IDR",
+  "usdToLocal": [
+    { "year": 2022, "value": 14800, "provenance": "reported" },
+    { "year": 2023, "value": 15420, "provenance": "reported" }
+  ],
+  "eurToLocal": [
+    { "year": 2022, "value": 16200 },
+    { "year": 2023, "value": 16850 }
+  ],
+  "usdSource": "World Bank PA.NUS.FCRF",
+  "eurSource": "World Bank PA.NUS.FCRF"
+}
+```
+
+Errors:
+- `400` invalid ISO3
+- `404` FX series unavailable for economy
+- `502` upstream retrieval failure
+
+Notes:
+- Used by Dashboard FX trend chart (`frontend/src/pages/Dashboard.tsx`)
+- Serverless timeout capped at ~22s via `settleWithin`
 
 #### GET `/api/dashboard/comparison`
 

@@ -22,7 +22,7 @@ Environment variables configure backend behavior and model/web retrieval access.
 | `GROQ_API_KEY` | Groq API Key | Enables Groq model calls (assistant/PESTEL/Porter/business narratives) | If unset/empty, AI generation endpoints use deterministic/scaffold fallbacks | `backend/src/index.ts`, `backend/src/llm.ts` | `gsk_...` |
 | `TAVILY_API_KEY` | Tavily Web Key | Enables Tavily live web retrieval | If unset/empty, web grounding paths are disabled | `backend/src/index.ts`, `backend/src/llm.ts`, `backend/src/*Tavily*.ts` | `tvly_...` |
 | `GROQ_MODEL` | Legacy Groq Model Override | Legacy model override (used when no use-case override is set) | Use-case specific model env var overrides take priority | `backend/src/llm.ts` | `llama-3.3-70b-versatile` |
-| `GROQ_MODEL_PESTEL` | PESTEL Primary Model | Primary Groq model used for PESTEL generation | Selected as primary candidate for `useCase="pestel"` | `backend/src/llm.ts` | `llama-3.1-8b-instant` |
+| `GROQ_MODEL_PESTEL` | PESTEL Primary Model | Primary Groq model used for PESTEL generation | Selected as primary candidate for `useCase="pestel"`; code default `llama-3.3-70b-versatile` | `backend/src/llm.ts` | `llama-3.3-70b-versatile` |
 | `GROQ_MODEL_PORTER` | Porter Primary Model | Primary Groq model used for Porter generation | Selected as primary candidate for `useCase="porter"` | `backend/src/llm.ts` | `openai/gpt-oss-120b` |
 | `GROQ_MODEL_BUSINESS` | Business Primary Model | Primary Groq model used for correlation narrative generation | Selected as primary candidate for `useCase="business"` | `backend/src/llm.ts` | `llama-3.3-70b-versatile` |
 | `GROQ_MODEL_ASSISTANT` | Assistant Primary Model | Primary Groq model used for analytics assistant chat | Selected as primary candidate for `useCase="assistant"` | `backend/src/llm.ts` | `llama-3.1-8b-instant` |
@@ -32,6 +32,30 @@ Environment variables configure backend behavior and model/web retrieval access.
 | `GROQ_FALLBACK_MODELS_BUSINESS` | Business Fallback Models | Per-use-case fallback list for Business | Parsed as comma/space separated list | `backend/src/llm.ts` | `qwen/qwen3-32b` |
 | `GROQ_FALLBACK_MODELS_ASSISTANT` | Assistant Fallback Models | Per-use-case fallback list for Assistant | Parsed as comma/space separated list | `backend/src/llm.ts` | `qwen/qwen3-32b` |
 | `VERCEL` | Vercel Runtime Flag | Indicates serverless runtime in Vercel | When `VERCEL="1"`, backend does not open local listener | `backend/src/index.ts` | `1` |
+| `CAP_SERVERLESS_BUDGET_MS` | Serverless Invocation Budget | Maximum wall-clock budget (ms) for a single serverless API invocation | Parsed as integer; clamped to `[1000, 300000]`; default `55000` on serverless, `120000` locally | `backend/src/serverlessBudget.ts` | `55000` |
+| `AWS_LAMBDA_FUNCTION_NAME` | Lambda Runtime Flag | Set automatically on AWS Lambda; used with `VERCEL` to detect serverless runtime | When present, bootstrap warmup is skipped and timeouts are capped | `backend/src/serverlessBudget.ts` | `(auto-set by AWS)` |
+| `VITE_API_BASE_URL` | Frontend API Base URL | Overrides the API host prefix for frontend HTTP calls | Empty string = same-origin (`/api/...`); trailing slash stripped | `frontend/src/api.ts` | `` or `http://localhost:4000` |
+
+## 2.1) Environment variable relationship chart
+
+```mermaid
+flowchart LR
+  subgraph Backend["Backend (.env)"]
+    PORT --> IDX[index.ts listener]
+    GROQ[GROQ_API_KEY + GROQ_MODEL_*] --> LLM[llm.ts model routing]
+    TAVILY[TAVILY_API_KEY] --> WEB[Tavily retrieval modules]
+    WARM[DISABLE_BOOTSTRAP_WARMUP] --> DW[dataWarmup.ts]
+    VERCEL --> IDX
+    BUDGET[CAP_SERVERLESS_BUDGET_MS] --> SB[serverlessBudget.ts]
+    LAMBDA[AWS_LAMBDA_FUNCTION_NAME] --> SB
+  end
+
+  subgraph Frontend["Frontend (build-time)"]
+    VITE[VITE_API_BASE_URL] --> API[api.ts HTTP client]
+  end
+
+  API -->|/api/* requests| IDX
+```
 
 ## 3) Request Variables (API Inputs)
 
@@ -151,6 +175,33 @@ Request variables are the fields you send to endpoints. Backend validation rules
 | `usdFxRateAsOf` | FX As-Of Date | Date attached to returned quote | Daily quote date for ECB; annual fallback date for WB | Dashboard exchange card | `2026-04-29` |
 | `usdFxCurrency` | FX Currency Code | Currency code used for quote | Resolved from currency candidates (country metadata + fallback mapping) | Dashboard exchange card | `ALL` |
 | `usdFxSource` | FX Source Label | Human-readable provider/source label | `ECB via Frankfurter` or `World Bank PA.NUS.FCRF` variants | Dashboard exchange card | `ECB via Frankfurter` |
+| `eurFxRate` | EUR FX Rate | Returned quote for one EUR in target local currency | Same hierarchy as USD quote path | Dashboard exchange card | `106.12` |
+| `eurFxRateAsOf` | EUR FX As-Of Date | Date attached to EUR quote | Daily quote date for ECB; annual fallback date for WB | Dashboard exchange card | `2026-04-29` |
+| `eurFxCurrency` | EUR FX Currency Code | Currency code used for EUR quote | Resolved from currency candidates | Dashboard exchange card | `ALL` |
+| `eurFxSource` | EUR FX Source Label | Human-readable EUR provider label | Same source labels as USD path | Dashboard exchange card | `ECB via Frankfurter` |
+| `ianaTimezone` | IANA Timezone | Capital-city timezone for clock card | Derived from lat/lng via tz-lookup | Dashboard timezone card | `Asia/Jakarta` |
+| `eezSqKm` | EEZ Area | Exclusive economic zone in km² | Sea Around Us API with static fallback table | Dashboard hero profile | `6150000` |
+| `worldBankProfile` | WB Country Profile | Income level, lending type, region metadata | World Bank Country API enrichment | Dashboard hero, comparison context | `{ incomeLevel: "Upper middle income" }` |
+
+#### `GET /api/country/:cca3/fx-series`
+
+| Variable Name | Friendly Name | Definition | Formula / Rule | Location in the apps | Example |
+| --- | --- | --- | --- | --- | --- |
+| `cca3` | Country | ISO3 in path | Uppercased; validated `^[A-Z]{3}$` | Dashboard FX trend chart | `IDN` |
+| `start` | Start Year | Beginning of FX series window | Clamped to platform bounds; default `2000` | Dashboard FX chart fetch | `2005` |
+| `end` | End Year | End of FX series window | Clamped; default `currentDataYear()` | Dashboard FX chart fetch | `2025` |
+| `currency` | Currency Override | Optional ISO 4217 currency code | If valid 3-letter code, skips auto-detection | FX series route (advanced) | `IDR` |
+| `currency` (response) | Resolved Currency | Currency code used for series | From candidates or override | `FxSeriesPayload.currency` | `IDR` |
+| `usdToLocal` | USD→Local Series | Annual points: local currency per 1 USD | Merged ECB daily + WB annual fallback | Dashboard FX chart | `[{ year: 2023, value: 15420 }]` |
+| `eurToLocal` | EUR→Local Series | Annual points: local currency per 1 EUR | Same merge pipeline as USD | Dashboard FX chart | `[{ year: 2023, value: 16850 }]` |
+| `usdSource` | USD Series Source | Provider label for USD series | Institution string from merge logic | Dashboard FX chart legend | `World Bank PA.NUS.FCRF` |
+| `eurSource` | EUR Series Source | Provider label for EUR series | Institution string from merge logic | Dashboard FX chart legend | `World Bank PA.NUS.FCRF` |
+
+### 3.7 Response headers (platform-wide)
+
+| Variable Name | Friendly Name | Definition | Formula / Rule | Location in the apps | Example |
+| --- | --- | --- | --- | --- | --- |
+| `x-cap-warning` | Upstream Warning | Non-fatal upstream degradation notice | Set when country list enrichment uses fallback path | `GET /api/countries` response header | `REST Countries partial fallback` |
 
 #### `POST /api/analysis/correlation`
 
@@ -252,6 +303,19 @@ These are computed on the frontend in `frontend/src/pages/BusinessAnalytics.tsx`
 | `analysisDeliveryNote` | Delivery Note | UI explanation when fallback window is used | Set when reliability retries deliver a narrower window | Business Analytics result banner | `Primary request timed out; using last 12 years.` |
 | `presentationMode` | Presentation Mode | Hides control/diagnostic chrome for review mode | Toggle by button or keyboard `P` | Business Analytics page | `true` |
 
+### 4.7 Client-side persistence keys (browser storage)
+
+These keys are not environment variables but are part of the application's variable surface for analysts and QA.
+
+| Variable Name | Friendly Name | Definition | Formula / Rule | Location in the apps | Example |
+| --- | --- | --- | --- | --- | --- |
+| `cap.userApiKeys.v1` | BYOK Key Storage | Serialized Groq/Tavily keys and remember preference | JSON in `localStorage` (persistent) or `sessionStorage` (session) | `frontend/src/lib/userApiKeys.ts` | `{ groqApiKey: "gsk_...", scope: "local" }` |
+| `cap-selected-country-cca3` | Last Dashboard Country | ISO3 of last selected dashboard country | Stored in `localStorage` on country change | `frontend/src/dashboardCountryStorage.ts` | `IDN` |
+| `cap-app-bootstrap-v1` | Bootstrap Flag | One-shot per-tab flag after initial data warmup | Stored in `sessionStorage` | `frontend/src/hooks/useAppBootstrap.ts` | `"1"` |
+| `cap_pestel_analysis_v1` | PESTEL Session Cache | Last generated PESTEL analysis payload | Stored in `sessionStorage` until regenerate | `frontend/src/lib/pestelAnalysisCache.ts` | `{ countryCode: "IDN", year: 2025, ... }` |
+| `cap_porter_analysis_v1` | Porter Session Cache | Last generated Porter analysis payload | Stored in `sessionStorage` until regenerate | `frontend/src/lib/porterAnalysisCache.ts` | `{ countryCode: "IDN", industrySector: "10", ... }` |
+| `cap_business_correlation_v1` | Business Analysis Cache | Last correlation + narrative result | Stored in `sessionStorage` until regenerate | `frontend/src/lib/businessCorrelationCache.ts` | `{ metricX: "gdp_per_capita", correlation: 0.62, ... }` |
+
 ## 5) Relationship Chart (Where variables connect)
 
 ```mermaid
@@ -273,7 +337,7 @@ flowchart TD
   E3 --> E4[POST /api/analysis/business/correlation-narrative]
   C1 --> E5[POST /api/analysis/pestel]
   D1 --> E6[POST /api/analysis/porter]
-  F1 --> E7[GET /api/country/:cca3/series + /api/dashboard/comparison]
+  F1 --> E7[GET /api/country/:cca3/series + comparison + fx-series]
   G1 --> E8[GET /api/global/snapshot + /api/global/table]
 
   E7 --> M1[(Metric catalog: 68 indicators)]

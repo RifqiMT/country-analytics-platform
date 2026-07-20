@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-07-20 (Second pass — comprehensive doc audit & gap closure)
+
+### Documentation gaps closed
+- **`docs/VARIABLES.md`**: Added `VITE_API_BASE_URL`, `CAP_SERVERLESS_BUDGET_MS`, `AWS_LAMBDA_FUNCTION_NAME`; fixed `GROQ_MODEL_PESTEL` default example; added EUR FX response fields, fx-series query/response vars, client storage keys (`cap.userApiKeys.v1`, session caches), `x-cap-warning` header, env variable relationship chart
+- **`docs/API_REFERENCE.md`**: Added `GET /api/country/:cca3/fx-series` contract; expanded `GET /api/country/:cca3` response with USD/EUR FX, timezone, EEZ, WB profile fields
+- **`docs/METRIC_CATALOG.md`**: Clarified 6 data categories + UI-only `general` grouping; added gap-fill fields section (`imfWeoIndicator`, `uisIndicatorId`, `shortLabel`)
+- **`docs/DESIGN_GUIDELINES.md`**: Added dashboard chart series color conventions and choropleth map scale
+- **`docs/TRACEABILITY_MATRIX.md`**: Added FR-29 (FX trend chart), FR-30 (FX snapshot quotes); documented legacy `POST /api/analysis/correlation` endpoint
+- **`docs/RELEASE_READINESS_CHECKLIST.md`**: Expanded from 33 to full enterprise checklist with crime, FX, serverless, and sign-off sections
+- **`docs/DEPLOYMENT_VERCEL.md`**: Expanded with timeout/budget alignment, troubleshooting, full env var table
+- **`docs/ARCHITECTURE.md`**: Added FX pipeline, bootstrap/warmup, serverless budget, and frontend observability sections
+- **`docs/PRD.md`**: Added Journey E (crime & safety assessment); corrected category count terminology
+- **`.env.example`**: Added `GROQ_MODEL_BUSINESS`, `GROQ_FALLBACK_MODELS_BUSINESS`, `CAP_SERVERLESS_BUDGET_MS`
+
+### Category terminology alignment
+- Standardized language: **68 metrics in 6 data categories** + **1 UI-only `general` global table grouping** (not 7 metric categories)
+
 ## 2026-07-20 (Comprehensive documentation audit + crime metrics sync)
 
 ### Product & documentation

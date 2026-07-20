@@ -1,4 +1,3 @@
-import type { CountrySummary } from "./restCountries.js";
 import { listCountries } from "./restCountries.js";
 import {
   fetchGlobalYearSnapshot,

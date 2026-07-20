@@ -3,7 +3,6 @@
  * platform returns a JSON response instead of FUNCTION_INVOCATION_TIMEOUT.
  */
 
-const SERVERLESS_HEADROOM_MS = 5_000;
 const DEFAULT_SERVERLESS_BUDGET_MS = 55_000;
 
 /** True when running inside Vercel or AWS Lambda (not local `npm run dev`). */

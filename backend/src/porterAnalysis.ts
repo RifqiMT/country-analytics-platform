@@ -285,7 +285,6 @@ export function buildDataOnlyPorter(
   countryName: string,
   cca3: string,
   industryLabel: string,
-  digest: string,
   bundle: Record<string, SeriesPoint[]>,
   meta: CountrySummary | undefined,
   profile: WbCountryProfile | null

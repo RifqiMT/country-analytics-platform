@@ -45,6 +45,14 @@ It is not meant to replace testing. Instead, it provides a release-ready mapping
 | FR-26 | Dashboard crime & public safety section with KPI cards and trend charts | `frontend/src/pages/Dashboard.tsx` (crime accordion, chart groups) | `backend/src/metrics.ts` (crime category), `backend/src/index.ts` series routes | Select country with crime data; verify 9 KPI cards and 3 chart groups render with correct units |
 | FR-27 | Global Analytics crime table tab and homicide choropleth | `frontend/src/pages/GlobalAnalytics.tsx` | `backend/src/globalTable.ts` (crime category), `backend/src/globalSnapshot.ts` | Switch to Crime & safety tab; select homicide_rate on map; verify sortable table columns |
 | FR-28 | Crime metrics documented in Sources with institutional source attribution | `frontend/src/pages/Sources.tsx` | `GET /api/metrics`, `GET /api/data-providers` | Verify crime category shows UNODC/IDMC/UCDP/WGI source chips and metric definitions match catalog |
+| FR-29 | Dashboard FX trend chart loads USD/EUR exchange-rate time series | `frontend/src/pages/Dashboard.tsx` | `GET /api/country/:cca3/fx-series`, `backend/src/fxSeries.ts` | Select country with FX data; verify chart renders dual-series USD/EUR lines with source labels |
+| FR-30 | Country profile returns USD/EUR snapshot quotes with source transparency | `backend/src/index.ts` (`fetchUsdFxSnapshot`, `fetchBestUsdFxSnapshot`) | `frontend/src/api.ts` `CountrySummary` | Verify hero FX card shows rate, currency, as-of date, and source institution |
+
+### Legacy / internal endpoints
+
+| Endpoint | Status | Notes |
+| --- | --- | --- |
+| `POST /api/analysis/correlation` | Legacy | Single-country correlation; not consumed by current frontend; prefer `GET /api/analysis/correlation-global` |
 
 ## 2) Non-functional requirements (NFR)
 

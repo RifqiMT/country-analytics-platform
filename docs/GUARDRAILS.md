@@ -156,3 +156,9 @@ When data-source hierarchy or resilience logic changes (e.g., FX provider fallba
 - `docs/VARIABLES.md`
 - `docs/TRACEABILITY_MATRIX.md`
 - `frontend/src/pages/Sources.tsx` narrative content
+
+### OG-04: Manual QA is the current validation baseline
+
+- The repository does not yet include automated test suites (`*.test.ts`, `*.spec.ts`).
+- Release validation relies on the manual QA steps in `docs/TRACEABILITY_MATRIX.md` and `docs/RELEASE_READINESS_CHECKLIST.md`.
+- When automated tests are introduced, they must be referenced in the traceability matrix validation column.

@@ -1,9 +1,3 @@
-type Attribution = {
-  sources: string[];
-  model?: string;
-  webSearchUsed?: boolean;
-};
-
 /** Legacy default when no `GROQ_MODEL` / use-case override (e.g. ad-hoc `groqChat` without model). */
 const DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile";
 

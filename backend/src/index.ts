@@ -29,7 +29,7 @@ import { fetchEnrichedCountryMeta } from "./countryMetaEnrichment.js";
 import { fetchWikidataCountryEnrichment } from "./wikidataCountryProfile.js";
 import { fetchSeaAroundUsEezAreaKm2 } from "./seaAroundUsEez.js";
 import { EEZ_SQKM_FALLBACK } from "./eezSqKmFallback.js";
-import { fetchCountryBundle, fetchMetricSeriesForCountry, fetchIndicatorSeries, allMetricIds } from "./worldBank.js";
+import { fetchCountryBundle, fetchIndicatorSeries, allMetricIds } from "./worldBank.js";
 import type { SeriesPoint } from "./series.js";
 import { fetchGlobalSnapshotWithYearFallback, fetchGlobalYearSnapshot } from "./globalSnapshot.js";
 import {
@@ -52,13 +52,10 @@ import {
   buildDataOnlyPestel,
   buildPestelLlmDigest,
   mergePestelAnalysis,
-  parsePestelAnalysisFromLlm,
   type PestelAnalysis,
 } from "./pestelAnalysis.js";
 import {
-  pestelAllowedDataYearsHint,
   sanitizePestelPartial,
-  validatePestelAnalysisGrounding,
 } from "./pestelGrounding.js";
 import {
   buildPartialPestelFromTavilyWeb,
@@ -1409,18 +1406,6 @@ function buildAssistantGroundedFallbackFromCited(opts: {
   return lines.join("\n");
 }
 
-function extractTaggedLines(section: string, re: RegExp, max = 6): string[] {
-  if (!section.trim()) return [];
-  const out: string[] = [];
-  for (const line of section.split(/\r?\n/)) {
-    const m = line.match(re);
-    if (!m?.[1]) continue;
-    out.push(m[1].trim());
-    if (out.length >= max) break;
-  }
-  return out;
-}
-
 const ASSISTANT_CREDIBLE_DOMAINS = [
   "worldbank.org",
   "imf.org",
@@ -2616,7 +2601,6 @@ function buildDataDigest(
 
 app.post("/api/analysis/pestel", async (req, res) => {
   try {
-    const providedGroqApiKey = readRequestApiKey(req, "groq");
     const providedTavilyApiKey = readRequestApiKey(req, "tavily");
     const cca3 = String(req.body?.countryCode ?? "").toUpperCase();
     const year = req.body?.year
@@ -2637,7 +2621,7 @@ app.post("/api/analysis/pestel", async (req, res) => {
     ]);
     const digest = buildPestelLlmDigest(meta?.name ?? cca3, bundle);
     const attribution: string[] = ["PESTEL anchored on World Bank development indicators (dashboard series)"];
-    const fallback = buildDataOnlyPestel(meta?.name ?? cca3, cca3, digest, bundle, meta, profile);
+    const fallback = buildDataOnlyPestel(meta?.name ?? cca3, cca3, bundle, meta, profile);
 
     let web = "";
     if (providedTavilyApiKey || process.env.TAVILY_API_KEY?.trim()) {
@@ -2703,19 +2687,7 @@ app.post("/api/analysis/pestel", async (req, res) => {
       if (web) attribution.push("Web context: Tavily (6 topic bundles × 5 results, advanced retrieval, recency-biased)");
     }
 
-    const todayIso = utcDateISO();
     const webFull = web;
-    /** Groq rejects oversized user payloads (413); grounding / Tavily-only paths still use the full bundle. */
-    const PESTEL_LLM_WEB_CAP = 26_000;
-    const { text: webForLlm, truncated: sourceBTruncated } = truncatePestelSourceBForLlm(webFull, PESTEL_LLM_WEB_CAP);
-    if (sourceBTruncated) {
-      attribution.push(
-        `NOTICE: Web research bundle trimmed to ${PESTEL_LLM_WEB_CAP} chars for Groq limits — full text kept for grounding & Tavily fallback`
-      );
-    }
-    const webPresent = Boolean(webFull.trim());
-    const webIsThin = webFull.trim().length < 900;
-    const hasTemporalWindows = webFull.includes("Multi-horizon web research");
     const staticProfile = [
       `Government type (country profile): ${meta?.government ?? "—"}`,
       meta?.headOfGovernmentTitle ? `Head of government role: ${meta.headOfGovernmentTitle}` : null,
@@ -2726,101 +2698,6 @@ app.post("/api/analysis/pestel", async (req, res) => {
       .filter(Boolean)
       .join("\n");
 
-    const narrativeRules = `
-SCOPE: You analyze **only** ${meta?.name ?? cca3} (${cca3}). Do not substitute another country’s facts. Regional peers may be mentioned only as comparison, without attributing their statistics to this country.
-
-VOICE & CLIENT OUTPUT (non-negotiable):
-- Write for **executives and board readers**: cohesive, fluid **memo-style** prose. Every JSON string you output is **client-facing**—never paste internal retrieval labels, markdown headings from the research bundle, bracketed “model notes,” or engineering terms.
-- **Forbidden in user-visible text:** “SOURCE A”, “SOURCE B”, “Source A/B”, “STATIC PROFILE”, “Past 7 days”, “Past 1 month”, “temporal window”, subsection titles from the web bundle, or raw “YYYY-MM-DD → YYYY-MM-DD” range lines. Instead use natural language, e.g. “Official series show … (year)”, “Recent reporting suggests …”, “Over the last several months …”, “Longer-run patterns indicate …”.
-- Typography rule: never use the em-dash character (—) or en-dash character (–) in output strings; use commas, parentheses, or a plain hyphen instead.
-- **Also avoid** product/engineering scaffolding in client strings: “From platform metadata”, “Data layer:”, “REST Countries”, “WDI-backed”, “the application’s … series”—write as a consultant would (“the reference profile …”, “reported indicators …”, “official development statistics …”).
-- Weave **platform statistics** and **web themes** into single flowing sentences; do not structure bullets as “(1) data (2) web (3) implication” explicitly.
-
-ANTI-HALLUCINATION (hard rules — violations invalidate the output):
-- **No numbers** (%, GDP, population, rates, years as data claims, rankings) unless they appear in the **platform INDICATORS** block, the **country profile** lines, or **explicitly** in web research snippets below. Never pull statistics from model training memory.
-- **Year discipline:** For any digest/WDI statistic, the **year cited must match the INDICATORS line** for that metric (see VALID DATA YEARS below). Do not label 2024 data as 2026 or use a future year as an observation year.
-- **No named people** (heads of state, ministers, CEOs, party leaders) unless that **exact name** appears in web excerpts. Otherwise use generic roles (“the government”, “the central bank”) or omit.
-- **No specific events** (election outcomes, coups, deals, sanctions) unless web excerpts support them. If unsupported, do not invent—use conditional language (“Where coverage mentions …”) or omit.
-- **No fake citations** (“studies show”, “reports indicate”) unless traceable to excerpt wording. For quantitative claims from the indicator list, prefer “Series show … (year …)”.
-- Web excerpts are **unverified** third-party text: if they conflict, note uncertainty briefly; do not fabricate reconciliation.
-- Do **not** use blanket dismissals such as “No specific recent web sources were identified as of ${todayIso}” unless **all** web research below is effectively empty (no substantive synthesis or snippets anywhere). If material exists, you **must** use it in fluid prose **without** naming internal buckets.
-
-NARRATIVE & EVIDENCE ORDER (internal discipline—do not label this in the JSON):
-- Today's date is **${todayIso} (UTC)**. Prefer **newer** published dates in snippets when they conflict with older lines.
-- **Logical flow** in each bullet/paragraph: anchor with **verified platform metrics + year** where relevant; add **web-based** qualitative colour only when excerpts support it; close with a **brief** implication stated as your judgment, not as new facts.
-${
-  hasTemporalWindows
-    ? `
-- The web bundle includes **multi-horizon slices** (very recent through multi-year lenses) for synthesis only. **Integrate** findings across time naturally (e.g. “near-term press”, “over the past year”, “longer structural trends”)—**never** quote the slice headings or date-range stamps verbatim in client text.`
-    : ""
-}
-${
-  webPresent
-    ? ""
-    : `
-- **No web research** is available. Do **not** invent internet-era facts. For every PESTEL comprehensive subsection except Executive summary: paragraph 2 must be **one or two short sentences** stating that live web context was not available and that qualitative colour rests on platform indicators and country profile only. Executive summary paragraph 2 may say once that live web context was unavailable.`
-}
-- PESTEL & SWOT bullets: tight, analytical mini-paragraphs; no laundry lists of internal labels.
-- For each bullet, follow this logic: (1) evidence-backed claim, (2) why it matters for business execution, risk, or investment sequencing. Avoid generic observations without implications.
-- Comprehensive & strategicBusiness: **exactly two paragraphs** each (blank line between), each paragraph reads as **one continuous argument**, not a labeled outline.
-- TECHNOLOGICAL: use literacy / enrollment / education spend from **indicators** for skills; never use GDP per capita as digital adoption. Digital policy themes only when web excerpts support them.
-- strategicBusiness: four distinct voices; no duplicated closings across quadrants.
-- **SWOT integrity:** Each quadrant must contain **five genuinely distinct** points. **Do not** repeat, paraphrase, or paste the same idea across strengths, weaknesses, opportunities, or threats. If a fact could fit two quadrants, place it **once** where it is strongest and develop a **different** angle for the other quadrant.`;
-
-    const jsonSchemaHint = `Return ONLY a JSON object (no markdown) with exactly this structure (counts are strict). All string values must read as **polished analyst prose**—no internal labels (see VOICE rules above).
-{
-  "pestelDimensions": [
-    {"letter":"P","label":"POLITICAL","bullets":["EXACTLY 5 fluent bullets blending verified indicators with web themes where supported"]},
-    {"letter":"E","label":"ECONOMIC","bullets":["EXACTLY 5"]},
-    {"letter":"S","label":"SOCIOCULTURAL","bullets":["EXACTLY 5"]},
-    {"letter":"T","label":"TECHNOLOGICAL","bullets":["EXACTLY 5"]},
-    {"letter":"E","label":"ENVIRONMENTAL","bullets":["EXACTLY 5"]},
-    {"letter":"L","label":"LEGAL","bullets":["EXACTLY 5"]}
-  ],
-  "swot": {
-    "strengths": ["EXACTLY 5 coherent bullets"],
-    "weaknesses": ["EXACTLY 5"],
-    "opportunities": ["EXACTLY 5"],
-    "threats": ["EXACTLY 5"]
-  },
-  "comprehensiveSections": [
-    {"title":"Executive summary","body":"EXACTLY two flowing paragraphs (blank lines between): macro snapshot from official series with years; cross-cutting themes from recent coverage as of ${todayIso}; outlook and what to monitor."},
-    {"title":"Political factors","body":"EXACTLY two integrated paragraphs: anchors from indicators/profile plus web-supported political context, and then implications."},
-    {"title":"Economic factors","body":"EXACTLY two paragraphs: same integrated pattern."},
-    {"title":"Sociocultural factors","body":"EXACTLY two paragraphs: same pattern."},
-    {"title":"Technological factors","body":"EXACTLY two paragraphs: same pattern."},
-    {"title":"Environmental factors","body":"EXACTLY two paragraphs: same pattern."},
-    {"title":"Legal factors","body":"EXACTLY two paragraphs: same pattern."}
-  ],
-  "strategicBusiness": [
-    {"title":"Strengths","paragraphs":["EXACTLY two strings: grounded strengths, external validation from coverage and how to operationalize"]},
-    {"title":"Weaknesses","paragraphs":["EXACTLY two strings: data gaps or structural frictions and external risks from coverage, plus mitigation"]},
-    {"title":"Opportunities","paragraphs":["EXACTLY two strings: indicator-backed openings with catalysts from coverage, plus sequencing"]},
-    {"title":"Threats","paragraphs":["EXACTLY two strings: dashboard risk signals with external shocks from coverage, plus resilience"]}
-  ],
-  "newMarketAnalysis": ["EXACTLY 5 bullets for market entry / expansion"],
-  "keyTakeaways": ["EXACTLY 5 bullets"],
-  "recommendations": ["EXACTLY 5 actionable bullets (Key recommendations)"]
-}`;
-
-    const validYearsLine = pestelAllowedDataYearsHint(bundle);
-
-    const prompt = `Country: ${meta?.name ?? cca3} (${cca3}). Context year for digest alignment: ${year}. **Calendar "as of today" for web layer: ${todayIso} (UTC).**
-${narrativeRules}
-
-VALID DATA YEARS (mandatory):
-${validYearsLine}
-
-${jsonSchemaHint}
-
-STATIC PROFILE (API ground truth — do not contradict):
-${staticProfile}
-
-PLATFORM INDICATORS — Latest non-null year per series (ground all numeric claims here unless the same figure appears in web excerpts):
-${digest}
-
-WEB RESEARCH EXCERPTS — Live retrieval as of ${todayIso} (may be empty). Synthesize into fluent prose; use only supported themes—never invent details:
-${webForLlm || "(none — no web excerpts; follow empty-web rules above)"}`;
 
     const buildDeterministicPestelBlend = async (
       reasonLabel: string
@@ -2887,7 +2764,6 @@ app.post("/api/analysis/porter", async (req, res) => {
       meta?.name ?? cca3,
       cca3,
       industrySector,
-      digest,
       bundle,
       meta,
       profile
@@ -3130,7 +3006,7 @@ ${webForLlm || "(none — follow no-web rules above)"}`;
       return res.json({ analysis: fallback, attribution });
     }
     try {
-      const { text, model, primaryFailed } = await groqChatWithFallbackForUseCase(
+      const { text, primaryFailed } = await groqChatWithFallbackForUseCase(
         "porter",
         `You are a competitive strategy analyst. Output **only** valid JSON. Every string is client-facing: no "SOURCE A/B", no internal labels. Exactly **5 bullets** per force; **2 paragraphs** per comprehensive body; **5 bullets** each for newMarketAnalysis, keyTakeaways, and recommendations. Priorize PLATFORM INDICATORS for numbers and years, then web themes across time horizons.`,
         prompt,
@@ -3145,8 +3021,7 @@ ${webForLlm || "(none — follow no-web rules above)"}`;
       const analysis = partial ? mergePorterAnalysis(partial, fallback) : fallback;
       const grounded = sanitizePorterByGrounding(analysis, fallback);
       res.json({ analysis: grounded, attribution });
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
+    } catch {
       attribution.push("Porter: using digest-based Porter analysis");
       res.json({ analysis: fallback, attribution });
     }

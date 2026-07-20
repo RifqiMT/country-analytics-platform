@@ -66,7 +66,9 @@ Batched year processing, timeout-aware retries, optional strict-range mode, and 
 
 ---
 
-## Metric coverage (68 indicators, 7 categories)
+## Metric coverage (68 indicators, 6 data categories + UI grouping)
+
+The catalog contains **68 metrics** in **6 data categories**, plus a **UI-only `general` grouping** for cross-domain global tables:
 
 | Category | Count | Example metrics |
 |----------|-------|-----------------|
@@ -197,6 +199,7 @@ Start with [`docs/README.md`](docs/README.md) for role-based reading paths.
 | GET | `/api/country/:cca3/series` | Metric time series |
 | GET | `/api/dashboard/comparison` | Country vs regional avg vs global |
 | GET | `/api/global/snapshot` | Choropleth snapshot |
+| GET | `/api/country/:cca3/fx-series` | USD/EUR exchange-rate time series |
 | GET | `/api/global/table` | Global country table (incl. crime category) |
 | POST | `/api/assistant/chat` | Analytics assistant |
 | POST | `/api/keys/validate` | BYOK key validation |

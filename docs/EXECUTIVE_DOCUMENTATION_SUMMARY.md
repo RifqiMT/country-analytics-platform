@@ -101,7 +101,7 @@ Core value:
 |------|--------|
 | Product requirements documented and current | **Yes** (PRD §14.3 crime metrics) |
 | Core personas and user stories documented and current | **Yes** (7 personas, crime stories) |
-| API and variable contracts documented and current | **Yes** (68 metrics, crime variables) |
+| API and variable contracts documented and current | **Yes** (68 metrics, fx-series, client storage keys) |
 | AI/grounding guardrails documented and current | **Yes** (BG-04 added) |
 | Traceability matrix updated for recent feature changes | **Yes** (FR-26–FR-28) |
 | Release checklist available for go-live governance | **Yes** |
@@ -124,7 +124,7 @@ Core value:
 | Metric | Current value |
 |--------|---------------|
 | Canonical indicators | 68 |
-| Data categories | 7 (financial, demographics, health, education, labour, crime, general table grouping) |
+| Data categories | 6 metric categories + 1 UI-only global table grouping (`general`) |
 | Application modules | 7 routes |
 | API endpoints | 20+ |
 | Documentation files | 21 |

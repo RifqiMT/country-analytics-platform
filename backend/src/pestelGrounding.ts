@@ -3,7 +3,6 @@ import type {
   ComprehensiveSection,
   PestelAnalysis,
   PestelDimension,
-  PestelSwot,
   StrategicSection,
 } from "./pestelAnalysis.js";
 import { PESTEL_DIGEST_KEYS } from "./pestelDigestKeys.js";
@@ -35,18 +34,6 @@ function collectDataYearsFromBundle(bundle: Record<string, SeriesPoint[]>): Set<
     }
   }
   return s;
-}
-
-/** Short line for the LLM prompt: valid calendar years for SOURCE A statistics. */
-export function pestelAllowedDataYearsHint(bundle: Record<string, SeriesPoint[]>): string {
-  const s = collectDataYearsFromBundle(bundle);
-  const sorted = [...s].sort((a, b) => a - b);
-  if (sorted.length === 0) {
-    return "Sparse platform indicators for this country—avoid inventing years; use only years that appear on INDICATOR lines below.";
-  }
-  const tail = sorted.slice(-15);
-  const extra = sorted.length > 15 ? ` (plus ${sorted.length - 15} earlier year(s) in series)` : "";
-  return `Valid dashboard indicator years (use only these for figures from the indicator block, unless the same year appears verbatim in web excerpts): ${tail.join(", ")}${extra}.`;
 }
 
 function buildAllowedYears(ctx: PestelGroundingContext): Set<number> {
@@ -223,73 +210,4 @@ export function sanitizePestelPartial(
   }
 
   return { partial: out, droppedFragments: dropped.n };
-}
-
-export type PestelGroundingValidation = {
-  ok: boolean;
-  groundedFragments: number;
-  totalFragments: number;
-  ratio: number;
-  reasons: string[];
-};
-
-export function validatePestelAnalysisGrounding(
-  analysis: PestelAnalysis,
-  ctx: PestelGroundingContext
-): PestelGroundingValidation {
-  const corpus = buildCorpus(ctx);
-  const reasons: string[] = [];
-  let total = 0;
-  let grounded = 0;
-
-  const check = (s: string) => {
-    total += 1;
-    if (proseIsGrounded(s, ctx, corpus)) grounded += 1;
-  };
-
-  for (const d of analysis.pestelDimensions) for (const b of d.bullets) check(b);
-  for (const b of analysis.swot.strengths) check(b);
-  for (const b of analysis.swot.weaknesses) check(b);
-  for (const b of analysis.swot.opportunities) check(b);
-  for (const b of analysis.swot.threats) check(b);
-  for (const s of analysis.comprehensiveSections) {
-    for (const p of s.body.split(/\n\s*\n/).map((x) => x.trim()).filter(Boolean)) check(p);
-  }
-  for (const s of analysis.strategicBusiness) for (const p of s.paragraphs) check(p);
-  for (const b of analysis.newMarketAnalysis) check(b);
-  for (const b of analysis.keyTakeaways) check(b);
-  for (const b of analysis.recommendations) check(b);
-
-  const ratio = total > 0 ? grounded / total : 0;
-  if (ratio < 0.82) reasons.push(`grounded ratio too low (${grounded}/${total}, ${(ratio * 100).toFixed(1)}%)`);
-  const econ = analysis.pestelDimensions.find((d) => d.label === "ECONOMIC");
-  if (econ) {
-    const econGrounded = econ.bullets.filter((b) => proseIsGrounded(b, ctx, corpus)).length;
-    if (econGrounded < 4) reasons.push(`ECONOMIC bullets weakly grounded (${econGrounded}/5)`);
-  }
-  const political = analysis.pestelDimensions.find((d) => d.label === "POLITICAL");
-  if (political) {
-    const polGrounded = political.bullets.filter((b) => proseIsGrounded(b, ctx, corpus)).length;
-    if (polGrounded < 3) reasons.push(`POLITICAL bullets weakly grounded (${polGrounded}/5)`);
-  }
-  const legal = analysis.pestelDimensions.find((d) => d.label === "LEGAL");
-  if (legal) {
-    const legalGrounded = legal.bullets.filter((b) => proseIsGrounded(b, ctx, corpus)).length;
-    if (legalGrounded < 3) reasons.push(`LEGAL bullets weakly grounded (${legalGrounded}/5)`);
-  }
-  const executive = analysis.comprehensiveSections.find((s) => s.title.toLowerCase().includes("executive"));
-  if (executive) {
-    const paras = executive.body.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
-    if (paras.length > 0 && !proseIsGrounded(paras[0]!, ctx, corpus)) {
-      reasons.push("executive summary opening paragraph not grounded");
-    }
-  }
-
-  return {
-    ok: reasons.length === 0,
-    groundedFragments: grounded,
-    totalFragments: total,
-    ratio,
-    reasons,
-  };
 }

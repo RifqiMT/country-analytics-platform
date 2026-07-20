@@ -19,16 +19,6 @@ import {
   mergeWldFallbackDense,
 } from "./seriesCompletion.js";
 
-/** Fetched alongside requested metrics so cross-metric gap-fills can run (dashboard, compare, WLD). */
-const ENRICHMENT_ANCHOR_METRIC_IDS: readonly string[] = [
-  "gdp",
-  "gdp_ppp",
-  "population",
-  "pop_age_0_14",
-  "pop_15_64_pct",
-  "pop_age_65_plus",
-];
-
 const DERIVATION_REQUIRES_ANCHOR: Readonly<Record<string, readonly string[]>> = {
   gdp_ppp: ["gdp"],
   gdp_per_capita: ["gdp", "population"],
