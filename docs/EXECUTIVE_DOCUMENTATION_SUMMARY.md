@@ -8,7 +8,7 @@ It is designed to answer four executive questions quickly:
 - Where are quality/safety controls documented?
 - Which documents are the source of truth for product, engineering, and governance?
 
-**Last updated:** 2026-07-20
+**Last updated:** 2026-07-21
 
 ---
 
@@ -29,6 +29,11 @@ Core value:
 ---
 
 ## 2) Current release highlights
+
+### 2026-07-21 — Global map analytics UX
+- Quintile **choropleth tiers** with dedicated legend and scope-aware rank bands
+- **Map tooltip** with distribution stats, rank, comparison line, and curated metric blurbs
+- Compact Global Analytics toolbar; map tooltip motion with reduced-motion fallback
 
 ### 2026-07-20 — Crime metrics + comprehensive doc audit
 - **68-metric catalog** including 9 crime & public safety indicators (UNODC, IDMC, UCDP, WGI)
@@ -86,7 +91,7 @@ Core value:
 ### Design and operational governance
 - `docs/DESIGN_GUIDELINES.md` (brand tokens, refreshed PESTEL/Porter/SWOT/Compare palettes)
 - `docs/METRICS_AND_OKRS.md` (incl. Objective 4: security/governance coverage)
-- `docs/TRACEABILITY_MATRIX.md` (FR-01–FR-36, NFR-01–NFR-09)
+- `docs/TRACEABILITY_MATRIX.md` (FR-01–FR-37, NFR-01–NFR-09)
 - `docs/PRODUCT_DOCUMENTATION_STANDARD.md`
 - `docs/RELEASE_READINESS_CHECKLIST.md`
 - `docs/CHANGELOG.md`
@@ -129,6 +134,6 @@ Core value:
 | Application modules | 8 routes (incl. Compare Countries) |
 | API endpoints | 20+ |
 | Documentation files | 23 |
-| Functional requirements (traceability) | FR-01 through FR-36 |
+| Functional requirements (traceability) | FR-01 through FR-37 |
 | User personas | 7 |
 | Year range | 2000 – current |

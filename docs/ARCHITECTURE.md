@@ -66,7 +66,11 @@ If evidence quality or scope constraints fail, the system uses deterministic fal
    - `GET /api/global/table`
    - `GET /api/global/wld-series`
 3. Backend applies year fallback resolution and returns rows aligned to the resolved data year.
-4. Frontend renders map/table and preserves filter context in fullscreen views.
+4. Frontend builds a **quintile tier model** from scoped snapshot values (`choroplethTiers.ts`) and renders:
+   - choropleth paths colored by tier
+   - `ChoroplethTierLegend` with rank bands and economy count
+   - `MapCountryTooltip` with rank, distribution stats, and curated metric blurbs on hover
+5. Compact `GlobalAnalyticsToolbar` preserves filter context; fullscreen views retain map/table parity.
 
 #### C) Assistant chat (`POST /api/assistant/chat`)
 

@@ -129,14 +129,51 @@ Dashboard trend charts assign **per-metric hex colors** in `frontend/src/pages/D
 - Percentage metrics use `tooltipFormat: "percent"` for consistent tooltip rendering.
 - Colors are assigned at chart-group level—not globally unique across the entire dashboard—to keep related metrics visually grouped.
 
-### 2.9 Global choropleth map scale
+### 2.9 Global choropleth map scale (quintile tiers)
 
-Defined in `frontend/src/components/global/GlobalChoropleth.tsx`:
-- No-data fill: `#e2e8f0` (slate-200)
-- Data range: light `#fef3c7` → dark `#c2410c` (amber-to-orange sequential scale)
-- Highlighted country border: `#0f172a` (slate-900)
+Defined in `frontend/src/lib/choroplethTiers.ts` and consumed by `GlobalChoropleth.tsx` + `ChoroplethTierLegend.tsx`:
 
-### 2.10 Motion and feedback tokens (`frontend/src/index.css`)
+**Semantic fills (non-tier):**
+
+| Token | Hex | Usage |
+| --- | --- | --- |
+| `CHOROPLETH_NO_DATA` | `#e2e8f0` | Country with no published value for selected metric/year |
+| `CHOROPLETH_EXCLUDED` | `#f1f5f9` | Economies excluded from current map scope |
+| `CHOROPLETH_ANTARCTICA` | `#f8fafc` | Antarctica neutral fill |
+
+**Five rank tiers (quantile breaks within current map scope):**
+
+| Tier | Short label | Rank label | Color |
+| --- | --- | --- | --- |
+| 1 | Lowest | Bottom 20% | `#bae6fd` (sky-200) |
+| 2 | Low | Lower 20% | `#0ea5e9` (sky-500) |
+| 3 | Mid | Middle 20% | `#0369a1` (sky-700) |
+| 4 | High | Upper 20% | `#1e3a8a` (blue-900) |
+| 5 | Highest | Top 20% | `#172554` (blue-950) |
+
+**Rules:**
+- Tier breaks are computed from **countries in the current map scope** (respects region filter), not a fixed global scale.
+- `CHOROPLETH_TIER_GRADIENT` is reused in the map tooltip distribution bar for visual consistency.
+- Legend shows tier labels, rank bands, economy count, and hover titles with value ranges + country counts.
+- Hovered country border: `#0f172a` (slate-900); accent dot uses the country’s tier color.
+
+### 2.10 Map country tooltip (`MapCountryTooltip.tsx`)
+
+Rich analytics tooltip for choropleth hover (not shared with chart tooltips):
+
+| Element | Design token / pattern |
+| --- | --- |
+| Surface | `rounded-xl border-slate-200 bg-white shadow-lg`; max width `19.5rem` |
+| Accent bar | 4px top strip in tier accent color |
+| Context chip | `border-teal-200 bg-teal-50 text-teal-800` for above/below-average insights |
+| Value panel | `bg-slate-50` with large tabular value (`1.5rem` bold) |
+| Distribution bar | Tier gradient fill + median marker + country position marker |
+| Rank highlight | `text-teal-700` for rank cell and percentile sub-label |
+| Stat grid | 3×2 grid: bottom/top/median/mean/mode/rank with hint microcopy |
+
+Curated metric blurbs (`metricTooltipBlurb.ts`) provide plain-English one-liners; fallback tightens the first catalog sentence to ≤108 characters.
+
+### 2.11 Motion and feedback tokens (`frontend/src/index.css`)
 
 | Class / animation | Purpose | Behavior |
 | --- | --- | --- |
@@ -144,8 +181,11 @@ Defined in `frontend/src/components/global/GlobalChoropleth.tsx`:
 | `.toast-progress` / `cap-toast-progress` | Auto-dismiss progress bar | Linear width 100%→0%; pauses on `.group:hover` |
 | `.tools-live-pulse` / `cap-tools-pulse` | Header tools activity pulse | Emerald ring pulse (~1.2s) |
 | `.assistant-thinking-dot` / `assistant-thinking-bounce` | Assistant “thinking” indicator | Three staggered dots (0 / 0.15s / 0.3s delay) |
+| `.cap-map-tooltip` / `cap-map-tooltip--visible` | Map hover tooltip entrance | Fade + slight scale; respects `prefers-reduced-motion` |
+| `.cap-map-tooltip-marker` | Distribution bar position marker | Subtle pulse on value marker |
+| `.cap-map-tooltip-track` | Tooltip positioning layer | `translate3d` for smooth cursor follow |
 
-### 2.11 PageIntro and Sources chrome
+### 2.12 PageIntro and Sources chrome
 
 - Top accent bar: `from-teal-500/70 via-slate-200 to-red-500/50`
 - Eyebrow text: `text-teal-700`

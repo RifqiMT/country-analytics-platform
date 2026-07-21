@@ -344,6 +344,23 @@ Response fields from `GET /api/dashboard/comparison` used in the dashboard compa
 | `global.value` | Global Benchmark | World or cross-country aggregate benchmark | From WLD proxy or global aggregation logic | Comparison table global column | `5100` |
 | `year` | Resolved Data Year | Actual year used for comparison values | May differ from user-requested year | Comparison table header/context | `2023` |
 
+### 4.10 Global map choropleth and tooltip variables (frontend)
+
+Computed client-side from `GET /api/global/snapshot` rows and the active region filter. Sources: `choroplethTiers.ts`, `MapCountryTooltip.tsx`, `metricTooltipBlurb.ts`.
+
+| Variable Name | Friendly Name | Definition | Formula / Rule | Location in the apps | Example |
+| --- | --- | --- | --- | --- | --- |
+| `ChoroplethTierModel.breaks` | Tier Break Values | Upper bounds for tiers 0–3 within map scope | Quantile breaks from sorted scope values (`quantileBreaks`, n=5) | `buildChoroplethTierModel()` → `GlobalChoropleth` | `[1200, 5400, 12800, 28500]` |
+| `ChoroplethTier.shortLabel` | Tier Short Label | Human label for tier band | Fixed: Lowest, Low, Mid, High, Highest | `ChoroplethTierLegend` | `High` |
+| `ChoroplethTier.rankLabel` | Tier Rank Label | Percentile band description | Fixed: Bottom 20% … Top 20% | Legend + tooltip titles | `Upper 20%` |
+| `ChoroplethTier.color` | Tier Fill Color | Map fill for countries in tier | One of five `CHOROPLETH_TIER_COLORS` | Choropleth paths, legend segments | `#0369a1` |
+| `MapScopeStats.min` / `max` / `median` / `mean` / `mode` | Map Distribution Stats | Summary of numeric values in current map scope | `computeMapScopeStats(mapScopeValues(...))`; mode uses rounded bucket counts | `MapCountryTooltip` stat grid | `median: 8200` |
+| `MapCountryRank.rank` / `total` | Country Rank | Position among scoped countries (1 = highest value) | `rank = count(values > countryValue) + 1` | Tooltip comparison line + rank cell | `#12 / 142` |
+| `countriesOutrankedPercent` | Outranked Share | Share of scoped countries ranked below focus country | `((total − rank) / (total − 1)) × 100`, rounded | Tooltip comparison line | `92%` |
+| `valueContextInsight` | Value Context Chip | Plain-language position vs mean/median | Ratio thresholds (e.g. ≥1.15 → “Well above average”) | Tooltip header chip | `Well above average` |
+| `rangePosition` | Distribution Bar Position | Marker position on min–max bar | Linear scale; log scale when `max/min > 40` | Tooltip distribution bar | `67%` |
+| `metricTooltipBlurb` | Metric Tooltip Blurb | One-line plain-English metric summary | Curated `MAP_METRIC_BLURBS[id]` or tightened first catalog sentence | Tooltip metric section | `Average economic output per person.` |
+
 ## 5) Relationship Chart (Where variables connect)
 
 ```mermaid
@@ -367,6 +384,8 @@ flowchart TD
   D1 --> E6[POST /api/analysis/porter]
   F1 --> E7[GET /api/country/:cca3/series + comparison + fx-series]
   G1 --> E8[GET /api/global/snapshot + /api/global/table]
+  E8 --> M2[Choropleth tier model + map scope stats]
+  M2 --> M3[MapCountryTooltip rank/blurb UI]
 
   E7 --> M1[(Metric catalog: 68 indicators)]
   E8 --> M1

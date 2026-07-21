@@ -8,7 +8,7 @@ Stories are written in user language, but each acceptance section is specific en
 
 | Epic | Stories | Traceability (FR) | Primary persona |
 | --- | --- | --- | --- |
-| Dashboard & Global Analytics | D1–D5 | FR-01, FR-02, FR-22, FR-29–FR-32 | Policy Analyst, Research Associate |
+| Dashboard & Global Analytics | D1–D7 | FR-01, FR-02, FR-22, FR-29–FR-32, FR-37 | Policy Analyst, Research Associate |
 | Compare Countries | CP1–CP2 | FR-36, FR-32, FR-33 | Policy Analyst, Research Associate |
 | Analytics Assistant | A1–A4 | FR-04–FR-08, FR-18, FR-19 | Strategy Manager, BYOK User |
 | Strategy Modules | S1–S3 | FR-09–FR-12, FR-20, FR-21, FR-34 | Strategy Manager |
@@ -72,6 +72,16 @@ Stories are written in user language, but each acceptance section is specific en
 - Dashboard shows a dedicated head-of-government card with name (when available) and role/title badge.
 - When name is unavailable, UI shows a clear “Not reported” (or equivalent) state—not a blank card.
 - Values come from `GET /api/country/:cca3` (`headOfGovernmentName`, `headOfGovernmentTitle`).
+
+### Story D7: Choropleth tier legend and map tooltip analytics
+
+**Story:** As a global analyst, I want the choropleth map to show rank-based color tiers and a rich country tooltip so I can interpret how a country compares to peers without exporting data.
+
+**Acceptance criteria:**
+- Map uses five quantile tiers within the active region scope; legend shows tier labels, rank bands, and economy count.
+- Hover tooltip displays country value, curated metric blurb, rank (#N of M), distribution stats (bottom/top/median/mean/mode), and a comparison line (e.g. “Outranks X% of countries”).
+- Tooltip repositions to stay in viewport; `prefers-reduced-motion` disables entrance animation.
+- “No data” countries use `CHOROPLETH_NO_DATA` fill and do not show fabricated ranks.
 
 ## 1.1) Compare Countries
 

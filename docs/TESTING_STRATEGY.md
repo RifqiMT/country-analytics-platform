@@ -35,10 +35,14 @@ Define how the Country Analytics Platform validates quality today and how automa
 - Chart/table toggle, PNG export, fullscreen mode
 
 ### 3.2 Global Analytics
-- Choropleth map with metric selector (incl. `homicide_rate`)
+- Choropleth map with quintile tier legend (5 bands + no-data indicator)
+- Map hover tooltip: rank, min/median/mean/mode/max, comparison line, metric blurb
+- Region filter changes tier breaks within scoped countries
+- Metric selector (incl. `homicide_rate`); compact toolbar layout
 - Table tabs: general, financial, health, education, crime
 - Region filter and sortable columns
 - WLD aggregate charts
+- Reduced-motion: map tooltip animation disabled when `prefers-reduced-motion`
 
 ### 3.3 Analytics Assistant
 - Metric ranking/comparison prompts → deterministic tables

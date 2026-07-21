@@ -532,6 +532,7 @@ export default function GlobalAnalytics() {
                     flagByIso3={flagByIso3}
                     regionFilter={region}
                     allowedIso3={allowedIso3}
+                    metricId={mapMetric}
                     metricLabel={mapMeta.label}
                     metricDescription={mapMeta.description}
                     year={mapDataYear}

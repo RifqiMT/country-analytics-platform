@@ -95,6 +95,13 @@ If implementation or behavior changes, update affected docs in the same PR and v
 - Corrected category terminology: 6 data categories + UI-only `general` grouping
 - Updated `.env.example` with business model vars and serverless budget
 
+### 2026-07-21 sixth pass — global choropleth analytics UX:
+
+- Documented quintile choropleth tiers, legend, and distribution-aware map tooltip
+- Added curated metric blurbs (`metricTooltipBlurb.ts`) and map motion tokens
+- Extended FR-37; story D7; guardrail UG-05; PRD Journey F
+- Updated design guidelines, variables §4.10, architecture global flow, audit report
+
 ### 2026-07-20 fifth pass — UX modularization & resilience sync:
 
 - Documented Compare Countries (`/compare`) as module #2 of eight

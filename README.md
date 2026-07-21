@@ -14,7 +14,7 @@ CAP delivers **eight integrated capabilities** across a single React application
 |---|--------|-------|---------|
 | 1 | **Country Dashboard** | `/` | Country KPI cards, multi-domain trend charts, comparison tables, FX rates, head of government, timezone, and EEZ context |
 | 2 | **Compare Countries** | `/compare` | Side-by-side dual-country trends, KPI deltas, and pair tables with PNG/CSV export |
-| 3 | **Global Analytics** | `/global` | Choropleth map, category-filtered global country tables, and world aggregate (WLD) time-series charts |
+| 3 | **Global Analytics** | `/global` | Quintile choropleth map with analytics tooltip + legend, category-filtered global tables, and world aggregate (WLD) charts |
 | 4 | **Analytics Assistant** | `/assistant` | Platform-grounded chat with ranking/comparison tables, citation controls, and optional verified-web mode |
 | 5 | **PESTEL Analysis** | `/pestel` | Structured macro-environment analysis: six dimensions, SWOT, market implications, and recommendations |
 | 6 | **Porter Five Forces** | `/porter` | Industry attractiveness analysis by country and ILO-ISIC sector |
@@ -70,6 +70,9 @@ Dashboard resolves current officeholder name via Wikidata (P6) and optional Tavi
 
 ### Business Analytics resilience
 Year-range WDI snapshot fetches (not per-year loops), deadline-aware serverless budgets, empty-result `CORRELATION_EMPTY` handling, optional strict-range mode, and presentation mode (`P`) for executive review.
+
+### Global map analytics
+Choropleth uses **five quantile tiers** within the active region scope, a dedicated color-scale legend, and a distribution-aware country tooltip (rank, min/median/mean/mode/max, comparison line, curated metric blurbs).
 
 ---
 
@@ -223,7 +226,13 @@ Full contracts: [`docs/API_REFERENCE.md`](docs/API_REFERENCE.md)
 
 ## Latest implementation highlights
 
-> **Documentation status:** Re-audited against uncommitted implementation as of **2026-07-20**. See [`docs/DOCUMENTATION_AUDIT_REPORT.md`](docs/DOCUMENTATION_AUDIT_REPORT.md).
+> **Documentation status:** Re-audited against uncommitted implementation as of **2026-07-21**. See [`docs/DOCUMENTATION_AUDIT_REPORT.md`](docs/DOCUMENTATION_AUDIT_REPORT.md).
+
+### 2026-07-21 — Global choropleth analytics UX
+- **Quintile tier coloring** on the global map with dedicated legend (`choroplethTiers.ts`, `ChoroplethTierLegend.tsx`)
+- **Distribution-aware map tooltip** with rank, stats, comparison line, and curated metric blurbs (`MapCountryTooltip.tsx`, `metricTooltipBlurb.ts`)
+- Compact **GlobalAnalyticsToolbar** single-row control strip
+- Map tooltip motion tokens with `prefers-reduced-motion` support
 
 ### 2026-07-20 — UX modularization, HoG, and resilience
 - **Compare Countries** (`/compare`) documented as a first-class module with dual-country charts and pair tables

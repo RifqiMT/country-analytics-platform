@@ -188,7 +188,7 @@ Each persona describes:
 1. Open Dashboard → select focus country → Crime & public safety section
 2. Review homicide, conflict, and governance KPI cards
 3. Switch to Global Analytics → Crime & safety tab → regional benchmark
-4. Select `homicide_rate` on choropleth map
+4. Select `homicide_rate` on choropleth map → hover countries for rank and distribution tooltip
 5. Consult Sources for UNODC/IDMC/UCDP/WGI attribution in report
 
 ### Strategy Manager — expansion planning cycle

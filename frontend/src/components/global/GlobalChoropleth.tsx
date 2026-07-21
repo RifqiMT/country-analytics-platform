@@ -2,15 +2,22 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import { ComposableMap, Geographies, Geography, ZoomableGroup } from "react-simple-maps";
 import { feature } from "topojson-client";
 import type { Topology } from "topojson-specification";
-import { scaleLinear } from "d3-scale";
 import type { FeatureCollection, GeoJsonProperties } from "geojson";
+import {
+  buildChoroplethTierModel,
+  CHOROPLETH_ANTARCTICA,
+  CHOROPLETH_EXCLUDED,
+  CHOROPLETH_NO_DATA,
+} from "../../lib/choroplethTiers";
 import { formatCompactNumber } from "../../lib/formatValue";
 import { resolveIso3FromGeoName } from "../../lib/geoNameToIso3";
-import {
-  CHART_TOOLTIP_SURFACE_CLASS,
-  ChartTooltipFootnote,
-  ChartTooltipTitle,
-} from "../charts/ChartTooltipShell";
+import ChoroplethTierLegend from "./ChoroplethTierLegend";
+import MapCountryTooltip, {
+  computeCountryRank,
+  computeMapScopeStats,
+  mapScopeValues,
+  type MapTooltipPayload,
+} from "./MapCountryTooltip";
 
 type FlagMeta = { emoji: string; flagPng?: string };
 
@@ -27,6 +34,7 @@ type Props = {
   regionFilter: string;
   /** ISO3 codes included when region is not "All" */
   allowedIso3: Set<string>;
+  metricId: string;
   metricLabel: string;
   metricDescription: string;
   /** Calendar year of the values shown (WDI publish year after any API fallback). */
@@ -42,6 +50,7 @@ export default function GlobalChoropleth({
   geoNameToIso3,
   regionFilter,
   allowedIso3,
+  metricId,
   metricLabel,
   metricDescription,
   year,
@@ -54,14 +63,8 @@ export default function GlobalChoropleth({
     zoom: 1,
   });
   const [hoveredIso, setHoveredIso] = useState<string | null>(null);
-  const [hover, setHover] = useState<{
-    name: string;
-    iso3: string;
-    emoji: string;
-    value: number | null;
-    x: number;
-    y: number;
-  } | null>(null);
+  const [hover, setHover] = useState<MapTooltipPayload | null>(null);
+  const [tooltipVisible, setTooltipVisible] = useState(false);
 
   const mapBoxRef = useRef<HTMLDivElement>(null);
   const [mapDims, setMapDims] = useState({ w: 800, h: 440 });
@@ -96,26 +99,14 @@ export default function GlobalChoropleth({
     };
   }, []);
 
-  const { minV, maxV } = useMemo(() => {
-    let min = Infinity;
-    let max = -Infinity;
-    for (const v of valueByIso3.values()) {
-      if (v === null || Number.isNaN(v)) continue;
-      min = Math.min(min, v);
-      max = Math.max(max, v);
-    }
-    if (!Number.isFinite(min) || !Number.isFinite(max)) return { minV: 0, maxV: 1 };
-    if (min === max) return { minV: min, maxV: min + 1 };
-    return { minV: min, maxV: max };
-  }, [valueByIso3]);
+  const scopeValues = useMemo(
+    () => mapScopeValues(valueByIso3, allowedIso3, regionFilter),
+    [valueByIso3, allowedIso3, regionFilter]
+  );
 
-  const colorScale = useMemo(
-    () =>
-      scaleLinear<string>()
-        .domain([minV, maxV])
-        .range(["#e2e8f0", "#c2410c"])
-        .clamp(true),
-    [minV, maxV]
+  const tierModel = useMemo(
+    () => buildChoroplethTierModel(scopeValues),
+    [scopeValues]
   );
 
   const formatMapValue = useCallback(
@@ -126,16 +117,66 @@ export default function GlobalChoropleth({
     [valueFormat]
   );
 
+  const updateHoverFromEvent = useCallback(
+    (
+      e: MouseEvent<SVGPathElement>,
+      displayName: string,
+      isoU: string,
+      flagMeta: FlagMeta | undefined
+    ) => {
+      const v = isoU ? valueByIso3.get(isoU) : undefined;
+      setHoveredIso(isoU || null);
+      setHover({
+        name: displayName,
+        iso3: isoU || "—",
+        emoji: flagMeta?.emoji ?? "",
+        flagPng: flagMeta?.flagPng,
+        value: v ?? null,
+        x: e.clientX,
+        y: e.clientY,
+      });
+      setTooltipVisible(true);
+    },
+    [valueByIso3]
+  );
+
+  const clearHover = useCallback(() => {
+    setTooltipVisible(false);
+    setHoveredIso(null);
+    setHover(null);
+  }, []);
+
+  const scopeStats = useMemo(() => computeMapScopeStats(scopeValues), [scopeValues]);
+
+  const hoverAccent = useMemo(() => {
+    if (!hover?.iso3 || hover.iso3 === "—") return "#94a3b8";
+    const v = valueByIso3.get(hover.iso3);
+    if (v === undefined || v === null || Number.isNaN(v)) return CHOROPLETH_NO_DATA;
+    return tierModel?.colorForValue(v) ?? CHOROPLETH_NO_DATA;
+  }, [hover?.iso3, valueByIso3, tierModel]);
+
+  const hoverCountryRank = useMemo(() => {
+    if (!hover?.iso3) return null;
+    return computeCountryRank(hover.iso3, valueByIso3, allowedIso3, regionFilter);
+  }, [hover?.iso3, valueByIso3, allowedIso3, regionFilter]);
+
   const fillFor = useCallback(
     (iso: string) => {
-      if (!iso || iso === "ATA") return "#f1f5f9";
-      if (regionFilter !== "All" && !allowedIso3.has(iso)) return "#f8fafc";
+      if (!iso || iso === "ATA") return CHOROPLETH_ANTARCTICA;
+      if (regionFilter !== "All" && !allowedIso3.has(iso)) return CHOROPLETH_EXCLUDED;
       const v = valueByIso3.get(iso);
-      if (v === undefined || v === null || Number.isNaN(v)) return "#e2e8f0";
-      return colorScale(v);
+      if (v === undefined || v === null || Number.isNaN(v)) return CHOROPLETH_NO_DATA;
+      return tierModel?.colorForValue(v) ?? CHOROPLETH_NO_DATA;
     },
-    [allowedIso3, colorScale, regionFilter, valueByIso3]
+    [allowedIso3, regionFilter, valueByIso3, tierModel]
   );
+
+  const strokeFor = useCallback((fill: string, isHovered: boolean) => {
+    if (isHovered) return "#0f172a";
+    if (fill === CHOROPLETH_EXCLUDED || fill === CHOROPLETH_ANTARCTICA) return "#cbd5e1";
+    if (fill === CHOROPLETH_NO_DATA) return "#94a3b8";
+    return "#64748b";
+  }, []);
 
   const zoomIn = () => setPos((p) => ({ ...p, zoom: Math.min(p.zoom * 1.25, 8) }));
   const zoomOut = () => setPos((p) => ({ ...p, zoom: Math.max(p.zoom / 1.25, 0.6) }));
@@ -151,20 +192,13 @@ export default function GlobalChoropleth({
 
   return (
     <div className="cap-choropleth-shell relative flex h-full min-h-0 w-full min-w-0 flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="mb-3 flex shrink-0 flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-1 flex-wrap items-center gap-3">
-          <span className="text-xs text-slate-500">
-            {valueFormat === "percent" ? "Lower %" : "Lower values"}
-          </span>
-          <div
-            className="h-3 flex-1 rounded-full bg-gradient-to-r from-slate-200 to-orange-700"
-            style={{ minWidth: 120, maxWidth: 320 }}
-          />
-          <span className="text-xs text-slate-500">
-            {valueFormat === "percent" ? "Higher %" : "Higher values"}
-          </span>
-        </div>
-        <div className="flex gap-1">
+      <div className="mb-3 flex shrink-0 flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+        <ChoroplethTierLegend
+          model={tierModel}
+          formatValue={formatMapValue}
+          economyCount={scopeValues.length}
+        />
+        <div className="flex shrink-0 items-center gap-1 self-stretch sm:self-start">
           <button
             type="button"
             onClick={zoomIn}
@@ -193,7 +227,7 @@ export default function GlobalChoropleth({
 
       <div
         ref={mapBoxRef}
-        className="cap-choropleth-map-box relative min-h-[240px] w-full min-w-0 flex-1 overflow-hidden rounded-xl border border-slate-100 bg-slate-50"
+        className="cap-choropleth-map-box relative min-h-[280px] w-full min-w-0 flex-1 overflow-hidden rounded-xl border border-slate-200 bg-slate-50"
       >
         <ComposableMap
           projection="geoMercator"
@@ -241,47 +275,47 @@ export default function GlobalChoropleth({
                   const showFlagOnHover = Boolean(flagPng);
                   const hoverFill =
                     hoveredIso === isoU && showFlagOnHover ? "url(#choroplethFlagHover)" : baseFill;
-                  const hoverStroke =
-                    baseFill === "#f8fafc" ? "#cbd5e1" : baseFill === "#f1f5f9" ? "#94a3b8" : "#0f172a";
+                  const isHovered = hoveredIso === isoU;
+                  const hoverStroke = strokeFor(baseFill, isHovered);
                   return (
                     <Geography
                       key={g.rsmKey}
                       geography={g}
                       fill={baseFill}
-                      stroke="#cbd5e1"
-                      strokeWidth={0.35}
+                      stroke={strokeFor(baseFill, false)}
+                      strokeWidth={0.45}
                       style={{
                         default: { outline: "none", fill: baseFill },
                         hover: {
                           outline: "none",
                           fill: hoverFill,
                           stroke: hoverStroke,
-                          strokeWidth: 1.1,
+                          strokeWidth: 1.25,
                           cursor: "pointer",
                         },
                         pressed: {
                           outline: "none",
                           fill: hoverFill,
                           stroke: hoverStroke,
-                          strokeWidth: 1.1,
+                          strokeWidth: 1.25,
                         },
                       }}
                       onMouseEnter={(e: MouseEvent<SVGPathElement>) => {
-                        const v = isoU ? valueByIso3.get(isoU) : undefined;
-                        setHoveredIso(isoU || null);
-                        setHover({
-                          name: displayName,
-                          iso3: isoU || "—",
-                          emoji: flagMeta?.emoji ?? "",
-                          value: v ?? null,
-                          x: e.clientX,
-                          y: e.clientY,
-                        });
+                        updateHoverFromEvent(e, displayName, isoU, flagMeta);
                       }}
-                      onMouseLeave={() => {
-                        setHoveredIso(null);
-                        setHover(null);
+                      onMouseMove={(e: MouseEvent<SVGPathElement>) => {
+                        if (hoveredIso !== isoU) return;
+                        setHover((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                x: e.clientX,
+                                y: e.clientY,
+                              }
+                            : prev
+                        );
                       }}
+                      onMouseLeave={clearHover}
                     />
                   );
                 })
@@ -291,40 +325,23 @@ export default function GlobalChoropleth({
         </ComposableMap>
       </div>
 
-      {hover && (
-        <div
-          className={`pointer-events-none fixed z-[100] ${CHART_TOOLTIP_SURFACE_CLASS} p-4`}
-          style={{ left: hover.x + 14, top: hover.y + 14 }}
-          role="status"
-        >
-          <div className="flex items-start gap-3">
-            {hover.emoji ? (
-              <span className="text-2xl leading-none drop-shadow-sm" aria-hidden>
-                {hover.emoji}
-              </span>
-            ) : null}
-            <div className="min-w-0 flex-1">
-              <ChartTooltipTitle subtle="Country / economy">{hover.name}</ChartTooltipTitle>
-              <p className="mb-1 text-[0.6875rem] font-medium uppercase tracking-[0.08em] text-slate-500">
-                {metricLabel}
-              </p>
-              <p
-                className={`text-[1.125rem] font-bold tabular-nums tracking-tight ${
-                  hover.value === null || Number.isNaN(hover.value) ? "text-slate-500" : "text-orange-700"
-                }`}
-              >
-                {hover.value === null || Number.isNaN(hover.value) ? "No data reported" : formatMapValue(hover.value)}
-              </p>
-              <p className="mt-2 text-[0.6875rem] font-medium tabular-nums text-slate-400">Data year · {year}</p>
-            </div>
-          </div>
-          <ChartTooltipFootnote>{metricDescription}</ChartTooltipFootnote>
-        </div>
-      )}
+      {hover ? (
+        <MapCountryTooltip
+          hover={hover}
+          metricLabel={metricLabel}
+          metricId={metricId}
+          metricDescription={metricDescription}
+          year={year}
+          formatValue={formatMapValue}
+          accentColor={hoverAccent}
+          scopeStats={scopeStats}
+          countryRank={hoverCountryRank}
+          visible={tooltipVisible}
+        />
+      ) : null}
 
       <p className="mt-3 shrink-0 text-xs text-slate-500">
-        Hover for name, flag emoji, and values; the country fill shows its flag image when a flag is available from REST
-        Countries. Values use year {year}.
+        Hover a country for values · zoom with +/− · data year {year}
       </p>
     </div>
   );

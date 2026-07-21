@@ -16,7 +16,7 @@ Use this checklist before production releases to keep analytics quality, guardra
 - [ ] Country Dashboard: FX snapshot card shows rate, currency, as-of date, and source label
 - [ ] Country Dashboard: FX trend chart loads via `/api/country/:cca3/fx-series`
 - [ ] Compare Countries: dual-country charts, pair tables, A/B colors, PNG/CSV export
-- [ ] Global Analytics: choropleth map, all table tabs (general, financial, health, education, crime), WLD charts
+- [ ] Global Analytics: choropleth map with quintile tier legend, analytics tooltip (rank/stats/blurb), compact toolbar
 - [ ] Series resilience: large metric loads complete via chunking/retry without unhandled UI crash
 - [ ] Assistant, PESTEL, Porter, and Business Analytics complete primary user flows
 - [ ] App-wide AI key manager: save, clear, validate, and reuse keys across all AI modules
@@ -68,7 +68,8 @@ Use this checklist before production releases to keep analytics quality, guardra
 - [ ] Dashboard Crime & public safety section: 9 KPI cards with correct units
 - [ ] Three crime chart groups render (homicide, conflict, governance)
 - [ ] Global Analytics Crime & safety tab sortable and region-filtered
-- [ ] Choropleth map supports `homicide_rate` metric selection
+- [ ] Choropleth tier legend updates when region filter changes
+- [ ] Map tooltip shows rank and distribution stats; no rank for no-data countries
 - [ ] Sources page crime category shows UNODC, IDMC, UCDP, WGI attribution
 
 ---

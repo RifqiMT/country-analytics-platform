@@ -6,7 +6,7 @@ Country Analytics Platform is an analytics and decision-support web app that hel
 
 The platform combines:
 - Country dashboard indicator analytics (cards + time trends + comparison)
-- Global analytics (map, global tables, and world aggregate series)
+- Global analytics (quintile choropleth map with legend + distribution tooltip, global tables, and world aggregate series)
 - An AI analytics assistant (grounded responses anchored to platform evidence; optional verified live web grounding)
 - Strategy modules (PESTEL and Porter Five Forces narrative output with structured scaffolding and fallbacks)
 - Business analytics (multi-metric correlation + regression diagnostics with optional narrative interpretation)
@@ -49,13 +49,14 @@ For persona details, see `docs/USER_PERSONAS.md`.
 
 - Country dashboard indicators and comparison views (including head-of-government name/title)
 - Compare Countries dual-country trends, KPI deltas, and pair tables (`/compare`)
-- Global analytics (map, global tables, and world aggregate series)
+- Global analytics (quintile choropleth map with legend + distribution tooltip, global tables, and world aggregate series)
 - Analytics Assistant (platform-grounded responses; optional verified-web mode)
 - Strategy modules: PESTEL and Porter Five Forces
 - Business Analytics: correlation/regression diagnostics + narrative interpretation (year-range snapshots; empty-result governance)
 - Source and metric definitions explorer
 - Crime & public safety indicators (9 metrics: homicide, GBV, conflict displacement, battle deaths, WGI governance) in dashboard accordion, global crime table, and choropleth map
 - Resilient metric series delivery (client chunking + server bisect on timeout)
+- Choropleth map analytics: quintile tier coloring, legend, curated metric blurbs, rank and distribution stats in hover tooltip
 
 ### Out of scope (current)
 
@@ -138,6 +139,12 @@ Primary NFR themes:
 3. Review homicide, conflict, and governance KPI cards and trend charts.
 4. Switch to Global Analytics **Crime & safety** tab for regional benchmarking.
 5. Export or screenshot findings for risk reports; consult Sources for institutional attribution.
+
+### Journey F: Global map peer benchmarking
+1. Open Global Analytics and select map view with a metric (e.g. GDP per capita, homicide rate).
+2. Apply a region filter to narrow the peer set; confirm the color-scale legend updates tier breaks for the scoped countries.
+3. Hover countries to read rank, distribution stats, and curated metric blurbs in the analytics tooltip.
+4. Switch to table view or WLD charts to corroborate map findings before export.
 
 ## 9) Evidence and AI Strategy (high level)
 
@@ -227,3 +234,10 @@ For governance details, see `docs/PRODUCT_DOCUMENTATION_STANDARD.md`.
 - Country series client uses chunk size 4, parallel waves of 2, retries, and recursive half-split; server bisects timed-out all-null batches and skips WLD proxy on batched calls.
 - Business correlation uses year-range WDI snapshots; empty results return `503 CORRELATION_EMPTY` and are not cached.
 - PESTEL/Porter/SWOT color tokens refreshed; shared `PageIntro` / `platformCopy` for module chrome.
+
+### 14.5 Global choropleth analytics UX (2026-07-21)
+
+- Choropleth map uses **five quantile tiers** within the active region scope (`choroplethTiers.ts`).
+- `ChoroplethTierLegend` shows rank bands, economy count, and hover titles with value ranges.
+- `MapCountryTooltip` displays rank, min/median/mean/mode/max, comparison line, distribution bar, and curated metric blurbs (`metricTooltipBlurb.ts`).
+- `GlobalAnalyticsToolbar` uses a compact single-row layout; map tooltip respects `prefers-reduced-motion`.

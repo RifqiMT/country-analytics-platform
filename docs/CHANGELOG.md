@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-07-21 (Sixth pass — global choropleth analytics UX)
+
+### Product & implementation alignment
+- Documented **quintile choropleth tiers** (`choroplethTiers.ts`): 5 rank bands, semantic no-data/excluded fills, scope-aware breaks
+- Documented **ChoroplethTierLegend** and **MapCountryTooltip** (rank, distribution stats, comparison line, distribution bar)
+- Documented **metricTooltipBlurb** curated plain-English map metric summaries
+- Documented compact **GlobalAnalyticsToolbar** single-row layout
+- Added map tooltip motion tokens (`cap-map-tooltip*`) to `DESIGN_GUIDELINES.md`
+- Extended traceability with **FR-37**; user story **D7**; guardrail **UG-05** (scope-dependent rank)
+- Updated PRD Journey F, release checklist, testing strategy, architecture flow, variables §4.10
+
 ## 2026-07-20 (Fifth pass — sync docs to uncommitted UX/resilience release)
 
 ### Product & implementation alignment

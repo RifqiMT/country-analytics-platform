@@ -53,6 +53,7 @@ It is not meant to replace testing. Instead, it provides a release-ready mapping
 | FR-34 | Modules share structured PageIntro copy from `platformCopy` | `frontend/src/lib/platformCopy.ts`, `frontend/src/components/layout/PageIntro.tsx` | Global, PESTEL, Porter, Business, Assistant, Sources pages | Confirm eyebrow/lead/detail/highlights render consistently |
 | FR-35 | Global correlation uses year-range WDI snapshots; empty results return `CORRELATION_EMPTY` and are not cached | `backend/src/globalSnapshot.ts`, `backend/src/correlationGlobal.ts` | Correlation-global route in `backend/src/index.ts` | Pair metrics with no overlap; expect 503 + code; retry with valid pair succeeds |
 | FR-36 | Compare Countries dual-country analysis with pair charts and tables | `frontend/src/pages/CountryCompare.tsx` | `frontend/src/components/compare/*`, `GET /api/compare` / series routes | Select two countries; verify dual series, deltas, export |
+| FR-37 | Global choropleth uses quintile tiers, legend, and distribution-aware map tooltip | `frontend/src/lib/choroplethTiers.ts`, `frontend/src/components/global/GlobalChoropleth.tsx` | `ChoroplethTierLegend.tsx`, `MapCountryTooltip.tsx`, `metricTooltipBlurb.ts` | Change region filter; verify tier breaks update; hover country; confirm rank/stats/blurb; check reduced-motion |
 
 ### Legacy / internal endpoints
 
@@ -93,6 +94,7 @@ Release changes that affect any assistant/analysis output behavior must be accom
 | Journey C: Strategy module output | FR-09, FR-10, FR-11, FR-12, FR-20, FR-21, FR-34 | PESTEL, Porter |
 | Journey D: Business Analytics correlation | FR-13, FR-14, FR-15, FR-23, FR-24, FR-35 | Business Analytics |
 | Journey E: Crime & safety assessment | FR-26, FR-27, FR-28 | Dashboard, Global, Sources |
+| Journey F: Global map peer benchmarking | FR-02, FR-37 | Global Analytics |
 
 ---
 
@@ -101,13 +103,13 @@ Release changes that affect any assistant/analysis output behavior must be accom
 | Document | Covers FR/NFR |
 | --- | --- |
 | `docs/PRD.md` | All journeys; scope definition |
-| `docs/USER_STORIES.md` | Acceptance criteria for FR-01–FR-30 |
+| `docs/USER_STORIES.md` | Acceptance criteria for FR-01–FR-37 |
 | `docs/VARIABLES.md` | Request/env variables for all API routes |
 | `docs/API_REFERENCE.md` | Endpoint contracts for FR-03, FR-13, FR-18, FR-29 |
 | `docs/ASSISTANT_BEHAVIOR.md` | FR-04–FR-08 behavior detail |
 | `docs/ANALYSIS_METHODS.md` | FR-09, FR-10, FR-13 methodology |
 | `docs/GUARDRAILS.md` | NFR-01, NFR-02, NFR-07 enforcement |
-| `docs/DESIGN_GUIDELINES.md` | NFR-06 UX/accessibility |
+| `docs/DESIGN_GUIDELINES.md` | NFR-06 UX/accessibility; choropleth tier palette + map tooltip |
 | `docs/TESTING_STRATEGY.md` | Validation approach for all FR/NFR |
 | `docs/METRIC_CATALOG.md` | FR-17, FR-26–FR-28 data definitions |
 

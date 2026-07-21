@@ -92,10 +92,18 @@ Share of documented metrics in `METRIC_CATALOG.md` that match `backend/src/metri
 ### 2.6 Crime & safety module adoption
 
 **What it measures:**  
-Usage of crime-category features (dashboard safety section views, global crime table tab, homicide choropleth selection).
+Usage of crime-category features (dashboard safety section views, global crime table tab, homicide choropleth selection) and map tooltip engagement on Global Analytics.
 
 **Why it matters:**  
-Validates that the 2026-07-20 crime metric expansion delivers value to security/risk analyst workflows.
+Validates that the 2026-07-20 crime metric expansion and 2026-07-21 map analytics UX deliver value to security/risk analyst workflows.
+
+### 2.7 Global map tooltip engagement
+
+**What it measures:**  
+Share of Global Analytics map sessions where users hover ≥3 countries (proxy for distribution tooltip utility).
+
+**Why it matters:**  
+Confirms the quintile legend and analytics tooltip reduce need for ad hoc exports during peer benchmarking.
 
 ## 3) Performance metrics
 

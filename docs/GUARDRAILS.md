@@ -195,6 +195,12 @@ See `docs/TESTING_STRATEGY.md` for manual QA scope and future automation roadmap
 - Sources page and dashboard accordions use collapse/expand to reduce initial cognitive load.
 - Complex analysis (Business Analytics) uses explicit "Generate" gating to prevent accidental computation.
 
+### UG-05: Map rank and tiers are scope-dependent
+
+- Choropleth tier breaks and country rank are computed from **countries in the current map scope** (region filter), not a fixed global scale.
+- Tooltip copy must state that stats are per-country comparisons within the map scope (“Each value is for one country — not a world total”).
+- Rank labels must not imply UN/WB official rankings when region filter narrows the peer set.
+
 ---
 
 ## 8) Performance guardrails

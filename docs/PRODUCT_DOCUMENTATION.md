@@ -100,14 +100,21 @@ Deliver analyst-grade country analytics and strategic interpretation tools that 
 **Purpose:** Cross-country visualization and tabular comparison.
 
 **Capabilities:**
-- Choropleth world map (selectable metric including homicide rate)
+- **Choropleth world map** with quintile tier coloring, dedicated legend, and analytics-rich country tooltip
+- Selectable map metric (including homicide rate) with curated plain-English tooltip blurbs
+- Compact single-row toolbar (year, region, view mode, inline map metric selector)
 - Category-filtered global country tables: general, financial, health, education, **crime**
 - World aggregate (WLD) time-series charts
 - Region filter and sortable columns
 - Fullscreen visualization mode
 
-**Business logic:**
+**Map business logic:**
 - Snapshot resolves actual data year (may step back from requested year)
+- Tier breaks (`buildChoroplethTierModel`) are computed from countries in the **current map scope** (region filter aware)
+- Tooltip shows country value, rank (#N of M), distribution stats (min/median/mean/mode/max), comparison line (“Outranks X%”), and log-scaled position bar when spread is wide
+- Metric blurbs prefer curated copy in `metricTooltipBlurb.ts`; otherwise first catalog sentence (tightened)
+
+**Table business logic:**
 - Table categories map to metric subsets in `backend/src/globalTable.ts`
 
 ### 4.3 Analytics Assistant (`/assistant`)

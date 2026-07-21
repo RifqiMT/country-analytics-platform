@@ -2,7 +2,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { yoYClass } from "../../lib/formatValue";
 
 /** Solid surface — width follows content up to viewport cap; no clipping overflow. */
-export const CHART_TOOLTIP_SURFACE_CLASS =
+const CHART_TOOLTIP_SURFACE_CLASS =
   "box-border w-max min-w-[14rem] max-w-[min(28rem,calc(100vw-1rem))] overflow-visible rounded-lg border border-slate-200 bg-white p-3 shadow-[0_8px_30px_rgba(15,23,42,0.12)] sm:p-3.5";
 
 type ShellProps = { children: ReactNode; className?: string };
@@ -46,20 +46,6 @@ export function ChartTooltipHeading({
         </div>
         {trailing ? <div className="shrink-0">{trailing}</div> : null}
       </div>
-    </div>
-  );
-}
-
-/** Variant without the “Period” label — for map or single-context tooltips. */
-export function ChartTooltipTitle({ children, subtle }: { children: ReactNode; subtle?: string }) {
-  return (
-    <div className="mb-2.5 border-b border-slate-200 pb-2">
-      {subtle ? (
-        <p className="text-[0.625rem] font-semibold uppercase tracking-[0.16em] text-slate-500">{subtle}</p>
-      ) : null}
-      <p className={`break-words text-[0.9375rem] font-bold leading-snug tracking-tight text-slate-900 ${subtle ? "mt-0.5" : ""}`}>
-        {children}
-      </p>
     </div>
   );
 }

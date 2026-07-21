@@ -1,15 +1,15 @@
 # Documentation Audit Report
 
-**Audit date:** 2026-07-20 (fifth pass)  
+**Audit date:** 2026-07-21 (sixth pass)  
 **Auditor:** Codebase ↔ documentation cross-reference against working tree  
 **Project:** Country Analytics Platform (`country-analytics-platform/`)  
-**Status:** ✅ **Re-synchronized** — docs updated for uncommitted UX/resilience changes
+**Status:** ✅ **Re-synchronized** — docs updated for global choropleth analytics UX
 
 ---
 
 ## 1. Executive summary
 
-A fresh audit found **significant uncommitted product changes** since the prior documentation pass (Compare Countries module already in `App.tsx`, head-of-government enrichment, series resilience, correlation range fetches, palette refresh, UI modularization). This pass updated the enterprise documentation set to match that implementation.
+A fresh audit found **uncommitted Global Analytics enhancements** since the fifth pass: quintile choropleth tiers, dedicated legend, distribution-aware map tooltip, curated metric blurbs, compact toolbar, and map tooltip motion tokens. This pass updated the enterprise documentation set to match that implementation.
 
 | Check | Result |
 | --- | --- |
@@ -25,13 +25,12 @@ A fresh audit found **significant uncommitted product changes** since the prior 
 
 | Area | Documentation updates |
 | --- | --- |
-| Compare Countries | README, PRODUCT_DOCUMENTATION, PRD Journey A2, stories CP1–CP2, FR-36, release checklist |
-| Head of government | API_REFERENCE, VARIABLES, PRD §14.4, story D6, FR-31 |
-| Series resilience | API_REFERENCE series section, VARIABLES headers, FR-32, README feature logic |
-| Correlation empty/range | API_REFERENCE, ANALYSIS_METHODS §2.7, FR-35, NFR-08 |
-| Design palettes / motion | DESIGN_GUIDELINES (PESTEL/Porter/SWOT/Compare + CSS animations) |
-| PageIntro / modular UI | FR-34, DESIGN_GUIDELINES §2.11, PRODUCT_DOCUMENTATION |
-| Traceability | FR-31–FR-36, NFR-09 |
+| Choropleth quintile tiers | `DESIGN_GUIDELINES` §2.9, `VARIABLES` §4.10, `ARCHITECTURE` global flow |
+| Map tooltip analytics | `PRODUCT_DOCUMENTATION` §4.2, `DESIGN_GUIDELINES` §2.10, story D7, FR-37 |
+| Metric blurbs | `VARIABLES` §4.10, `PRODUCT_DOCUMENTATION` map logic |
+| Toolbar + motion | `DESIGN_GUIDELINES` §2.11, release checklist |
+| Scope-dependent rank | `GUARDRAILS` UG-05, PRD Journey F |
+| Traceability | FR-37 added; journey mapping updated |
 
 ---
 
@@ -42,6 +41,7 @@ A fresh audit found **significant uncommitted product changes** since the prior 
 | No automated test suite | `TESTING_STRATEGY.md`, `GUARDRAILS.md` OG-04 |
 | Legacy `POST /api/analysis/correlation` unused by frontend | `TRACEABILITY_MATRIX.md` |
 | HoG name may be missing without Wikidata/Tavily coverage | `GUARDRAILS` / PRD §14.4 behavior notes |
+| Map rank/tiers depend on active region filter | `GUARDRAILS` UG-05 |
 
 ---
 
@@ -50,11 +50,11 @@ A fresh audit found **significant uncommitted product changes** since the prior 
 - [x] Metric catalog synchronized (68 = 68)
 - [x] API routes documented (23)
 - [x] Eight UI modules documented in README / product docs
-- [x] Variables include HoG fields, warning headers, business cache v2
-- [x] Design guidelines match current theme files
-- [x] Traceability includes FR-31–FR-36
-- [x] Changelog fifth-pass entry recorded
+- [x] Choropleth tier palette and tooltip UX documented
+- [x] Variables include map scope stats and tier model fields
+- [x] Traceability includes FR-37
+- [x] Changelog sixth-pass entry recorded
 
-**Overall documentation status: APPROVED for enterprise use as of 2026-07-20 (fifth pass).**
+**Overall documentation status: APPROVED for enterprise use as of 2026-07-21 (sixth pass).**
 
-> Note: Implementation changes remain **uncommitted** in the working tree. Documentation now describes that working-tree behavior. Commit product + docs together when ready.
+> Note: Global Analytics implementation changes remain **uncommitted** in the working tree. Documentation now describes that working-tree behavior. Commit product + docs together when ready.
