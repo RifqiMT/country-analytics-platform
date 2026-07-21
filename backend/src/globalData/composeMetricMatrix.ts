@@ -14,7 +14,8 @@ import {
 } from "./matrixTypes.js";
 
 const MATRIX_TTL_MS = 1000 * 60 * 60 * 6;
-const MATRIX_CACHE_PREFIX = "metric-matrix:v1";
+/** v2: drop GC.DOD.TOTL.CN pollution of debt-% matrices. */
+const MATRIX_CACHE_PREFIX = "metric-matrix:v2";
 
 function yearsInclusive(startYear: number, endYear: number): number[] {
   const out: number[] = [];

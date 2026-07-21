@@ -1,14 +1,56 @@
 # Analysis Methods — Statistical and Strategic Methodology
 
-**Document version:** 2026-07-20  
+**Document version:** 2026-07-21  
 **Audience:** Analysts, researchers, product managers, engineers, and QA  
-**Scope:** Business Analytics correlation, PESTEL, Porter Five Forces
+**Scope:** Business Analytics correlation, PESTEL, Porter Five Forces, Global WLD aggregates
 
 ---
 
 ## 1. Important limitation (read first)
 
 **Correlation indicates association, not causation.** All statistical outputs in this platform are decision-support tools. Causal claims require independent validation beyond what the platform provides.
+
+World aggregates are **decision-support reconstructions** from official WLD series and/or a sovereign-country panel — not a substitute for official World Bank WDI “WLD” publications when those are sparse.
+
+---
+
+## 1a. Global Analytics — World (WLD) aggregate methods
+
+**Canonical code:** `backend/src/globalData/wldSeriesService.ts`, `wldSeriesFromMatrix.ts`  
+**Endpoints:** `GET /api/global/wld-series`, `GET /api/global/wld-charts`  
+**Assistant:** `assistantWldBlock.ts` (same bundle builder)
+
+### 1a.1 Bundle construction
+
+1. Fetch official WLD series with `completionMode: "dense_only"` (no long leading/trailing invention).
+2. If filled points &lt; 95% of the year span, fill from sovereign-country metric matrices (REST Countries ISO3 allowlist).
+3. Reconcile identities: `gdp_per_capita = gdp ÷ population`; `gdp_per_capita_ppp = gdp_ppp ÷ population`.
+4. Polish: interior linear interpolate gaps ≤ 4 years; trailing carry ≤ 2 years; clamp; re-reconcile.
+
+### 1a.2 Country-panel aggregation classes
+
+| Class | Example metrics | Method |
+| --- | --- | --- |
+| Sum | `gdp`, `gdp_ppp`, `population`, enrollment counts, `labor_force_total`, IDP / battle deaths | Σ country values |
+| Debt US$ | `gov_debt_usd` | Σ(`gdp` × `debt%` / 100) where debt% ∈ **(0, 500]** |
+| Debt % | `gov_debt_pct_gdp` | (Σ debt US$ / Σ GDP) × 100 on the same panel |
+| Ratio | `gdp_per_capita`, `gdp_per_capita_ppp` | Σnum / Σden |
+| Pop-weighted mean | Atlas GNI/capita, most rates | Weighted mean by population |
+| GDP-weighted | `inflation` | Weighted mean by GDP |
+| Labour-weighted | `unemployment_ilo` | Weighted mean by labour force |
+| Birth-proxy-weighted | `maternal_mortality`, `mortality_under5` | Weight ≈ `pop × (birth_rate/1000)` |
+
+Matrix-first metrics (skip thin official WLD when composing charts) include debt %, debt US$, UHC, poverty, lending rate, OOSC/completion, homicide/GBV/conflict, and WGI.
+
+### 1a.3 Provenance labels
+
+| Label | Meaning |
+| --- | --- |
+| `reported` | Official WLD or primary reported point |
+| `derived_cross_metric` | Panel identity / cross-metric derivation |
+| `interpolated` | Short interior polish |
+| `carried_short` | Short trailing polish |
+| `wld_proxy` | World→country gap-fill (**not** used for Assistant focus/compare digests) |
 
 ---
 

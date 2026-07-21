@@ -65,6 +65,29 @@ function citePrimaryDataBlock(raw: string, state: CiteState): string {
   return out.join("\n");
 }
 
+/** World-aggregate digest from `buildAssistantWldAggregateBlock` (Global Analytics WLD pipeline). */
+function citeWldAggregateBlock(raw: string, state: CiteState): string {
+  if (!raw.trim()) return "";
+  const lines = raw.split(/\r?\n/);
+  const out: string[] = [];
+  for (const line of lines) {
+    const t = line.trim();
+    if (!t) {
+      out.push("");
+      continue;
+    }
+    if (/^•\s/.test(t)) {
+      const id = nextDId(state);
+      const rest = t.replace(/^•\s+/, "");
+      state.citations.D[id] = rest;
+      out.push(`[D${id}] ${rest}`);
+      continue;
+    }
+    out.push(line);
+  }
+  return out.join("\n");
+}
+
 /** Global ranking `plainBlock` from `assistantRankingBlock`. */
 function citeRankingPlainBlock(raw: string, state: CiteState): string {
   if (!raw.trim()) return "";
@@ -139,6 +162,8 @@ export function compactAssistantRetrievalForLlm(opts: {
   dashboardForPrompt: string;
   comparisonBlock: string;
   rankingSection: string;
+  /** World / global totals from Global Analytics WLD pipeline. */
+  wldAggregateSection?: string;
   webContext: string;
   /** When set, Tavily bullets are scored and only the single best hit is kept before [W1] tagging. */
   webRelevance?: { message: string; countryName?: string; cca3?: string };
@@ -148,6 +173,7 @@ export function compactAssistantRetrievalForLlm(opts: {
   dashboardForPrompt: string;
   comparisonBlock: string;
   rankingSection: string;
+  wldAggregateSection: string;
   webContext: string;
   citations: AssistantChatCitations;
 } {
@@ -162,6 +188,7 @@ export function compactAssistantRetrievalForLlm(opts: {
   }
 
   const rankingSection = citeRankingPlainBlock(opts.rankingSection, state);
+  const wldAggregateSection = citeWldAggregateBlock(opts.wldAggregateSection ?? "", state);
 
   let webRaw = opts.webContext;
   const webTopK = Math.max(1, Math.min(3, opts.webTopK ?? 1));
@@ -184,6 +211,7 @@ export function compactAssistantRetrievalForLlm(opts: {
     dashboardForPrompt,
     comparisonBlock,
     rankingSection,
+    wldAggregateSection,
     webContext,
     citations: state.citations,
   };

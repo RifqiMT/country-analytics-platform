@@ -87,6 +87,10 @@ import {
 import { listDataProvidersResponse } from "./dataProviders.js";
 import { buildAssistantRankingPayload, looksLikeGlobalRankingQuery } from "./assistantRankingBlock.js";
 import {
+  buildAssistantWldAggregateBlock,
+  looksLikeWorldAggregateQuery,
+} from "./assistantWldBlock.js";
+import {
   ASSISTANT_MAX_COMPARISON_COUNTRIES,
   buildAssistantWebSearchQuery,
   classifyAssistantIntent,
@@ -112,9 +116,16 @@ import {
   capServerlessTimeout,
   correlationDeadlineFromBudget,
   createRequestBudget,
+  isServerlessRuntime,
   shouldSkipBootstrapWarmup,
 } from "./serverlessBudget.js";
 import { PESTEL_DIGEST_KEYS } from "./pestelDigestKeys.js";
+import { buildWldSeriesBundle } from "./globalData/wldSeriesService.js";
+import {
+  metricIdsForWldChartGroup,
+  type WldChartGroupId,
+  WLD_CHART_GROUPS,
+} from "./globalData/wldChartCatalog.js";
 
 export const app = express();
 app.use(cors({ origin: true }));
@@ -1069,14 +1080,50 @@ app.get("/api/global/wld-series", async (req, res) => {
       req.query.start ? parseInt(String(req.query.start), 10) : MIN_DATA_YEAR,
       req.query.end ? parseInt(String(req.query.end), 10) : currentDataYear()
     );
-    const wldFallback: Record<string, SeriesPoint[]> = Object.fromEntries(
-      metricIds.map((id) => [id, makeNullSeries(start, end)])
+
+    const result = await buildWldSeriesBundle(metricIds, start, end, {
+      settleWithin,
+      perMetricTimeoutMs: capServerlessTimeout(14_000),
+      aggregateDeadlineMs: Date.now() + (isServerlessRuntime() ? 30_000 : 75_000),
+    });
+    if (result.warning) res.setHeader("x-cap-warning", result.warning);
+    res.json({ start: result.start, end: result.end, series: result.series });
+  } catch (e) {
+    res.status(500).json({ error: String(e) });
+  }
+});
+
+/** One chart group (financial|health|education|labour) — preferred by the modular charts UI. */
+app.get("/api/global/wld-charts", async (req, res) => {
+  try {
+    const group = String(req.query.group ?? "").trim() as WldChartGroupId;
+    const def = WLD_CHART_GROUPS.find((g) => g.id === group);
+    if (!def) {
+      return res.status(400).json({
+        error: "group required",
+        allowed: WLD_CHART_GROUPS.map((g) => g.id),
+      });
+    }
+    const { start, end } = clampYearRange(
+      req.query.start ? parseInt(String(req.query.start), 10) : MIN_DATA_YEAR,
+      req.query.end ? parseInt(String(req.query.end), 10) : currentDataYear()
     );
-    const wldTimeoutMs = capServerlessTimeout(metricIds.length >= 30 ? 95_000 : 45_000);
-    const bundle = await settleWithin(fetchCountryBundle("WLD", metricIds, start, end), wldTimeoutMs, wldFallback);
-    const allNull = Object.values(bundle).every((s) => s.every((p) => p.value === null));
-    if (allNull) res.setHeader("x-cap-warning", "global-wld-series-fallback-null");
-    res.json({ start, end, series: bundle });
+    const metricIds = metricIdsForWldChartGroup(group);
+    const result = await buildWldSeriesBundle(metricIds, start, end, {
+      settleWithin,
+      perMetricTimeoutMs: capServerlessTimeout(14_000),
+      aggregateDeadlineMs: Date.now() + (isServerlessRuntime() ? 30_000 : 75_000),
+    });
+    if (result.warning) res.setHeader("x-cap-warning", result.warning);
+    res.json({
+      group: def.id,
+      title: def.title,
+      description: def.description,
+      charts: def.charts,
+      start: result.start,
+      end: result.end,
+      series: result.series,
+    });
   } catch (e) {
     res.status(500).json({ error: String(e) });
   }
@@ -1112,25 +1159,40 @@ app.get("/api/compare", async (req, res) => {
   }
 });
 
-function latestValue(points: { year: number; value: number | null }[]): { year: number; value: number } | null {
+type AssistantSeriesPoint = { year: number; value: number | null; provenance?: string };
+
+/**
+ * Prefer country-reported / derived points over `wld_proxy` so the assistant never
+ * presents a World aggregate as a national fact when a local observation exists.
+ */
+function latestValue(
+  points: AssistantSeriesPoint[]
+): { year: number; value: number; provenance?: string } | null {
+  let fallback: { year: number; value: number; provenance?: string } | null = null;
   for (let i = points.length - 1; i >= 0; i--) {
-    const v = points[i].value;
+    const p = points[i]!;
+    const v = p.value;
     if (v !== null && v !== undefined && !Number.isNaN(v)) {
-      return { year: points[i].year, value: v };
+      const hit = { year: p.year, value: v, provenance: p.provenance };
+      if (p.provenance !== "wld_proxy") return hit;
+      if (!fallback) fallback = hit;
     }
   }
-  return null;
+  return fallback;
 }
 
-function yoyChange(points: { year: number; value: number | null }[]): number | null {
+function yoyChange(points: AssistantSeriesPoint[]): number | null {
   const last = latestValue(points);
   if (!last) return null;
   const prev = points.filter((p) => p.year === last.year - 1 && p.value !== null);
   if (prev.length === 0) return null;
-  const pv = prev[0].value!;
+  const pv = prev[0]!.value!;
   if (pv === 0) return null;
   return ((last.value - pv) / Math.abs(pv)) * 100;
 }
+
+/** Match Countries Comparison / dashboard country series: no World→country gap-fill. */
+const ASSISTANT_COUNTRY_SERIES_OPTS = { skipWldFallback: true as const };
 
 /** Core metrics pulled for the assistant — same pipeline as the dashboard. */
 const ASSISTANT_PRIMARY_METRIC_IDS: string[] = allMetricIds();
@@ -1409,6 +1471,7 @@ function buildAssistantGroundedFallbackFromCited(opts: {
   focusBlock: string;
   comparisonBlock: string;
   rankingBlock: string;
+  wldBlock?: string;
   webBlock: string;
   includeWeb?: boolean;
 }): string {
@@ -1420,6 +1483,11 @@ function buildAssistantGroundedFallbackFromCited(opts: {
     lines.push("");
     lines.push("### Ranking snapshot");
     lines.push(capLines(opts.rankingBlock, 16));
+  }
+  if (opts.wldBlock?.trim()) {
+    lines.push("");
+    lines.push("### World aggregates (Global Analytics WLD)");
+    lines.push(capLines(opts.wldBlock, 14));
   }
   if (opts.comparisonBlock.trim()) {
     lines.push("");
@@ -1789,8 +1857,8 @@ function buildAssistantPrimaryDataBlock(
     `Region: ${meta.region}${meta.subregion ? ` · ${meta.subregion}` : ""}`,
     "",
     usedRequestedSubset
-      ? "The following values match the Country Dashboard definitions (subset you asked about). Each line is the latest observation stored in this app for that indicator (data year on the line):"
-      : "The following values match the Country Dashboard (World Bank WDI plus configured gap-fills). Each line is the latest observation stored in this app for that indicator (data year on the line):",
+      ? "The following values match the Country Dashboard / Countries Comparison series (country observations only; no World→country WLD proxy). Subset you asked about. Each line is the latest non-proxy observation when available (data year on the line):"
+      : "The following values match the Country Dashboard / Countries Comparison series (country observations only; no World→country WLD proxy). Each line is the latest non-proxy observation when available (data year on the line):",
     "",
   ];
   for (const id of ids) {
@@ -1801,6 +1869,9 @@ function buildAssistantPrimaryDataBlock(
     const valStr = formatAssistantMetricValue(id, lv.value);
     const yoy = yoyChange(pts);
     let line = `• ${label}: ${valStr} (data year ${lv.year})`;
+    if (lv.provenance && lv.provenance !== "reported") {
+      line += `; method: ${lv.provenance}`;
+    }
     if (yoy !== null) line += `; YoY vs prior year: ${yoy.toFixed(1)}%`;
     lines.push(line);
   }
@@ -1896,10 +1967,16 @@ app.post("/api/assistant/chat", async (req, res) => {
       !questionLooksMetricAnchored(message) &&
       !looksLikePovertyInternationalVsNationalComparison(message) &&
       comparisonCodes.length < 2 &&
-      !looksLikeGlobalRankingQuery(message);
+      !looksLikeGlobalRankingQuery(message) &&
+      !looksLikeWorldAggregateQuery(message);
     const requestedFocusMetricIdsForFetch =
       requestedFocusMetricIds && requestedFocusMetricIds.length > 0 ? requestedFocusMetricIds : ASSISTANT_OVERVIEW_METRIC_IDS;
-    const [dashFocus, rankingPayload, comparisonBlock] = await Promise.all([
+    const wldMetricIdsForFetch = (() => {
+      const named = extractAssistantComparisonMetricIds(message);
+      if (named && named.length > 0) return named;
+      return ASSISTANT_OVERVIEW_METRIC_IDS;
+    })();
+    const [dashFocus, rankingPayload, comparisonBlock, wldAggregateSection] = await Promise.all([
       (async (): Promise<{
         block: string;
         meta?: CountrySummary;
@@ -1909,7 +1986,13 @@ app.post("/api/assistant/chat", async (req, res) => {
         const [metaMaybe, bundle] = await Promise.all([
           getCountry(cca3),
           settleWithin(
-            fetchCountryBundle(cca3, requestedFocusMetricIdsForFetch, MIN_DATA_YEAR, currentDataYear()),
+            fetchCountryBundle(
+              cca3,
+              requestedFocusMetricIdsForFetch,
+              MIN_DATA_YEAR,
+              currentDataYear(),
+              ASSISTANT_COUNTRY_SERIES_OPTS
+            ),
             capServerlessTimeout(22_000),
             makeNullBundle(requestedFocusMetricIdsForFetch, MIN_DATA_YEAR, currentDataYear())
           ),
@@ -1949,7 +2032,13 @@ app.post("/api/assistant/chat", async (req, res) => {
               const [meta, bundle] = await Promise.all([
                 getCountry(code),
                 settleWithin(
-                  fetchCountryBundle(code, comparisonMetricIdsForFetch, MIN_DATA_YEAR, currentDataYear()),
+                  fetchCountryBundle(
+                    code,
+                    comparisonMetricIdsForFetch,
+                    MIN_DATA_YEAR,
+                    currentDataYear(),
+                    ASSISTANT_COUNTRY_SERIES_OPTS
+                  ),
                   capServerlessTimeout(22_000),
                   makeNullBundle(comparisonMetricIdsForFetch, MIN_DATA_YEAR, currentDataYear())
                 ),
@@ -1958,6 +2047,12 @@ app.post("/api/assistant/chat", async (req, res) => {
             })
         )).filter((x): x is string => Boolean(x));
         return parts.length >= 2 ? parts.join("\n\n────────\n\n") : "";
+      })(),
+      (async () => {
+        if (!looksLikeWorldAggregateQuery(message) || looksLikeGlobalRankingQuery(message)) return "";
+        return buildAssistantWldAggregateBlock(wldMetricIdsForFetch, formatAssistantMetricValue, {
+          settleWithin,
+        });
       })(),
     ]);
 
@@ -1991,12 +2086,17 @@ app.post("/api/assistant/chat", async (req, res) => {
     }
     if (rankingSection) {
       attribution.push(
-        "Global ranking: full-country snapshot (same API path as dashboard global view; year may step back for WDI coverage)"
+        "Global ranking: full-country snapshot (same API path as dashboard global view; year may step back for WDI coverage; debt % filtered for plausible 0–500 band)"
+      );
+    }
+    if (wldAggregateSection.trim()) {
+      attribution.push(
+        "World aggregates: Global Analytics WLD pipeline (official WLD + sovereign-country panel; debt US$ = Σ(GDP×debt%))"
       );
     }
     if (comparisonBlock) {
       attribution.push(
-        `Comparison: platform series for ${comparisonCodes.length} countries (max ${ASSISTANT_MAX_COMPARISON_COUNTRIES} per request)`
+        `Comparison: platform country series for ${comparisonCodes.length} countries (max ${ASSISTANT_MAX_COMPARISON_COUNTRIES}; no World→country WLD proxy)`
       );
     }
 
@@ -2011,6 +2111,11 @@ app.post("/api/assistant/chat", async (req, res) => {
         : omitDuplicateDashboard || !focusMetricsInScope
           ? ""
           : dashboardBlock;
+    if (dashboardBlock.trim() && focusMetricsInScope && !omitDuplicateDashboard) {
+      attribution.push(
+        "Focus country: dashboard/comparison series (skipWldFallback — no World→country proxy)"
+      );
+    }
     if (dashboardBlock.trim() && !focusMetricsInScope) {
       attribution.push("Platform: focus-country indicators omitted (question outside dashboard metric scope)");
     }
@@ -2034,6 +2139,7 @@ app.post("/api/assistant/chat", async (req, res) => {
     const hasAuthoritativePayload =
       Boolean(rankingSection) ||
       Boolean(comparisonBlock) ||
+      Boolean(wldAggregateSection.trim()) ||
       (Boolean(dashboardBlock) && focusMetricsInScope);
     const tavilyConfigured = Boolean(providedTavilyApiKey || process.env.TAVILY_API_KEY?.trim());
     if (providedGroqApiKey) attribution.push("Auth: using user-provided Groq API key for this request");
@@ -2191,6 +2297,7 @@ app.post("/api/assistant/chat", async (req, res) => {
       dashboardForPrompt,
       comparisonBlock,
       rankingSection,
+      wldAggregateSection,
       webContext,
       webTopK: broadGeneralWebTurn ? 3 : 1,
       webRelevance: {
@@ -2276,7 +2383,8 @@ DATA FRESHNESS (platform / API / app database):
 - For **metrics, database figures, or API-style indicators**, these lines override model memory and generic web snippets.
 
 TRUTH (non-negotiable):
-- Figures in the **official indicator snapshots**, **comparison set**, and **ranking** below are the source of truth for values and rank order. Never substitute memorized tables or guess missing numbers.
+- Figures in the **official indicator snapshots**, **comparison set**, **world aggregates (WLD)**, and **ranking** below are the source of truth for values and rank order. Never substitute memorized tables or guess missing numbers.
+- Country lines are **national observations** (no World Bank “world average” substituted for a missing country value). World totals come only from the **World aggregates** section when present.
 - If the user asks for a metric that is not listed, say so in one clear sentence and offer what you *can* say from the snapshot.
 - Optional **recent excerpts** below are background only—they must not contradict those official figures.
 
@@ -2357,7 +2465,7 @@ Open with the sharpest contrast, then walk the reader through the rest with expl
 
     const platformDataScopeSuffix = `
 
-DATA SCOPE (non-negotiable): **[D#]** tags and any **Official indicators** / ranking / comparison lines in this thread are the **only** figures that come from this application’s database/APIs. Use them **only** to support claims they directly answer—never as filler when the user asked about something else (culture, sport, biography, offices, etc.). If the question is outside that numeric scope, answer from web excerpts and proportionate general knowledge without inventing or importing unrelated dashboard statistics. Never tell the user a number is “from the platform” unless it appears on a **[D#]** line you cite.`;
+DATA SCOPE (non-negotiable): **[D#]** tags and any **Official indicators** / ranking / comparison / **world aggregate** lines in this thread are the **only** figures that come from this application’s database/APIs. Use them **only** to support claims they directly answer—never as filler when the user asked about something else (culture, sport, biography, offices, etc.). If the question is outside that numeric scope, answer from web excerpts and proportionate general knowledge without inventing or importing unrelated dashboard statistics. Never tell the user a number is “from the platform” unless it appears on a **[D#]** line you cite.`;
 
     const nonDashboardWebFormatBlock = broadGeneralWebTurn
       ? `
@@ -2392,6 +2500,9 @@ ${cited.dashboardForPrompt || "(none)"}
 
 ## Official indicators — comparison set (empty if not a comparison question)
 ${cited.comparisonBlock || "(none)"}
+
+## World aggregates — Global Analytics WLD pipeline (empty if not a world-total question)
+${cited.wldAggregateSection || "(none)"}
 
 ## Global ranking snapshot (empty if not a ranking question)
 ${cited.rankingSection || "(none)"}
@@ -2482,6 +2593,7 @@ CITATION ENFORCEMENT (mandatory):
               focusBlock: cited.dashboardForPrompt,
               comparisonBlock: cited.comparisonBlock,
               rankingBlock: cited.rankingSection,
+              wldBlock: cited.wldAggregateSection,
               webBlock: cited.webContext,
               includeWeb: !metricScopedTurn,
             });
@@ -2508,6 +2620,7 @@ CITATION ENFORCEMENT (mandatory):
               focusBlock: cited.dashboardForPrompt,
               comparisonBlock: cited.comparisonBlock,
               rankingBlock: cited.rankingSection,
+              wldBlock: cited.wldAggregateSection,
               webBlock: cited.webContext,
               includeWeb: !metricScopedTurn,
             });
@@ -2551,6 +2664,7 @@ CITATION ENFORCEMENT (mandatory):
           focusBlock: cited.dashboardForPrompt,
           comparisonBlock: cited.comparisonBlock,
           rankingBlock: cited.rankingSection,
+          wldBlock: cited.wldAggregateSection,
           webBlock: cited.webContext,
           includeWeb: !metricScopedTurn,
         });
@@ -2589,6 +2703,7 @@ CITATION ENFORCEMENT (mandatory):
             focusBlock: cited.dashboardForPrompt,
             comparisonBlock: cited.comparisonBlock,
             rankingBlock: cited.rankingSection,
+            wldBlock: cited.wldAggregateSection,
             webBlock: cited.webContext,
             includeWeb: !metricScopedTurn,
           });
@@ -2609,13 +2724,16 @@ CITATION ENFORCEMENT (mandatory):
     if (comparisonBlock) {
       fallbackParts.push(`**Comparison (platform API)**\n\n${comparisonBlock}`);
     }
+    if (wldAggregateSection.trim()) {
+      fallbackParts.push(`**World aggregates (Global Analytics WLD)**\n\n${wldAggregateSection}`);
+    }
     if (dashboardForPrompt && !nonMetricWebTurn) {
       fallbackParts.push(`**Selected country (platform API)**\n\n${dashboardForPrompt}`);
     }
     const fallback =
       fallbackParts.length > 0
         ? `${fallbackParts.join("\n\n---\n\n")}\n\nSet GROQ_API_KEY for a fuller narrative.`
-        : `Select a country (ISO3) for country-level metrics, ask a top-N ranking (e.g. top countries by GDP), or set GROQ_API_KEY for general Q&A without fabricated statistics.`;
+        : `Select a country (ISO3) for country-level metrics, ask a world-total or top-N ranking (e.g. world GDP, top countries by GDP), or set GROQ_API_KEY for general Q&A without fabricated statistics.`;
 
     res.json({ reply: fallback, attribution, citations: cited.citations });
   } catch (e) {
@@ -2650,7 +2768,7 @@ app.post("/api/analysis/pestel", async (req, res) => {
     const [meta, bundle, profile] = await Promise.all([
       fetchEnrichedCountryMeta(cca3),
       settleWithin(
-        fetchCountryBundle(cca3, pestelMetricIds, seriesSpan.start, seriesSpan.end),
+        fetchCountryBundle(cca3, pestelMetricIds, seriesSpan.start, seriesSpan.end, ASSISTANT_COUNTRY_SERIES_OPTS),
         capServerlessTimeout(35_000),
         pestelBundleFallback
       ),
@@ -2789,7 +2907,7 @@ app.post("/api/analysis/porter", async (req, res) => {
     const [meta, bundle, profile] = await Promise.all([
       fetchEnrichedCountryMeta(cca3),
       settleWithin(
-        fetchCountryBundle(cca3, porterMetricIds, seriesSpan.start, seriesSpan.end),
+        fetchCountryBundle(cca3, porterMetricIds, seriesSpan.start, seriesSpan.end, ASSISTANT_COUNTRY_SERIES_OPTS),
         capServerlessTimeout(30_000),
         porterBundleFallback
       ),

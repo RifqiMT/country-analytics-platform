@@ -453,10 +453,12 @@ async function fetchMetricSeriesForCountry(
   countryIso3: string,
   metricId: string,
   startYear = MIN_DATA_YEAR,
-  endYear = currentDataYear()
+  endYear = currentDataYear(),
+  opts?: { completionMode?: "full" | "dense_only" }
 ): Promise<SeriesPoint[]> {
   const def = METRIC_BY_ID[metricId];
   if (!def) throw new Error(`Unknown metric: ${metricId}`);
+  const completionMode = opts?.completionMode ?? "full";
 
   const safeIndicator = async (indicator: string): Promise<SeriesPoint[]> => {
     try {
@@ -467,7 +469,7 @@ async function fetchMetricSeriesForCountry(
   };
   const safeMetric = async (id: string): Promise<SeriesPoint[]> => {
     try {
-      return await fetchMetricSeriesForCountry(countryIso3, id, startYear, endYear);
+      return await fetchMetricSeriesForCountry(countryIso3, id, startYear, endYear, opts);
     } catch {
       return emptyDenseSeries(startYear, endYear);
     }
@@ -480,9 +482,14 @@ async function fetchMetricSeriesForCountry(
       safeMetric("gov_debt_pct_gdp"),
     ]);
     let debtUsd = mergeDebtUsdWithDerived(directRaw, gdpDense, pctDense, startYear, endYear);
-    debtUsd = carryForwardTerminalDense(debtUsd, TERMINAL_CARRY_MAX_YEARS);
-    debtUsd = completeDenseSeries(debtUsd, completionOptionsForMetric(metricId));
-    debtUsd = clampSeriesByMetricDef(metricId, debtUsd);
+    if (completionMode === "full") {
+      debtUsd = carryForwardTerminalDense(debtUsd, TERMINAL_CARRY_MAX_YEARS);
+      debtUsd = completeDenseSeries(debtUsd, completionOptionsForMetric(metricId));
+      debtUsd = clampSeriesByMetricDef(metricId, debtUsd);
+    } else {
+      debtUsd = densifySeries(debtUsd, startYear, endYear);
+      debtUsd = clampSeriesByMetricDef(metricId, debtUsd);
+    }
     return debtUsd;
   }
 
@@ -533,8 +540,10 @@ async function fetchMetricSeriesForCountry(
     series = mergeSexAverageForNullSparse(series, maleS, femaleS);
   }
   let dense = densifySeries(series, startYear, endYear);
-  dense = carryForwardTerminalDense(dense, TERMINAL_CARRY_MAX_YEARS);
-  dense = completeDenseSeries(dense, completionOptionsForMetric(metricId));
+  if (completionMode === "full") {
+    dense = carryForwardTerminalDense(dense, TERMINAL_CARRY_MAX_YEARS);
+    dense = completeDenseSeries(dense, completionOptionsForMetric(metricId));
+  }
   dense = clampSeriesByMetricDef(metricId, dense);
   return dense;
 }
@@ -544,7 +553,7 @@ export async function fetchCountryBundle(
   metricIds: string[],
   startYear = MIN_DATA_YEAR,
   endYear = currentDataYear(),
-  opts?: { skipWldFallback?: boolean }
+  opts?: { skipWldFallback?: boolean; completionMode?: "full" | "dense_only" }
 ): Promise<Record<string, SeriesPoint[]>> {
   const mapWithConcurrency = async <T, R>(
     items: T[],
@@ -565,6 +574,7 @@ export async function fetchCountryBundle(
     return out;
   };
 
+  const completionMode = opts?.completionMode ?? "full";
   const fetchSet = new Set(metricIds);
   for (const id of metricIds) {
     const anchors = DERIVATION_REQUIRES_ANCHOR[id] ?? [];
@@ -581,7 +591,9 @@ export async function fetchCountryBundle(
   // A small concurrency cap significantly improves worst-case latency on serverless.
   await mapWithConcurrency(fetchIds, concurrency, async (id) => {
     try {
-      raw[id] = await fetchMetricSeriesForCountry(countryIso3, id, startYear, endYear);
+      raw[id] = await fetchMetricSeriesForCountry(countryIso3, id, startYear, endYear, {
+        completionMode,
+      });
     } catch {
       raw[id] = emptyDenseSeries(startYear, endYear);
     }
@@ -589,10 +601,12 @@ export async function fetchCountryBundle(
   });
   await applyCrossMetricBundleEnrichments(countryIso3, raw, startYear, endYear);
 
-  for (const id of fetchIds) {
-    const s = raw[id];
-    if (!s) continue;
-    raw[id] = completeDenseSeries(s, completionOptionsForMetric(id));
+  if (completionMode === "full") {
+    for (const id of fetchIds) {
+      const s = raw[id];
+      if (!s) continue;
+      raw[id] = completeDenseSeries(s, completionOptionsForMetric(id));
+    }
   }
 
   const upper = countryIso3.toUpperCase();
@@ -601,6 +615,7 @@ export async function fetchCountryBundle(
     if (needWld.length > 0) {
       const wldBundle = await fetchCountryBundle("WLD", needWld, startYear, endYear, {
         skipWldFallback: true,
+        completionMode,
       });
       for (const id of needWld) {
         const cur = raw[id];
@@ -610,12 +625,20 @@ export async function fetchCountryBundle(
     }
   }
 
-  for (const id of fetchIds) {
-    const s = raw[id];
-    if (!s) continue;
-    let t = completeDenseSeries(s, completionOptionsForMetric(id));
-    t = clampSeriesByMetricDef(id, t);
-    raw[id] = t;
+  if (completionMode === "full") {
+    for (const id of fetchIds) {
+      const s = raw[id];
+      if (!s) continue;
+      let t = completeDenseSeries(s, completionOptionsForMetric(id));
+      t = clampSeriesByMetricDef(id, t);
+      raw[id] = t;
+    }
+  } else {
+    for (const id of fetchIds) {
+      const s = raw[id];
+      if (!s) continue;
+      raw[id] = clampSeriesByMetricDef(id, s);
+    }
   }
 
   const out: Record<string, SeriesPoint[]> = {};

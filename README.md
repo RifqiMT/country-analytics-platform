@@ -80,6 +80,9 @@ Dashboard comparison, Compare pair, Global category, and chart/table series view
 ### Global metric matrices
 Global Analytics tables compose multi-year country×metric matrices (`backend/src/globalData/`) with bulk IMF/UIS fills and WHO GHO for archived UHC coverage; empty loads surface `global-table-empty`.
 
+### WLD charts + Assistant parity
+World aggregate charts and Assistant world-total answers share `buildWldSeriesBundle`. Country digests never prefer World→country `wld_proxy` fills.
+
 ---
 
 ## Metric coverage (68 indicators, 6 data categories + UI grouping)
@@ -219,6 +222,8 @@ Start with [`docs/README.md`](docs/README.md) for role-based reading paths.
 | GET | `/api/global/snapshot` | Choropleth snapshot |
 | GET | `/api/country/:cca3/fx-series` | USD/EUR exchange-rate time series |
 | GET | `/api/global/table` | Global country table (incl. crime category) |
+| GET | `/api/global/wld-series` | World aggregate series (official WLD + matrix fill) |
+| GET | `/api/global/wld-charts` | WLD chart-group bundle (optional bulk) |
 | POST | `/api/assistant/chat` | Analytics assistant |
 | POST | `/api/keys/validate` | BYOK key validation |
 | POST | `/api/analysis/pestel` | PESTEL generation |
@@ -232,7 +237,12 @@ Full contracts: [`docs/API_REFERENCE.md`](docs/API_REFERENCE.md)
 
 ## Latest implementation highlights
 
-> **Documentation status:** Re-audited against uncommitted implementation as of **2026-07-21 (eighth pass)**. See [`docs/DOCUMENTATION_AUDIT_REPORT.md`](docs/DOCUMENTATION_AUDIT_REPORT.md).
+> **Documentation status:** Re-audited against uncommitted implementation as of **2026-07-21 (ninth pass)**. See [`docs/DOCUMENTATION_AUDIT_REPORT.md`](docs/DOCUMENTATION_AUDIT_REPORT.md).
+
+### 2026-07-21 — WLD charts pipeline + Assistant parity
+- **`buildWldSeriesBundle`**: official WLD + sovereign matrix fill + polish for Global Charts and Assistant world totals
+- Modular **`wldCharts/*`** UI (lazy accordion groups); optional `GET /api/global/wld-charts`
+- Assistant country digests use `skipWldFallback`; debt ranking band (0, 500]; debt-% LCU fallback removed
 
 ### 2026-07-21 — Global metric matrices + WHO GHO UHC
 - Modular **`globalData/`** pipeline (`composeMetricMatrix`, `loadMetricMatrices`) for Global Analytics tables

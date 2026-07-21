@@ -8,9 +8,9 @@ Stories are written in user language, but each acceptance section is specific en
 
 | Epic | Stories | Traceability (FR) | Primary persona |
 | --- | --- | --- | --- |
-| Dashboard & Global Analytics | D1–D9 | FR-01, FR-02, FR-22, FR-29–FR-32, FR-37–FR-39 | Policy Analyst, Research Associate |
+| Dashboard & Global Analytics | D1–D10 | FR-01, FR-02, FR-22, FR-29–FR-32, FR-37–FR-41 | Policy Analyst, Research Associate |
 | Compare Countries | CP1–CP2 | FR-36, FR-32, FR-33, FR-38 | Policy Analyst, Research Associate |
-| Analytics Assistant | A1–A4 | FR-04–FR-08, FR-18, FR-19 | Strategy Manager, BYOK User |
+| Analytics Assistant | A1–A5 | FR-04–FR-08, FR-18, FR-19, FR-42 | Strategy Manager, BYOK User |
 | Strategy Modules | S1–S3 | FR-09–FR-12, FR-20, FR-21, FR-34 | Strategy Manager |
 | Business Analytics | B1–B4 | FR-13–FR-15, FR-23, FR-24, FR-35 | Research Associate, Executive Reviewer |
 | Crime & Public Safety | C1–C4 | FR-26–FR-28 | Security & Risk Analyst |
@@ -104,6 +104,16 @@ Stories are written in user language, but each acceptance section is specific en
 - Empty table responses show amber warning for `global-table-empty` and an empty-state panel — not a silent blank table.
 - Missing cells show “Not reported”; map side table lists all scoped countries even with null values.
 
+### Story D10: Modular WLD charts with honest world aggregates
+
+**Story:** As a researcher, I want Global Analytics Charts to load world aggregates that match Dashboard themes, without inventing country values from world totals.
+
+**Acceptance criteria:**
+- Chart groups (financial, health, education, crime, labour) use controlled accordions; data loads only after open.
+- Series come from `buildWldSeriesBundle` (official WLD + sovereign matrix fill); debt US$ uses Σ(GDP×debt%) with debt% band (0, 500].
+- Partial/null warnings (`global-wld-series-partial` / `fallback-null`) show clear user copy.
+- Dual-axis applies when catalog or span ratio requires it; FX charts are omitted (country-only).
+
 ## 1.1) Compare Countries
 
 ### Story CP1: Dual-country trend comparison
@@ -159,6 +169,15 @@ Stories are written in user language, but each acceptance section is specific en
 - Header key manager accepts and stores user keys according to session/persistent preference.
 - Backend receives keys via request headers and applies them to Assistant, PESTEL, Porter, and Business narrative routes.
 - Key validation endpoint returns provider-specific pass/fail feedback.
+
+### Story A5: World totals use Global Charts WLD pipeline
+
+**Story:** As an analyst, I want “What is world GDP?” answers to use the same WLD aggregate pipeline as Global Analytics Charts, while country digests never prefer World→country proxies.
+
+**Acceptance criteria:**
+- World-total questions route to `assistantWldBlock` / `buildWldSeriesBundle` with platform citations.
+- Ranking questions stay on the ranking path (debt USD vs debt % inferred separately; debt % filtered to (0, 500]).
+- Focus/compare/PESTEL/Porter digests use `skipWldFallback: true` and prefer non-`wld_proxy` latest points.
 
 ## 3) Strategy Modules (PESTEL / Porter)
 

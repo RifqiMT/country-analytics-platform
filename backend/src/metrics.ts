@@ -86,7 +86,7 @@ export const METRICS: MetricDef[] = [
     unit: "% of GDP",
     category: "financial",
     worldBankCode: "GC.DOD.TOTL.GD.ZS",
-    fallbackWorldBankCode: "GC.DOD.TOTL.CN",
+    // Do NOT use GC.DOD.TOTL.CN here — that is a local-currency debt *level*, not a %.
     imfWeoIndicator: "GGXWDG_NGDP",
     sourceName: "World Bank WDI; IMF WEO (DataMapper) for gaps",
     sourceUrl: "https://data.worldbank.org/indicator/GC.DOD.TOTL.GD.ZS",

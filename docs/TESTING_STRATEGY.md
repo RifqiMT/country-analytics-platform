@@ -43,7 +43,8 @@ Define how the Country Analytics Platform validates quality today and how automa
 - Sparse cells show “Not reported”; UHC may fill from WHO GHO
 - Metric selector (incl. `homicide_rate`); compact toolbar layout
 - Table tabs: general, financial, health, education, crime
-- WLD aggregate charts
+- WLD aggregate charts: modular accordion groups; lazy load; partial/null warning copy; dual-axis when needed
+- WLD pipeline: official WLD + matrix fill; debt US$ ≈ Σ(GDP×debt%)
 - Reduced-motion: map tooltip animation disabled when `prefers-reduced-motion`
 
 ### 3.2.1 Compare Countries tables
@@ -52,6 +53,8 @@ Define how the Country Analytics Platform validates quality today and how automa
 
 ### 3.3 Analytics Assistant
 - Metric ranking/comparison prompts → deterministic tables
+- World-total prompts (“What is world GDP?”) → WLD aggregate block + citations (not ranking)
+- Country digests use `skipWldFallback` (no preferred `wld_proxy` latest)
 - Verified-web prompts → citation behavior or fallback
 - BYOK key validation and reuse
 - No placeholder citation leakage (`[D#]`, `[W#]`)

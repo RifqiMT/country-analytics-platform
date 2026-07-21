@@ -214,6 +214,17 @@ See `docs/TESTING_STRATEGY.md` for manual QA scope and future automation roadmap
 - Sparse cells must label **Not reported** — not invent values from removed per-country series backfill.
 - UHC coverage may come from WHO GHO when WDI is archived; Sources/`data-providers` must disclose WHO GHO.
 
+### UG-08: No World→country proxy in Assistant digests
+
+- Assistant focus, comparison, PESTEL, and Porter country series must use `skipWldFallback: true`.
+- Latest-value digests prefer non-`wld_proxy` points; world totals are a separate WLD block — never mixed into country facts.
+
+### UG-09: Debt-% contamination band
+
+- Debt % of GDP must not use LCU-level WDI fallbacks (`GC.DOD.TOTL.CN`).
+- Ranking and WLD panel debt % use a plausible **(0, 500]** band; values outside are excluded.
+- Debt US$ vs debt % must be inferred separately from user language.
+
 ---
 
 ## 8) Performance guardrails
@@ -243,4 +254,10 @@ See `docs/TESTING_STRATEGY.md` for manual QA scope and future automation roadmap
 - Builds rely on internal `TABLE_BUILD_DEADLINE_MS` (~55s serverless / ~120s local) inside `loadMetricMatrices`.
 - Outbound fetches must set `timeoutMs` (WDI 12–18s, WHO 18s, IMF 30s, UIS 45s) so hung upstreams do not exhaust the deadline silently.
 - On Vercel, ensure platform `maxDuration` ≥ table deadline or users may see hard 504 before `global-table-empty`.
+
+### PG-06: WLD aggregate deadlines and lazy chart load
+
+- `buildWldSeriesBundle` respects serverless per-metric and aggregate deadlines (matrix fill concurrency 2/3).
+- Global Charts UI must lazy-load on accordion open to avoid fetching all groups on page enter.
+- Prefer official WLD + matrix fill over year-by-year snapshot storms for chart spans.
 - Strict mode users accept potential timeout failure over undisclosed fallback.

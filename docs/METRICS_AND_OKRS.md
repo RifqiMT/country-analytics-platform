@@ -123,6 +123,14 @@ Share of Global Analytics table loads that return non-empty rows without `global
 **Why it matters:**  
 Validates the metric-matrix + WHO GHO pipeline reduces silent empty tables and archived-UHC gaps.
 
+### 2.10 WLD chart engagement and assistant world-total accuracy
+
+**What it measures:**  
+Share of Global Charts accordion opens that complete without `global-wld-series-fallback-null`, and share of Assistant world-total prompts that cite the WLD pipeline (not ranking).
+
+**Why it matters:**  
+Validates parity between Global Charts and Assistant world aggregates after the ninth-pass pipeline.
+
 ## 3) Performance metrics
 
 ### 3.1 Assistant latency (P50 / P95)

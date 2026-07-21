@@ -59,6 +59,7 @@ For persona details, see `docs/USER_PERSONAS.md`.
 - Choropleth map analytics: quintile tier coloring, legend, curated metric blurbs, rank and distribution stats in hover tooltip (with tier badge)
 - Shared **DataTable** system for analytical tables across Dashboard, Compare, Global, and chart/table views
 - Global table **metric-matrix** pipeline (WDI → IMF → UIS → WHO GHO for UHC) with `global-table-empty` warning UX
+- WLD charts via official WLD + sovereign matrix fill; Assistant world-total parity (`skipWldFallback` on country digests)
 
 ### Out of scope (current)
 
@@ -256,3 +257,10 @@ For governance details, see `docs/PRODUCT_DOCUMENTATION_STANDARD.md`.
 - Provider chain: WDI range → IMF bulk range → UIS bulk range → WHO GHO `UHC_INDEX_REPORTED` for `uhc_service_coverage` (archived WDI).
 - `GET /api/global/table` sets `x-cap-warning: global-table-empty` on empty rows; frontend uses `getJsonWithMeta` for amber empty-state UX.
 - Outbound `fetchWithRetry` supports per-attempt `timeoutMs`; Sources/`dataProviders` lists `who-gho`.
+
+### 14.8 WLD charts pipeline and Assistant parity (2026-07-21)
+
+- `buildWldSeriesBundle` powers Global Charts and Assistant world totals (official WLD + sovereign matrix fill + polish).
+- Modular UI: `frontend/src/components/global/wldCharts/*`; optional `GET /api/global/wld-charts` for group bulk loads.
+- Debt % no longer falls back to LCU level code; panel debt US$ = Σ(GDP×debt%) with (0, 500] band.
+- Assistant country digests use `skipWldFallback: true`; world-total questions use `assistantWldBlock.ts`.

@@ -383,11 +383,13 @@ function countUsableRowsInYearMap(byYear: Map<number, GlobalRow[]>): number {
 export async function fetchGlobalYearSnapshotsForRange(
   metricId: string,
   startYear: number,
-  endYear: number
+  endYear: number,
+  opts?: { allowYearByYearFallback?: boolean }
 ): Promise<Map<number, GlobalRow[]>> {
   const def = METRIC_BY_ID[metricId];
   if (!def) throw new Error(`Unknown metric: ${metricId}`);
   if (endYear < startYear) return emptyYearMap(startYear, endYear);
+  const allowYearByYearFallback = opts?.allowYearByYearFallback !== false;
 
   const rangeCacheKey = `global:range:v2:${metricId}:${startYear}:${endYear}`;
   const rangeHit = getCache<Array<[number, GlobalRow[]]>>(rangeCacheKey);
@@ -435,8 +437,14 @@ export async function fetchGlobalYearSnapshotsForRange(
     }
   }
 
-  // Range path failed or was blocked — fall back to lite per-year WDI snapshots (no IMF/UIS).
+  // Range path failed or was blocked — optional lite per-year fallback (can be very slow).
   if (countUsableRowsInYearMap(byYear) === 0) {
+    if (!allowYearByYearFallback) {
+      console.warn(
+        `[WDI] range snapshot empty for ${metricId} ${startYear}:${endYear}; skipping year-by-year fallback`
+      );
+      return emptyYearMap(startYear, endYear);
+    }
     console.warn(
       `[WDI] range snapshot empty for ${metricId} ${startYear}:${endYear}; falling back to per-year lite fetches`
     );

@@ -95,6 +95,13 @@ If implementation or behavior changes, update affected docs in the same PR and v
 - Corrected category terminology: 6 data categories + UI-only `general` grouping
 - Updated `.env.example` with business model vars and serverless budget
 
+### 2026-07-21 ninth pass — WLD charts pipeline + Assistant parity:
+
+- Documented `buildWldSeriesBundle`, modular `wldCharts/*`, and `GET /api/global/wld-charts`
+- Documented WLD aggregation methods (`ANALYSIS_METHODS` §1a) and debt-% band integrity
+- Extended FR-40–FR-42; stories D10 / A5; guardrails UG-08 / UG-09 / PG-06
+- Completed ASSISTANT_BEHAVIOR §8a cross-links across PRD, API, architecture, variables
+
 ### 2026-07-21 eighth pass — global metric matrices + WHO GHO:
 
 - Documented `backend/src/globalData/` matrix pipeline and `whoGho.ts` UHC fill

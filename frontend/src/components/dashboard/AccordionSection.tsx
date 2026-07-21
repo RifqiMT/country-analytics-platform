@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactNode, SyntheticEvent } from "react";
 
 type Props = {
   id?: string;
@@ -6,6 +6,9 @@ type Props = {
   subtitle?: string;
   accent?: "slate" | "rose" | "teal" | "amber" | "indigo";
   defaultOpen?: boolean;
+  /** Controlled open state — when set with onOpenChange, replaces defaultOpen. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   onDownload?: () => void;
   children: ReactNode;
 };
@@ -24,13 +27,23 @@ export default function AccordionSection({
   subtitle,
   accent = "slate",
   defaultOpen = false,
+  open,
+  onOpenChange,
   onDownload,
   children,
 }: Props) {
+  const controlled = open !== undefined && onOpenChange !== undefined;
   return (
     <details
       id={id}
-      open={defaultOpen}
+      {...(controlled
+        ? {
+            open,
+            onToggle: (e: SyntheticEvent<HTMLDetailsElement>) => {
+              onOpenChange(e.currentTarget.open);
+            },
+          }
+        : { open: defaultOpen })}
       className="group scroll-mt-24 rounded-xl border border-slate-200 bg-white shadow-sm transition-colors open:border-slate-300"
     >
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3.5 sm:px-5 [&::-webkit-details-marker]:hidden">

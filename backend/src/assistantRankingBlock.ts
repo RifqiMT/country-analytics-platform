@@ -117,15 +117,27 @@ function inferRankingMetricId(ql: string): string | null {
   if (/\bliteracy\b/i.test(ql)) return "literacy_adult";
   if (/\bpoverty\b|\bheadcount\b/i.test(ql)) return "poverty_headcount";
   if (/\b(undernourish|hunger|malnutrition)\b/i.test(ql)) return "undernourishment";
-  if (/\b(debt\s*%|debt\s+to\s+gdp|government\s+debt)\b/i.test(ql)) return "gov_debt_pct_gdp";
+  if (/\b(debt\s*%|debt\s+to\s+gdp|debt-to-gdp)\b/i.test(ql)) return "gov_debt_pct_gdp";
+  if (/\b(debt\s+usd|nominal\s+(government\s+)?debt|government\s+debt\s+(in\s+)?(usd|dollars)|total\s+government\s+debt)\b/i.test(ql))
+    return "gov_debt_usd";
+  if (/\b(government\s+debt|public\s+debt|gov\.?\s+debt)\b/i.test(ql)) return "gov_debt_pct_gdp";
   if (/\blending\s+rate\b|\binterest\s+rate\b/i.test(ql)) return "lending_rate";
   return null;
 }
 
-function filterToRestCountries(rows: GlobalRow[], allowed: Set<string>): GlobalRow[] {
-  return rows.filter(
-    (r) => allowed.has(r.countryIso3) && r.value !== null && Number.isFinite(r.value as number)
-  );
+/** Debt-% observations outside this band are treated as contaminated (e.g. LCU levels). */
+const RANKING_DEBT_PCT_MAX = 500;
+
+function filterToRestCountries(rows: GlobalRow[], allowed: Set<string>, metricId?: string): GlobalRow[] {
+  return rows.filter((r) => {
+    if (!allowed.has(r.countryIso3)) return false;
+    if (r.value === null || !Number.isFinite(r.value as number)) return false;
+    if (metricId === "gov_debt_pct_gdp") {
+      const v = r.value as number;
+      if (!(v > 0 && v <= RANKING_DEBT_PCT_MAX)) return false;
+    }
+    return true;
+  });
 }
 
 export type AssistantRankingPayload = {
@@ -221,7 +233,7 @@ export async function buildAssistantRankingPayload(
     fetchGlobalSnapshotWithYearFallback(metricId, requestedYear),
   ]);
   const allowed = new Set(countries.map((c) => c.cca3));
-  let candidates = filterToRestCountries(rows, allowed);
+  let candidates = filterToRestCountries(rows, allowed, metricId);
   candidates.sort((a, b) =>
     order === "desc" ? (b.value! as number) - (a.value! as number) : (a.value! as number) - (b.value! as number)
   );

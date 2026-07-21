@@ -1,8 +1,8 @@
 # Analytics Assistant — Behavior Specification
 
-**Document version:** 2026-07-20  
+**Document version:** 2026-07-21  
 **Audience:** Product managers, analysts, engineers, QA, and governance reviewers  
-**Canonical code:** `backend/src/assistantIntel.ts`, `backend/src/index.ts` (`POST /api/assistant/chat`)
+**Canonical code:** `backend/src/assistantIntel.ts`, `backend/src/assistantWldBlock.ts`, `backend/src/assistantRankingBlock.ts`, `backend/src/index.ts` (`POST /api/assistant/chat`)
 
 ---
 
@@ -137,6 +137,22 @@ Fallback chain: per-use-case `GROQ_FALLBACK_MODELS_*` → global `GROQ_FALLBACK_
 
 ---
 
+## 8a. Platform data pipelines (parity with dashboard features)
+
+Country Dashboard, Countries Comparison, Global Analytics, and the Analytics Assistant share the same metric catalog and series builders. Assistant-specific wiring:
+
+| Question type | Data path | Parity notes |
+| --- | --- | --- |
+| Focus country / overview | `fetchCountryBundle(..., { skipWldFallback: true })` | Same as Countries Comparison country column — **no** World→country `wld_proxy` gap-fill |
+| Multi-country compare | Same `skipWldFallback` per country | Matches comparison feature; digest prefers non-proxy latest points |
+| Global ranking (top/bottom N) | `fetchGlobalSnapshotWithYearFallback` + REST country allowlist | Debt % limited to a plausible (0, 500] band; debt US$ vs debt % inferred separately |
+| World / global totals | `buildWldSeriesBundle` (via `assistantWldBlock.ts`) | Same pipeline as Global Analytics → Charts (official WLD + sovereign panel; debt US$ = Σ(GDP×debt%)) |
+| PESTEL / Porter digests | `skipWldFallback: true` | Macro anchors match dashboard country series |
+
+When answering, the model prompt separates **national snapshots**, **comparison sets**, **world aggregates (WLD)**, and **rankings** so world totals are never mixed into country facts.
+
+---
+
 ## 9. User-visible UX signals
 
 | Signal | When shown | Purpose |
@@ -154,6 +170,7 @@ These signals help users evaluate trust and provenance without inspecting system
 
 | Prompt | Expected behavior |
 | --- | --- |
+| "What is world GDP?" / "How large is global government debt?" | World-aggregate WLD block (Global Analytics pipeline); not country ranking |
 | "Rank Indonesia, Brazil, and India by GDP per capita" | Deterministic comparison table; `% of top` values |
 | "Compare life expectancy trends for Japan and USA" | Metric-scoped response; no drift to unrelated indicators |
 | "Who is the current president of Indonesia?" | Verified-web path with citation; or fallback if web thin |

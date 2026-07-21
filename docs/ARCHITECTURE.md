@@ -67,16 +67,21 @@ If evidence quality or scope constraints fail, the system uses deterministic fal
    - `GET /api/global/wld-series`
 3. Backend applies year fallback resolution and returns rows aligned to the resolved data year.
 4. **Table path:** `buildGlobalTable` → `loadMetricMatrices` → `composeMetricMatrix` (WDI range → IMF bulk → UIS bulk → WHO GHO for UHC) under an internal deadline.
-5. Frontend builds a **quintile tier model** from scoped snapshot values (`choroplethTiers.ts`) and renders choropleth + legend + tooltip (with tier badge).
-6. Global and comparison tables render via shared **DataTable** components with sticky labels and sortable headers.
+5. **WLD charts path:** `buildWldSeriesBundle` (official WLD + sovereign matrix fill + polish) via `GET /api/global/wld-series` (and optional `GET /api/global/wld-charts` by group).
+6. Frontend builds a **quintile tier model** from scoped snapshot values (`choroplethTiers.ts`) and renders choropleth + legend + tooltip (with tier badge).
+7. Global Charts UI is modular (`wldCharts/*`): accordion groups, lazy per-chart fetch, dual-axis when spread is wide.
+8. Global and comparison tables render via shared **DataTable** components with sticky labels and sortable headers.
 
 #### C) Assistant chat (`POST /api/assistant/chat`)
 
 1. Backend classifies intent and determines evidence mode (platform-grounded vs verified-web).
-2. If platform evidence is needed, backend builds platform evidence blocks from dashboard/ranking/comparison structures.
+2. If platform evidence is needed, backend builds:
+   - focus/comparison/PESTEL/Porter digests with **`skipWldFallback: true`** (no World→country proxy)
+   - global rankings (debt USD vs % inferred; debt % band (0, 500])
+   - **world aggregates** via `buildAssistantWldAggregateBlock` → same `buildWldSeriesBundle` as Global Charts
 3. If verified web evidence is required, backend retrieves live context from Tavily and compacts it into web evidence blocks.
 4. Safety gates apply:
-   - citation/grounding checks
+   - citation/grounding checks (`citeWldAggregateBlock` for WLD bullets)
    - drift control (detect scope mismatch)
    - fallback activation when output is weak or evidence is thin
 5. Backend returns a stable response with attribution/routing signals for the UI.

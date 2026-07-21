@@ -67,7 +67,7 @@ Request variables are the fields you send to endpoints. Backend validation rules
 
 | Variable Name | Friendly Name | Definition | Formula / Rule | Location in the apps | Example |
 | --- | --- | --- | --- | --- | --- |
-| `message` | User Question | Natural-language query | Required and non-empty (trimmed) | `frontend/src/pages/Assistant.tsx`, `backend/src/index.ts` | `Compare Indonesia and Brazil on GDP per capita and population` |
+| `message` | User Question | Natural-language query | Required and non-empty (trimmed). Metric world-totals route to WLD aggregates; top/bottom-N route to global ranking; country names route to comparison/focus snapshots | `frontend/src/pages/Assistant.tsx`, `backend/src/index.ts` | `What is world GDP?` / `Compare Indonesia and Brazil on GDP per capita` |
 | `countryCode` | Focus Country | ISO3 country context for grounding | Uppercase and validated as `^[A-Z]{3}$` | Assistant chat only | `IDN` |
 | `webSearchPriority` | Web-First Mode | Force web retrieval priority for the turn | If `true`, treated as web-priority | Assistant chat body | `true` |
 | `assistantMode` | Assistant Mode (Optional) | Legacy/alternate flag for web priority | If equal to `"web_priority"`, treated like `webSearchPriority=true` | Assistant chat body | `"web_priority"` |
@@ -203,7 +203,7 @@ Request variables are the fields you send to endpoints. Backend validation rules
 
 | Variable Name | Friendly Name | Definition | Formula / Rule | Location in the apps | Example |
 | --- | --- | --- | --- | --- | --- |
-| `x-cap-warning` | Upstream Warning | Non-fatal upstream degradation notice | Examples: `country-series-partial-timeout`; `global-table-empty` when Global table returns no rows | Response header on selected routes; surfaced by `getJsonWithMeta` on Global Analytics | `global-table-empty` |
+| `x-cap-warning` | Upstream Warning | Non-fatal upstream degradation notice | Examples: `country-series-partial-timeout`; `global-table-empty`; `global-wld-series-partial`; `global-wld-series-fallback-null` | Response header on selected routes; surfaced by `getJsonWithMeta` / WLD chart hooks | `global-wld-series-partial` |
 
 #### `POST /api/analysis/correlation`
 
@@ -386,12 +386,18 @@ Backend variables for Global Analytics table composition and UHC archival fill. 
 | `YearIsoMatrix` | Year×ISO Value Matrix | Nested map of year → ISO3 → numeric value (or null) | Built by `emptyYearIsoMatrix` + `mergeMatrixFill` | `composeMetricMatrix` → `buildGlobalTable` | `{ 2022 → { IDN → 62.1 } }` |
 | `composeMetricMatrix` | Metric Matrix Composer | Fills one metric across all countries for a year span | WDI range → IMF bulk → UIS bulk → WHO GHO (UHC only); null-only merge | `backend/src/globalData/composeMetricMatrix.ts` | `composeMetricMatrix("gdp", 2000, 2023)` |
 | `loadMetricMatrices` | Matrix Pool Loader | Concurrent matrix loads with deadline | Concurrency 2 (serverless) / 3 (local); aborts past deadline | `metricMatrixStore.ts` → Global table | `{ life_expectancy: YearIsoMatrix }` |
-| `metric-matrix:v1:{id}:{lo}:{hi}` | Matrix Cache Key | Server cache for composed matrices | TTL 6h; cached only when finite count > 0 | `composeMetricMatrix` | `metric-matrix:v1:uhc_service_coverage:2000:2023` |
+| `metric-matrix:v2:{id}:{lo}:{hi}` | Matrix Cache Key | Server cache for composed matrices | TTL 6h; cached only when finite count > 0; **v2** drops contaminated debt-% cache from LCU fallback era | `composeMetricMatrix` | `metric-matrix:v2:uhc_service_coverage:2000:2023` |
 | `who:gho:{indicator}:{year}` | WHO GHO Cache Key | Cached GHO country rows for one year | TTL 6h success / 30m empty / 15m error | `whoGho.ts` | `who:gho:UHC_INDEX_REPORTED:2022` |
 | `UHC_INDEX_REPORTED` | WHO UHC Indicator Code | GHO OData indicator for UHC service coverage | Hardcoded for metric id `uhc_service_coverage` | Snapshot + matrix compose | `UHC_INDEX_REPORTED` |
 | `TABLE_BUILD_DEADLINE_MS` | Global Table Deadline | Max wall time for matrix-backed table build | ~55_000 serverless / ~120_000 otherwise | `globalTable.ts` | `55000` |
 | `fetchWithRetry.timeoutMs` | Outbound HTTP Timeout | Per-attempt abort for upstream fetches | AbortController; retries on network/abort | `httpClient.ts` call sites | WDI 12–18s; WHO 18s; IMF 30s; UIS 45s |
 | `getJsonWithMeta.warning` | Client Warning Header | Optional `x-cap-warning` from GET responses | Parsed from response headers | `frontend/src/api.ts` → GlobalAnalytics | `"global-table-empty"` |
+| `completionMode` | Series Completion Mode | Controls densify vs full carry on country bundles | `"full"` (default) or `"dense_only"` (official WLD in chart bundle) | `worldBank.fetchCountryBundle` | `"dense_only"` |
+| `buildWldSeriesBundle` | WLD Series Builder | Official WLD + matrix fill + polish for chart/assistant totals | Filled &lt; 95% → matrix fill; debt US$ = Σ(GDP×debt%) | `wldSeriesService.ts` | See ANALYSIS_METHODS §1a |
+| `global-wld-series-partial` | WLD Partial Warning | Some requested WLD series empty | Set on `wld-series` / `wld-charts` responses | Header + `useWldChartSeries` UX | `"global-wld-series-partial"` |
+| `group` (wld-charts) | WLD Chart Group | Chart accordion group id | `financial\|health\|education\|crime\|labour` | `GET /api/global/wld-charts` | `"financial"` |
+| `RANKING_DEBT_PCT_MAX` | Ranking Debt % Cap | Upper bound for plausible debt-% in rankings / WLD panel | Values outside **(0, 500]** excluded | `assistantRankingBlock.ts`, `wldSeriesFromMatrix.ts` | `500` |
+| `skipWldFallback` | Skip World→Country Proxy | Disables filling country nulls from WLD | `true` on Assistant focus/compare/PESTEL/Porter and Compare country loads | `fetchCountryBundle` options | `true` |
 
 ## 5) Relationship Chart (Where variables connect)
 
@@ -419,6 +425,9 @@ flowchart TD
   G1 --> E8[GET /api/global/snapshot + /api/global/table]
   E8 --> MX[composeMetricMatrix / loadMetricMatrices]
   MX --> WHO[WHO GHO UHC_INDEX_REPORTED]
+  MX --> WLD[buildWldSeriesBundle official+matrix]
+  WLD --> WLDUI[Modular wldCharts accordion]
+  A1 --> WLD
   MX --> M2[Choropleth tier model + map scope stats]
   M2 --> M3[MapCountryTooltip rank/blurb/tierBadge UI]
   F1 --> T1[DataTable comparison UI]

@@ -1,6 +1,6 @@
 # Country Analytics Platform — Comprehensive Product Documentation
 
-**Document version:** 2026-07-21 (eighth pass)  
+**Document version:** 2026-07-21 (ninth pass)  
 **Audience:** Product managers, strategy leads, analysts, engineers, design, QA, and leadership  
 **Status:** Implementation-aligned with current codebase
 
@@ -104,7 +104,7 @@ Deliver analyst-grade country analytics and strategic interpretation tools that 
 - Selectable map metric (including homicide rate) with curated plain-English tooltip blurbs
 - Compact single-row toolbar (year, region, view mode, inline map metric selector)
 - Category-filtered global country tables: general, financial, health, education, **crime**
-- World aggregate (WLD) time-series charts
+- World aggregate (WLD) time-series charts — modular accordion groups with lazy per-chart load
 - Region filter and sortable columns
 - Fullscreen visualization mode
 
@@ -122,21 +122,30 @@ Deliver analyst-grade country analytics and strategic interpretation tools that 
 - Empty table responses set `x-cap-warning: global-table-empty`; UI shows amber note and empty-state panel via `getJsonWithMeta`
 - Missing cells display “Not reported” (no fabricated zeros); map side table includes all scoped countries even when values are null
 
+**WLD charts business logic:**
+- Charts mirror Dashboard metric groups (FX country-only chart omitted)
+- Series from `buildWldSeriesBundle` (official WLD + sovereign matrix fill + polish); debt US$ = Σ(GDP×debt%) within (0, 500] band
+- Accordion sections fetch only after open (`useWldChartSeries`); partial/null warnings map to user-visible copy
+- Dual Y-axis when catalog marks `dualAxis` or value span ratio ≥ 8
+
 ### 4.3 Analytics Assistant (`/assistant`)
 
 **Purpose:** Natural-language country intelligence with platform grounding.
 
 **Capabilities:**
 - Metric-scoped ranking and comparison queries
+- World-total questions answered with the same WLD pipeline as Global Charts (`assistantWldBlock.ts`)
 - `% of top` relative value calculations in comparison tables
 - Verified-web mode for time-sensitive non-metric questions
 - Citation and attribution transparency
 - BYOK key support via header panel
 
 **Evidence hierarchy:**
-1. Platform metric evidence (deterministic tables)
+1. Platform metric evidence (deterministic tables / WLD aggregates)
 2. Verified web evidence (Tavily with citations)
 3. AI synthesis (grounding-gated)
+
+**Parity rules:** focus/compare/PESTEL/Porter country digests use `skipWldFallback: true` (no World→country `wld_proxy` as preferred latest).
 
 ### 4.4 PESTEL Analysis (`/pestel`)
 

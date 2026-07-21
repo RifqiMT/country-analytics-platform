@@ -234,6 +234,20 @@ Canonical table UI for Dashboard comparison, Compare Countries pair table, Globa
 - `GlobalAnalytics.tsx` — map-side metric table + category tables
 - `SeriesLineDataTable.tsx` — chart/table toggle time-series tables
 
+### 2.14 Global WLD Charts UI (`wldCharts/*`)
+
+Modular Global Analytics → Charts surface (replaces monolithic `GlobalWldCharts` body):
+
+| Piece | Role |
+| --- | --- |
+| `catalog.ts` | Chart groups + line colors + `WLD_PERCENT_KEYS` (mirrors backend `wldChartCatalog.ts`) |
+| `WldChartGroupSection.tsx` | Controlled accordion; fetch only after open |
+| `WldLineChartCard.tsx` | Recharts card, granularity, table toggle, labour derived rows |
+| `useWldChartSeries.ts` | Per-chart `GET /api/global/wld-series`; maps `global-wld-series-*` warnings |
+| `axisScale.ts` | Dual-axis when catalog `dualAxis` or max/min ≥ 8 |
+
+**Color notes:** Line colors follow Dashboard chart series conventions (§2.8). Labour group may derive unemployed counts from `unemployment_ilo × labor_force_total`. FX charts are country-only and omitted from WLD.
+
 ## 3) Component standards
 
 ### 3.1 Surfaces and cards

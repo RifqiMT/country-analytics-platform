@@ -134,7 +134,7 @@ flowchart TB
 | `gdp_per_capita` | GDP per capita (Nominal, US$) | US$ | financial | NY.GDP.PCAP.CD | — | GDP per capita = GDP / Population | GDP divided by midyear population. |
 | `gdp_growth` | GDP growth (annual %) | % | financial | NY.GDP.MKTP.KD.ZG | — | — | Annual percentage growth rate of GDP at constant prices. |
 | `population` | Population, total | people | demographics | SP.POP.TOTL | — | — | Total population based on census and WPP estimates. |
-| `gov_debt_pct_gdp` | Central government debt, total (% of GDP) | % of GDP | financial | GC.DOD.TOTL.GD.ZS | GC.DOD.TOTL.CN | Debt / GDP × 100 | Debt of central government as share of GDP (WDI). |
+| `gov_debt_pct_gdp` | Central government debt, total (% of GDP) | % of GDP | financial | GC.DOD.TOTL.GD.ZS | — | Debt / GDP × 100 | Debt of central government as share of GDP (WDI). **No** LCU-level fallback (`GC.DOD.TOTL.CN` removed — it is a currency amount, not a %). World aggregates use panel Σ(GDP×debt%) / ΣGDP with debt% band (0, 500]. |
 | `inflation` | Inflation, consumer prices (annual %) | % | financial | FP.CPI.TOTL.ZG | — | — | Inflation from WDI consumer price index. |
 | `interest_real` | Real interest rate (%) | % | financial | FR.INR.RINR | — | — | Real interest rate from World Bank WDI where reported. |
 | `unemployment_ilo` | Unemployment, total (% of labour force) — modeled ILO | % | labour | SL.UEM.TOTL.ZS | SL.UEM.TOTL.NE.ZS | — | Share of labour force without work but available. |

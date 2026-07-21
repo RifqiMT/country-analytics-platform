@@ -14,20 +14,23 @@ function clamp(v: number, lo: number, hi: number): number {
 
 function unitSuggestsPctClamp(def: MetricDef): boolean {
   const u = def.unit;
-  return u === "%" || u === "% of GDP" || u.includes("% of relevant") || u.includes("% of total");
+  // "% of GDP" can exceed 100 (e.g. Japan, Singapore) — do not clamp to [0, 100].
+  if (u === "% of GDP") return false;
+  return u === "%" || u.includes("% of relevant") || u.includes("% of total");
 }
 
 /**
  * After merges, ensure every year in the dense range has a value when any anchor exists:
- * leading nulls ← first observation; trailing nulls ← last; short interior gaps linearly interpolated.
+ * leading nulls ← first observation (optional); trailing nulls ← last; short interior gaps linearly interpolated.
  */
 export function completeDenseSeries(
   points: SeriesPoint[],
-  opts: { maxInteriorInterpGap: number }
+  opts: { maxInteriorInterpGap: number; fillLeading?: boolean }
 ): SeriesPoint[] {
   const n = points.length;
   if (n === 0) return points;
   const out: SeriesPoint[] = points.map((p) => ({ ...p }));
+  const fillLeading = opts.fillLeading !== false;
 
   let first = -1;
   let last = -1;
@@ -46,12 +49,14 @@ export function completeDenseSeries(
   if (first === -1) return out;
 
   const firstVal = out[first]!.value as number;
-  for (let i = 0; i < first; i++) {
-    out[i] = { year: out[i]!.year, value: firstVal };
+  if (fillLeading) {
+    for (let i = 0; i < first; i++) {
+      out[i] = { year: out[i]!.year, value: firstVal, provenance: "filled_range" };
+    }
   }
   const lastVal = out[last]!.value as number;
   for (let i = last + 1; i < n; i++) {
-    out[i] = { year: out[i]!.year, value: lastVal };
+    out[i] = { year: out[i]!.year, value: lastVal, provenance: "filled_range" };
   }
 
   let i = first;

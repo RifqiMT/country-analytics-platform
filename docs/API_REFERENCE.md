@@ -345,7 +345,13 @@ Errors:
 
 #### GET `/api/global/wld-series`
 
-Purpose: return world aggregate (`WLD`) series bundles for selected metrics.
+Purpose: return world aggregate (`WLD`) time series for selected metrics via `buildWldSeriesBundle`.
+
+**Pipeline:**
+1. Official WLD country bundle (`completionMode: "dense_only"`, `skipWldFallback`) for metrics not in the matrix-first skip set
+2. Sovereign-country panel fill from metric matrices when filled points &lt; 95% of year span (`fillWldBundleFromMatrices`)
+3. Identity reconcile: `gdp_per_capita = gdp÷population` (and PPP analogue)
+4. Polish: interior interpolate ≤ 4 years; trailing carry ≤ 2 years; clamp; re-reconcile
 
 Query params:
 - `metrics` (required): comma-separated metric IDs
@@ -358,14 +364,48 @@ Response:
   "start": 2000,
   "end": 2024,
   "series": {
-    "gdp": [{ "year": 2000, "value": 1.2e13 }],
-    "life_expectancy": [{ "year": 2000, "value": 67.3 }]
+    "gdp": [{ "year": 2000, "value": 1.2e13, "provenance": "reported" }],
+    "gov_debt_usd": [{ "year": 2000, "value": 3.4e12, "provenance": "derived_cross_metric" }]
   }
 }
 ```
 
+Warnings (`x-cap-warning`):
+- `global-wld-series-fallback-null` — all requested series empty
+- `global-wld-series-partial` — some series empty, others filled
+
 Errors:
 - `400` missing metrics or unknown metric IDs
+- `500` internal error
+
+#### GET `/api/global/wld-charts`
+
+Purpose: return a chart-group catalog slice plus pre-bundled WLD series for that group (bulk companion to per-chart `wld-series` fetches).
+
+Query params:
+- `group` (required): one of `financial|health|education|crime|labour`
+- `start` / `end` (optional): year range (clamped)
+
+Response (high-level):
+```json
+{
+  "group": "financial",
+  "title": "Financial",
+  "description": "...",
+  "charts": [{ "id": "gdp-levels", "title": "...", "metricIds": ["gdp", "gdp_ppp"] }],
+  "start": 2000,
+  "end": 2024,
+  "series": { "gdp": [{ "year": 2000, "value": 1.2e13 }] }
+}
+```
+
+Notes:
+- Metric sets come from `backend/src/globalData/wldChartCatalog.ts` (mirrored in `frontend/.../wldCharts/catalog.ts`).
+- Current UI loads per chart via `wld-series` after accordion open; this endpoint is available for bulk loads / transport toasts.
+- Same `x-cap-warning` values as `wld-series`.
+
+Errors:
+- `400` invalid or missing group
 - `500` internal error
 
 #### GET `/api/compare`

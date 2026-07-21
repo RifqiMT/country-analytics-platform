@@ -56,6 +56,9 @@ It is not meant to replace testing. Instead, it provides a release-ready mapping
 | FR-37 | Global choropleth uses quintile tiers, legend, and distribution-aware map tooltip | `frontend/src/lib/choroplethTiers.ts`, `frontend/src/components/global/GlobalChoropleth.tsx` | `ChoroplethTierLegend.tsx`, `MapCountryTooltip.tsx`, `metricTooltipBlurb.ts` | Change region filter; verify tier breaks update; hover country; confirm tier badge, rank/stats/blurb; check reduced-motion |
 | FR-38 | Analytical tables use shared DataTable system (sticky labels, sort, footer, accents) | `frontend/src/components/ui/DataTable.tsx`, `SortableTh.tsx` | `DashboardComparisonTable.tsx`, `CountryPairTable.tsx`, `GlobalAnalytics.tsx`, `SeriesLineDataTable.tsx` | Sort columns; scroll wide table; verify sticky label, row count footer, A/B accents on Compare; fullscreen density |
 | FR-39 | Global tables compose multi-year metric matrices with WHO GHO UHC fill and empty-table warning | `backend/src/globalData/*`, `backend/src/whoGho.ts`, `buildGlobalTable` | `GET /api/global/table`, `getJsonWithMeta`, `dataProviders.ts` (`who-gho`) | Load health table; confirm UHC cells when WDI archived; force empty → `global-table-empty` amber note |
+| FR-40 | World aggregate charts use official WLD + sovereign matrix fill with partial/null warnings | `backend/src/globalData/wldSeriesService.ts`, `wldSeriesFromMatrix.ts` | `GET /api/global/wld-series`, `GET /api/global/wld-charts` | Load GDP + debt US$; confirm Σ(GDP×debt%) method; force partial → amber copy |
+| FR-41 | Global Charts UI is modular (accordion groups, lazy per-chart fetch, dual-axis) | `frontend/src/components/global/wldCharts/*`, `GlobalWldCharts.tsx` | `AccordionSection` controlled open; `axisScale.ts` | Closed section shows “Open to load”; open Financial → charts fill; dual-axis on wide span |
+| FR-42 | Assistant world totals share WLD pipeline; country digests use `skipWldFallback`; debt ranking band (0, 500] | `assistantWldBlock.ts`, `assistantRankingBlock.ts`, `assistantCitationContext.ts` | Chat route in `index.ts` | “What is world GDP?” → WLD block + citations; ranking keeps debt USD vs % separate |
 
 ### Legacy / internal endpoints
 
@@ -99,6 +102,7 @@ Release changes that affect any assistant/analysis output behavior must be accom
 | Journey F: Global map peer benchmarking | FR-02, FR-37 | Global Analytics |
 | Cross-module table UX | FR-38, FR-33 | Dashboard, Compare, Global, chart/table toggles |
 | Global table matrix pipeline | FR-39, FR-02, FR-27 | Global Analytics, Sources |
+| Global WLD charts + Assistant parity | FR-40, FR-41, FR-42 | Global Charts, Assistant |
 
 ---
 
@@ -107,11 +111,11 @@ Release changes that affect any assistant/analysis output behavior must be accom
 | Document | Covers FR/NFR |
 | --- | --- |
 | `docs/PRD.md` | All journeys; scope definition |
-| `docs/USER_STORIES.md` | Acceptance criteria for FR-01–FR-39 |
+| `docs/USER_STORIES.md` | Acceptance criteria for FR-01–FR-42 |
 | `docs/VARIABLES.md` | Request/env variables for all API routes |
-| `docs/API_REFERENCE.md` | Endpoint contracts for FR-03, FR-13, FR-18, FR-29 |
-| `docs/ASSISTANT_BEHAVIOR.md` | FR-04–FR-08 behavior detail |
-| `docs/ANALYSIS_METHODS.md` | FR-09, FR-10, FR-13 methodology |
+| `docs/API_REFERENCE.md` | Endpoint contracts including `wld-series` / `wld-charts` |
+| `docs/ASSISTANT_BEHAVIOR.md` | FR-04–FR-08, FR-42 behavior detail |
+| `docs/ANALYSIS_METHODS.md` | FR-09, FR-10, FR-13, FR-40 methodology |
 | `docs/GUARDRAILS.md` | NFR-01, NFR-02, NFR-07 enforcement |
 | `docs/DESIGN_GUIDELINES.md` | NFR-06 UX/accessibility; choropleth tier palette + map tooltip + DataTable system |
 | `docs/TESTING_STRATEGY.md` | Validation approach for all FR/NFR |

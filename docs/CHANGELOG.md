@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-07-21 (Ninth pass — WLD charts pipeline + Analytics Assistant parity)
+
+### Product & implementation alignment
+- Documented **`buildWldSeriesBundle`** (official WLD + sovereign matrix fill + polish) for Global Charts and Assistant world totals
+- Documented modular **`wldCharts/*`** UI (lazy accordion, dual-axis, warning copy) and **`GET /api/global/wld-charts`**
+- Documented WLD aggregation methods in `ANALYSIS_METHODS` §1a; debt US$ = Σ(GDP×debt%) with (0, 500] band
+- Removed stale `GC.DOD.TOTL.CN` debt-% fallback from `METRIC_CATALOG`; matrix cache key **v2**
+- Assistant country/comparison/PESTEL/Porter use `skipWldFallback: true`; world totals via `assistantWldBlock.ts`
+- Ranking debt inference distinguishes `gov_debt_usd` vs `gov_debt_pct_gdp`
+- Extended traceability with **FR-40–FR-42**; stories **D10**, **A5**; guardrails **UG-08**, **UG-09**, **PG-06**
+- Updated API_REFERENCE, ARCHITECTURE, VARIABLES §4.12, DESIGN_GUIDELINES §2.14, ASSISTANT_BEHAVIOR §8a
+
 ## 2026-07-21 (Eighth pass — global metric matrices + WHO GHO UHC)
 
 ### Product & implementation alignment

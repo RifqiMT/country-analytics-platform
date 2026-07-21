@@ -181,7 +181,7 @@ Each persona describes:
 1. Open Dashboard → select focus country → set year range
 2. Review Financial and Health accordion sections for YoY changes
 3. Open comparison table → note country vs regional avg vs global
-4. Ask Assistant: "Compare [country] and [peer] on GDP per capita and life expectancy"
+4. Ask Assistant: "Compare [country] and [peer] on GDP per capita and life expectancy" or "What is world GDP?"
 5. Export chart PNG for briefing deck
 
 ### Security & Risk Analyst — country safety profile
@@ -189,7 +189,8 @@ Each persona describes:
 2. Review homicide, conflict, and governance KPI cards
 3. Switch to Global Analytics → Crime & safety tab → regional benchmark
 4. Select `homicide_rate` on choropleth map → hover countries for rank and distribution tooltip
-5. Consult Sources for UNODC/IDMC/UCDP/WGI attribution in report
+5. Open Global Charts → Crime accordion for world-trend context
+6. Consult Sources for UNODC/IDMC/UCDP/WGI attribution in report
 
 ### Strategy Manager — expansion planning cycle
 1. Select target country on Dashboard for baseline indicators

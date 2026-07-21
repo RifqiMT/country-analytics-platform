@@ -28,6 +28,7 @@ export function requestKindLabel(path: string): string {
   if (base.includes("/api/country/") && !base.endsWith("/series")) return "Country profile";
   if (base.includes("/api/global/snapshot")) return "Global snapshot";
   if (base.includes("/api/global/table")) return "Global data table";
+  if (base.includes("/api/global/wld-charts")) return "World chart group";
   if (base.includes("/api/global/wld-series")) return "World aggregates";
   if (base.includes("/api/analysis/correlation")) return "Correlation analysis";
   if (base.includes("/api/analysis/business/correlation-narrative")) return "Business narrative";
@@ -84,6 +85,9 @@ export function requestLogBrief(path: string): string {
   }
   if (base.includes("/api/global/table")) {
     return "Loaded country-level figures for the global sortable table.";
+  }
+  if (base.includes("/api/global/wld-charts")) {
+    return "Loaded one world-aggregate chart group (financial, health, education, or labour).";
   }
   if (base.includes("/api/global/wld-series")) {
     return "Retrieved world aggregate (WLD) time series for macro charts.";
