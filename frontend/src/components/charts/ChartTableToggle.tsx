@@ -190,8 +190,8 @@ export default function ChartTableToggle({
       className={
         mode === "table"
           ? fullscreen
-            ? "cap-viz-fs-table min-h-0 flex-1 overflow-auto rounded-xl border border-slate-200 bg-white shadow-sm"
-            : "min-h-0 flex-1 overflow-auto rounded-xl border border-slate-100 bg-white"
+            ? "cap-viz-fs-table min-h-0 flex-1 overflow-auto rounded-xl border border-slate-200 bg-white p-1 shadow-sm sm:p-2"
+            : "min-h-0 flex-1 overflow-auto rounded-xl border border-slate-100 bg-white p-0.5"
           : fullscreen
             ? "cap-viz-fullscreen flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white p-2 shadow-sm sm:p-3"
             : "flex min-h-0 min-w-0 flex-1 flex-col overflow-visible"

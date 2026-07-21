@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-07-21 (Seventh pass — shared DataTable system + map tooltip polish)
+
+### Product & implementation alignment
+- Documented shared **DataTable** component system (`DataTable.tsx`, `SortableTh.tsx`, `cap-data-table-*` CSS tokens)
+- Tables migrated: Dashboard comparison, Compare pair, Global Analytics, SeriesLineDataTable
+- Documented map tooltip **tier badge** (replaces above/below-average chip); refined comparison line copy
+- Added `DESIGN_GUIDELINES` §2.13 (DataTable) and §3.5 table standards refresh
+- Extended traceability with **FR-38**; user story **D8**; guardrail **UG-06**
+- Updated variables §4.10 (tierBadge) and new §4.11 (DataTable UI variables)
+- Updated PRD §14.6, testing strategy, release checklist, architecture flow
+
 ## 2026-07-21 (Sixth pass — global choropleth analytics UX)
 
 ### Product & implementation alignment

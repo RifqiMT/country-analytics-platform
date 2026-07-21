@@ -15,8 +15,10 @@ Use this checklist before production releases to keep analytics quality, guardra
 - [ ] Country Dashboard: head-of-government card shows name/title or clear “Not reported” state
 - [ ] Country Dashboard: FX snapshot card shows rate, currency, as-of date, and source label
 - [ ] Country Dashboard: FX trend chart loads via `/api/country/:cca3/fx-series`
-- [ ] Compare Countries: dual-country charts, pair tables, A/B colors, PNG/CSV export
-- [ ] Global Analytics: choropleth map with quintile tier legend, analytics tooltip (rank/stats/blurb), compact toolbar
+- [ ] Compare Countries: dual-country charts, pair tables (DataTable A/B accents), PNG/CSV export
+- [ ] Dashboard comparison table: DataTable sticky column, sort, row-count footer
+- [ ] Global Analytics: choropleth map with quintile tier legend, analytics tooltip (tier badge, rank/stats/blurb), compact toolbar
+- [ ] Global Analytics tables: DataTable sticky country column, sort, footer, wide scroll hint
 - [ ] Series resilience: large metric loads complete via chunking/retry without unhandled UI crash
 - [ ] Assistant, PESTEL, Porter, and Business Analytics complete primary user flows
 - [ ] App-wide AI key manager: save, clear, validate, and reuse keys across all AI modules

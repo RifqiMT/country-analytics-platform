@@ -56,7 +56,8 @@ For persona details, see `docs/USER_PERSONAS.md`.
 - Source and metric definitions explorer
 - Crime & public safety indicators (9 metrics: homicide, GBV, conflict displacement, battle deaths, WGI governance) in dashboard accordion, global crime table, and choropleth map
 - Resilient metric series delivery (client chunking + server bisect on timeout)
-- Choropleth map analytics: quintile tier coloring, legend, curated metric blurbs, rank and distribution stats in hover tooltip
+- Choropleth map analytics: quintile tier coloring, legend, curated metric blurbs, rank and distribution stats in hover tooltip (with tier badge)
+- Shared **DataTable** system for analytical tables across Dashboard, Compare, Global, and chart/table views
 
 ### Out of scope (current)
 
@@ -239,5 +240,11 @@ For governance details, see `docs/PRODUCT_DOCUMENTATION_STANDARD.md`.
 
 - Choropleth map uses **five quantile tiers** within the active region scope (`choroplethTiers.ts`).
 - `ChoroplethTierLegend` shows rank bands, economy count, and hover titles with value ranges.
-- `MapCountryTooltip` displays rank, min/median/mean/mode/max, comparison line, distribution bar, and curated metric blurbs (`metricTooltipBlurb.ts`).
+- `MapCountryTooltip` displays rank, min/median/mean/mode/max, comparison line, distribution bar, **tier badge**, and curated metric blurbs (`metricTooltipBlurb.ts`).
 - `GlobalAnalyticsToolbar` uses a compact single-row layout; map tooltip respects `prefers-reduced-motion`.
+
+### 14.6 Shared DataTable system (2026-07-21)
+
+- Canonical table UI in `frontend/src/components/ui/DataTable.tsx` with CSS tokens in `index.css`.
+- Adopted across Dashboard comparison, Compare pair table, Global Analytics tables, and chart/table series views.
+- Features: sticky label column, sortable headers (`SortableTh`), row-count footer, wide-table scroll hint, A/B accent columns on Compare, inline metric deltas.

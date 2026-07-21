@@ -97,13 +97,15 @@ Usage of crime-category features (dashboard safety section views, global crime t
 **Why it matters:**  
 Validates that the 2026-07-20 crime metric expansion and 2026-07-21 map analytics UX deliver value to security/risk analyst workflows.
 
-### 2.7 Global map tooltip engagement
+### 2.8 DataTable adoption rate
 
 **What it measures:**  
-Share of Global Analytics map sessions where users hover ≥3 countries (proxy for distribution tooltip utility).
+Share of primary analytical tables (Dashboard comparison, Compare pair, Global category, series chart/table) rendered via the shared `DataTable` system.
+
+**Target:** 100% of primary comparison tables; Business Analytics subgroup tables may follow in a later pass.
 
 **Why it matters:**  
-Confirms the quintile legend and analytics tooltip reduce need for ad hoc exports during peer benchmarking.
+Validates UX consistency and reduces visual regression risk when tables are updated module-by-module.
 
 ## 3) Performance metrics
 

@@ -72,7 +72,10 @@ Dashboard resolves current officeholder name via Wikidata (P6) and optional Tavi
 Year-range WDI snapshot fetches (not per-year loops), deadline-aware serverless budgets, empty-result `CORRELATION_EMPTY` handling, optional strict-range mode, and presentation mode (`P`) for executive review.
 
 ### Global map analytics
-Choropleth uses **five quantile tiers** within the active region scope, a dedicated color-scale legend, and a distribution-aware country tooltip (rank, min/median/mean/mode/max, comparison line, curated metric blurbs).
+Choropleth uses **five quantile tiers** within the active region scope, a dedicated color-scale legend, and a distribution-aware country tooltip (tier badge, rank, stats, curated metric blurbs).
+
+### Shared analytical tables
+Dashboard comparison, Compare pair, Global category, and chart/table series views use a unified **DataTable** system (sticky labels, sortable headers, row-count footers, A/B accent columns).
 
 ---
 
@@ -226,7 +229,12 @@ Full contracts: [`docs/API_REFERENCE.md`](docs/API_REFERENCE.md)
 
 ## Latest implementation highlights
 
-> **Documentation status:** Re-audited against uncommitted implementation as of **2026-07-21**. See [`docs/DOCUMENTATION_AUDIT_REPORT.md`](docs/DOCUMENTATION_AUDIT_REPORT.md).
+> **Documentation status:** Re-audited against uncommitted implementation as of **2026-07-21 (seventh pass)**. See [`docs/DOCUMENTATION_AUDIT_REPORT.md`](docs/DOCUMENTATION_AUDIT_REPORT.md).
+
+### 2026-07-21 — Shared DataTable system
+- Canonical **DataTable** component for Dashboard comparison, Compare pair, Global tables, and chart/table series views
+- Sticky label columns, sortable headers, row-count footers, A/B accent tints, inline metric deltas
+- Map tooltip **tier badge** and refined comparison copy
 
 ### 2026-07-21 — Global choropleth analytics UX
 - **Quintile tier coloring** on the global map with dedicated legend (`choroplethTiers.ts`, `ChoroplethTierLegend.tsx`)

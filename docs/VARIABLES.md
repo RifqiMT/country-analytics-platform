@@ -356,10 +356,26 @@ Computed client-side from `GET /api/global/snapshot` rows and the active region 
 | `ChoroplethTier.color` | Tier Fill Color | Map fill for countries in tier | One of five `CHOROPLETH_TIER_COLORS` | Choropleth paths, legend segments | `#0369a1` |
 | `MapScopeStats.min` / `max` / `median` / `mean` / `mode` | Map Distribution Stats | Summary of numeric values in current map scope | `computeMapScopeStats(mapScopeValues(...))`; mode uses rounded bucket counts | `MapCountryTooltip` stat grid | `median: 8200` |
 | `MapCountryRank.rank` / `total` | Country Rank | Position among scoped countries (1 = highest value) | `rank = count(values > countryValue) + 1` | Tooltip comparison line + rank cell | `#12 / 142` |
+| `tierBadge.shortLabel` / `tierBadge.rankLabel` | Map Tier Badge | Quintile tier label for hovered country | From `ChoroplethTier` at `tierIndexForValue(countryValue)` | Tooltip header badge with tier color swatch | `High · Upper 20%` |
 | `countriesOutrankedPercent` | Outranked Share | Share of scoped countries ranked below focus country | `((total − rank) / (total − 1)) × 100`, rounded | Tooltip comparison line | `92%` |
-| `valueContextInsight` | Value Context Chip | Plain-language position vs mean/median | Ratio thresholds (e.g. ≥1.15 → “Well above average”) | Tooltip header chip | `Well above average` |
 | `rangePosition` | Distribution Bar Position | Marker position on min–max bar | Linear scale; log scale when `max/min > 40` | Tooltip distribution bar | `67%` |
 | `metricTooltipBlurb` | Metric Tooltip Blurb | One-line plain-English metric summary | Curated `MAP_METRIC_BLURBS[id]` or tightened first catalog sentence | Tooltip metric section | `Average economic output per person.` |
+
+### 4.11 Shared data table UI variables (frontend)
+
+Presentation-layer variables for the canonical table system. Source: `frontend/src/components/ui/DataTable.tsx`, `SortableTh.tsx`, `frontend/src/index.css`.
+
+| Variable Name | Friendly Name | Definition | Formula / Rule | Location in the apps | Example |
+| --- | --- | --- | --- | --- | --- |
+| `DataTableShell.framed` | Table Frame Mode | Whether table sits in bordered card shell | `true` → `.cap-data-table-wrap--framed` | Dashboard comparison, Compare pair table | `true` |
+| `DataTableShell.wide` | Wide Table Mode | Enables horizontal scroll + scroll hint | `wide` on shell + table | Global category table, Compare pair table | `true` |
+| `DataTable.compact` | Compact Density | Smaller cell padding and font size | `.cap-data-table--compact` | Map metric side table, series line tables | `true` |
+| `DataTableCell.sticky` | Sticky Label Column | First column stays visible while scrolling | `.cap-data-table-cell--sticky` | All primary analytical tables | metric name column |
+| `DataTableCell.accent` | Compare Column Accent | A/B column background tint | `a` → sky tint; `b` → amber tint | `CountryPairTable` | `"a"` |
+| `DataTableCell.highlight` | Leading Value Highlight | Emphasizes higher of A/B pair | Teal metric value when country leads | Compare pair table | `true` |
+| `DataTableMetricValue.delta` | Inline Delta Badge | YoY or comparison delta beside value | Rendered when delta non-empty and not `—` | Dashboard comparison, Global tables | `+4.3%` |
+| `DataTableFooterBar.count` | Row Count Footer | Displays filtered/sorted row total | `{count} {label}` localized | Table footers across modules | `142 countries` |
+| `sortKey` / `sortDir` | Table Sort State | Active sort column and direction | Managed per table via `tableSort.ts` helpers | All `SortableTh` tables | `gdp_per_capita`, `desc` |
 
 ## 5) Relationship Chart (Where variables connect)
 
@@ -374,6 +390,7 @@ flowchart TD
   U --> D1[Porter: countryCode + year + industrySector]
   U --> F1[Dashboard: cca3 + year range + metric sections incl. crime]
   U --> G1[Global: metric + year + region + category incl. crime]
+  U --> CP[Compare Countries: countryA + countryB + metrics]
 
   E0 --> E1 & E4 & E5 & E6
   A1 --> E1[POST /api/assistant/chat]
@@ -385,7 +402,11 @@ flowchart TD
   F1 --> E7[GET /api/country/:cca3/series + comparison + fx-series]
   G1 --> E8[GET /api/global/snapshot + /api/global/table]
   E8 --> M2[Choropleth tier model + map scope stats]
-  M2 --> M3[MapCountryTooltip rank/blurb UI]
+  M2 --> M3[MapCountryTooltip rank/blurb/tierBadge UI]
+  F1 --> T1[DataTable comparison UI]
+  CP[Compare Countries UI] --> T1
+  G1 --> T1
+  CH[Chart/table toggle] --> T1
 
   E7 --> M1[(Metric catalog: 68 indicators)]
   E8 --> M1

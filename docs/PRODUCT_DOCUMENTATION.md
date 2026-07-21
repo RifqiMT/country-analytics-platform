@@ -1,6 +1,6 @@
 # Country Analytics Platform — Comprehensive Product Documentation
 
-**Document version:** 2026-07-20  
+**Document version:** 2026-07-21 (seventh pass)  
 **Audience:** Product managers, strategy leads, analysts, engineers, design, QA, and leadership  
 **Status:** Implementation-aligned with current codebase
 
@@ -74,7 +74,7 @@ Deliver analyst-grade country analytics and strategic interpretation tools that 
   - **Crime & public safety** (homicide, GBV, displacement, battle deaths, WGI governance)
 - KPI metric cards with YoY delta badges
 - Toggle line charts with chart/table view and PNG/CSV export
-- Dashboard comparison table: country vs regional average vs global benchmark
+- Dashboard comparison table: country vs regional average vs global benchmark (shared **DataTable** UI with sticky metric column, inline YoY deltas, row-count footer)
 
 **Business logic:**
 - Metric series fetched via `GET /api/country/:cca3/series` with resilient chunked client loading
@@ -88,7 +88,7 @@ Deliver analyst-grade country analytics and strategic interpretation tools that 
 **Capabilities:**
 - Select Country A and Country B (persisted selection)
 - Dual-line trend charts with distinct A/B colors (`#1d4ed8` / `#c2410c`)
-- Pair tables and KPI deltas with unit-aware formatting
+- Pair tables and KPI deltas with unit-aware formatting (shared **DataTable** with A/B accent columns and group rows by metric category)
 - Mode-aware PNG/CSV export
 
 **Business logic:**
@@ -111,10 +111,12 @@ Deliver analyst-grade country analytics and strategic interpretation tools that 
 **Map business logic:**
 - Snapshot resolves actual data year (may step back from requested year)
 - Tier breaks (`buildChoroplethTierModel`) are computed from countries in the **current map scope** (region filter aware)
-- Tooltip shows country value, rank (#N of M), distribution stats (min/median/mean/mode/max), comparison line (“Outranks X%”), and log-scaled position bar when spread is wide
+- Tooltip shows country value, **tier badge** (short label + rank band with color swatch), rank (#N of M), distribution stats (lowest/median/highest/mean/mode), comparison line, and log-scaled position bar when spread is wide
+- Comparison line: “Highest/Lowest value on this map” at extremes; otherwise `#N of M · outranks X%`
 - Metric blurbs prefer curated copy in `metricTooltipBlurb.ts`; otherwise first catalog sentence (tightened)
 
 **Table business logic:**
+- Global category tables and map-side metric tables use shared **DataTable** (sticky label column, sortable headers, row-count footer, wide-table scroll hint)
 - Table categories map to metric subsets in `backend/src/globalTable.ts`
 
 ### 4.3 Analytics Assistant (`/assistant`)

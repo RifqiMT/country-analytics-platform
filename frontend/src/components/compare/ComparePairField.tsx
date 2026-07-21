@@ -31,7 +31,7 @@ type CellProps = {
 };
 
 /** Single country column with consistent A/B color and line styling. */
-export function CompareCountryCell({
+function CompareCountryCell({
   side,
   name,
   children,

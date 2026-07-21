@@ -160,6 +160,15 @@ export default function GlobalChoropleth({
     return computeCountryRank(hover.iso3, valueByIso3, allowedIso3, regionFilter);
   }, [hover?.iso3, valueByIso3, allowedIso3, regionFilter]);
 
+  const hoverTierBadge = useMemo(() => {
+    if (!hover?.iso3 || !tierModel) return null;
+    const v = valueByIso3.get(hover.iso3);
+    if (v === undefined || v === null || Number.isNaN(v)) return null;
+    const tier = tierModel.tiers[tierModel.tierIndexForValue(v)];
+    if (!tier) return null;
+    return { shortLabel: tier.shortLabel, rankLabel: tier.rankLabel };
+  }, [hover?.iso3, tierModel, valueByIso3]);
+
   const fillFor = useCallback(
     (iso: string) => {
       if (!iso || iso === "ATA") return CHOROPLETH_ANTARCTICA;
@@ -336,6 +345,7 @@ export default function GlobalChoropleth({
           accentColor={hoverAccent}
           scopeStats={scopeStats}
           countryRank={hoverCountryRank}
+          tierBadge={hoverTierBadge}
           visible={tooltipVisible}
         />
       ) : null}

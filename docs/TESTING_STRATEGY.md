@@ -31,18 +31,22 @@ Define how the Country Analytics Platform validates quality today and how automa
 - All accordion sections render (Financial, Demographics, Health, Education, Labour, Crime & safety)
 - FX snapshot card: rate, currency, as-of date, source
 - FX trend chart via `/api/country/:cca3/fx-series`
-- Comparison table: country vs regional avg vs global
+- Comparison table: country vs regional avg vs global (DataTable: sticky label, sort, footer, inline deltas)
 - Chart/table toggle, PNG export, fullscreen mode
 
 ### 3.2 Global Analytics
 - Choropleth map with quintile tier legend (5 bands + no-data indicator)
-- Map hover tooltip: rank, min/median/mean/mode/max, comparison line, metric blurb
+- Map hover tooltip: tier badge, rank, lowest/median/highest/mean/mode, comparison line, metric blurb
 - Region filter changes tier breaks within scoped countries
+- Category tables use DataTable (sticky country column, sort, row-count footer, scroll hint on wide)
 - Metric selector (incl. `homicide_rate`); compact toolbar layout
 - Table tabs: general, financial, health, education, crime
-- Region filter and sortable columns
 - WLD aggregate charts
 - Reduced-motion: map tooltip animation disabled when `prefers-reduced-motion`
+
+### 3.2.1 Compare Countries tables
+- Pair table uses DataTable with A/B accent columns, group rows, highlight for leading value
+- Sortable headers and row-count footer
 
 ### 3.3 Analytics Assistant
 - Metric ranking/comparison prompts → deterministic tables

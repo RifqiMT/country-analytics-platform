@@ -5,6 +5,18 @@ import { COUNTRY_COMPARISON_METHODOLOGY_PATH } from "../../lib/countryComparison
 import { comparisonMethodLabel } from "../../lib/comparisonMethodLabels";
 import { cmpNullableNumber, cmpString, toggleColumnSort, type SortDir } from "../../lib/tableSort";
 import SortableTh from "../ui/SortableTh";
+import {
+  DataTable,
+  DataTableBody,
+  DataTableCell,
+  DataTableFooterBar,
+  DataTableHead,
+  DataTableMetricValue,
+  DataTableRow,
+  DataTableShell,
+  DATA_TABLE_TH_LABEL,
+  DATA_TABLE_TH_SORT_RIGHT,
+} from "../ui/DataTable";
 
 export type ComparisonCell = {
   value: number | null;
@@ -252,20 +264,27 @@ export default function DashboardComparisonTable({
             ) : null}
           </div>
         </div>
-        <div
-          className={
-            fullscreen ? "cap-fs-table-shell min-h-0 flex-1 overflow-auto" : "overflow-x-auto"
+        <DataTableShell
+          wide
+          scrollClassName={fullscreen ? "cap-fs-table-shell min-h-0 flex-1" : ""}
+          footer={
+            <DataTableFooterBar
+              count={sortedRows.length}
+              label={sortedRows.length === 1 ? "metric" : "metrics"}
+              wide
+            />
           }
         >
-        <table className={`min-w-full text-left ${fullscreen ? "text-base" : "text-sm"}`}>
-          <thead>
-            <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500">
+        <DataTable wide={!fullscreen}>
+          <DataTableHead>
+            <DataTableRow>
               <SortableTh
                 columnKey="metric"
                 sortKey={sortKey}
                 sortDir={sortDir}
                 onSort={onSort}
-                className="px-5 py-3 font-medium normal-case"
+                sticky
+                className={DATA_TABLE_TH_LABEL}
               >
                 Metric
               </SortableTh>
@@ -274,8 +293,8 @@ export default function DashboardComparisonTable({
                 sortKey={sortKey}
                 sortDir={sortDir}
                 onSort={onSort}
-                className="px-5 py-3 font-medium normal-case"
                 align="right"
+                className={DATA_TABLE_TH_SORT_RIGHT}
               >
                 {countryName}
               </SortableTh>
@@ -284,52 +303,54 @@ export default function DashboardComparisonTable({
                 sortKey={sortKey}
                 sortDir={sortDir}
                 onSort={onSort}
-                className="px-5 py-3 font-medium normal-case"
                 align="right"
+                title="Median or population-/labour-weighted mean across reporting economies"
+                className={DATA_TABLE_TH_SORT_RIGHT}
               >
                 Avg country
-                <span className="mt-0.5 block text-[10px] font-normal normal-case text-slate-400">
-                  Median / weighted mean
-                </span>
               </SortableTh>
               <SortableTh
                 columnKey="global"
                 sortKey={sortKey}
                 sortDir={sortDir}
                 onSort={onSort}
-                className="px-5 py-3 font-medium normal-case"
                 align="right"
+                title="World Bank world aggregate, or credible sum / weighted / median fallback"
+                className={DATA_TABLE_TH_SORT_RIGHT}
               >
                 Global (WLD)
-                <span className="mt-0.5 block text-[10px] font-normal normal-case text-slate-400">
-                  World aggregate or sum
-                </span>
               </SortableTh>
-            </tr>
-          </thead>
-          <tbody>
+            </DataTableRow>
+          </DataTableHead>
+          <DataTableBody>
             {sortedRows.map((r) => (
-              <tr key={r.id} className="border-b border-slate-50 hover:bg-slate-50/80">
-                <td className="px-4 py-2.5 text-slate-700">{r.label}</td>
+              <DataTableRow key={r.id}>
+                <DataTableCell sticky label>
+                  {r.label}
+                </DataTableCell>
                 {[r.country, r.avgCountry, r.global].map((cell, i) => {
                   const method =
                     i === 1 ? r.avgMethod : i === 2 ? r.globalMethod : undefined;
                   const f = cellBlock(r.id, cell, method);
                   return (
-                    <td key={i} className="px-5 py-3 text-right align-top">
-                      <div className="font-semibold text-slate-900">{f.main}</div>
-                      {f.sub && <div className={`text-xs ${f.subClass}`}>{f.sub}</div>}
-                      {f.methodHint && i > 0 ? (
-                        <div className="mt-0.5 text-[10px] leading-snug text-slate-400">{f.methodHint}</div>
-                      ) : null}
-                    </td>
+                    <DataTableCell
+                      key={i}
+                      numeric
+                      title={f.methodHint && i > 0 ? f.methodHint : undefined}
+                    >
+                      <DataTableMetricValue
+                        value={f.main}
+                        delta={f.sub ? f.sub.replace(/^\(|\)$/g, "") : undefined}
+                        deltaClassName={f.subClass ?? "text-slate-500"}
+                      />
+                    </DataTableCell>
                   );
                 })}
-              </tr>
+              </DataTableRow>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </DataTableBody>
+        </DataTable>
+      </DataTableShell>
         <div
           className={`shrink-0 border-t border-slate-100 px-4 py-3 ${fullscreen ? "" : ""}`}
         >

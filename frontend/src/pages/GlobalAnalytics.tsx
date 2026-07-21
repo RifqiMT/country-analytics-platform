@@ -6,6 +6,19 @@ import GlobalChoropleth from "../components/global/GlobalChoropleth";
 import GlobalWldCharts from "../components/global/GlobalWldCharts";
 import GlobalAnalyticsToolbar from "../components/global/GlobalAnalyticsToolbar";
 import SortableTh from "../components/ui/SortableTh";
+import {
+  DataTable,
+  DataTableBody,
+  DataTableCell,
+  DataTableEmpty,
+  DataTableFooterBar,
+  DataTableHead,
+  DataTableMetricValue,
+  DataTableRow,
+  DataTableShell,
+  DATA_TABLE_TH_LABEL,
+  DATA_TABLE_TH_SORT_RIGHT,
+} from "../components/ui/DataTable";
 import LoadingProgressSection from "../components/ui/LoadingProgressSection";
 import { startSimulatedLoadProgress } from "../lib/loadProgress";
 import { getJson, type CountrySummary, type MetricDef } from "../api";
@@ -198,15 +211,25 @@ function GlobalMapMetricTable({
   }, [filtered, sortKey, sortDir]);
 
   return (
-    <table className="w-full min-w-[280px] border-collapse text-left text-xs">
-      <thead>
-        <tr className="sticky top-0 z-[1] border-b border-slate-200 bg-slate-50">
+    <DataTableShell
+      framed={false}
+      footer={
+        <DataTableFooterBar
+          count={sorted.length}
+          label={sorted.length === 1 ? "country" : "countries"}
+        />
+      }
+    >
+      <DataTable compact>
+      <DataTableHead>
+        <DataTableRow>
           <SortableTh
             columnKey="country"
             sortKey={sortKey}
             sortDir={sortDir}
             onSort={onSort}
-            className="whitespace-nowrap px-3 py-2 text-slate-600"
+            sticky
+            className={DATA_TABLE_TH_LABEL}
           >
             Country
           </SortableTh>
@@ -215,7 +238,7 @@ function GlobalMapMetricTable({
             sortKey={sortKey}
             sortDir={sortDir}
             onSort={onSort}
-            className="whitespace-nowrap px-3 py-2 text-slate-600"
+            className={DATA_TABLE_TH_SORT_RIGHT}
           >
             ISO3
           </SortableTh>
@@ -224,26 +247,34 @@ function GlobalMapMetricTable({
             sortKey={sortKey}
             sortDir={sortDir}
             onSort={onSort}
-            className="whitespace-nowrap px-3 py-2 text-slate-600"
+            align="right"
+            className={DATA_TABLE_TH_SORT_RIGHT}
           >
             {metricLabel} ({year})
           </SortableTh>
-        </tr>
-      </thead>
-      <tbody>
+        </DataTableRow>
+      </DataTableHead>
+      <DataTableBody>
         {sorted.map((r) => (
-          <tr key={r.countryIso3} className="border-b border-slate-100 hover:bg-slate-50/80">
-            <td className="px-3 py-1.5 text-slate-800">{r.countryName}</td>
-            <td className="whitespace-nowrap px-3 py-1.5 font-mono text-slate-600">{r.countryIso3}</td>
-            <td className="whitespace-nowrap px-3 py-1.5 font-mono tabular-nums text-slate-800">
-              {r.value === null || Number.isNaN(r.value)
-                ? "—"
-                : formatCompactNumber(r.value, { maxFrac: 2 })}
-            </td>
-          </tr>
+          <DataTableRow key={r.countryIso3}>
+            <DataTableCell sticky label>
+              {r.countryName}
+            </DataTableCell>
+            <DataTableCell muted className="uppercase">
+              {r.countryIso3}
+            </DataTableCell>
+            <DataTableCell numeric>
+              {r.value === null || Number.isNaN(r.value) ? (
+                <DataTableEmpty />
+              ) : (
+                formatCompactNumber(r.value, { maxFrac: 2 })
+              )}
+            </DataTableCell>
+          </DataTableRow>
         ))}
-      </tbody>
-    </table>
+      </DataTableBody>
+      </DataTable>
+    </DataTableShell>
   );
 }
 
@@ -672,24 +703,31 @@ export default function GlobalAnalytics() {
                 </button>
               ))}
             </div>
-          <div
-            className={
+          <DataTableShell
+            wide
+            scrollClassName={
               tableFullscreen
-                ? "cap-fs-table-shell min-h-0 flex-1 overflow-auto"
-                : "max-h-[min(70vh,720px)] overflow-auto"
+                ? "cap-fs-table-shell min-h-0 flex-1"
+                : "max-h-[min(70vh,720px)]"
+            }
+            footer={
+              <DataTableFooterBar
+                count={sortedTableRows.length}
+                label={sortedTableRows.length === 1 ? "country" : "countries"}
+                wide
+              />
             }
           >
-            <table
-              className={`min-w-max w-full text-left ${tableFullscreen ? "text-base" : "text-sm"}`}
-            >
-              <thead className="sticky top-0 z-10 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-                <tr>
+            <DataTable wide>
+              <DataTableHead>
+                <DataTableRow>
                   <SortableTh
                     columnKey="name"
                     sortKey={tableSortKey}
                     sortDir={tableSortDir}
                     onSort={onTableSort}
-                    className="whitespace-nowrap px-3 py-3 font-medium normal-case"
+                    sticky
+                    className={DATA_TABLE_TH_LABEL}
                   >
                     Country
                   </SortableTh>
@@ -698,7 +736,7 @@ export default function GlobalAnalytics() {
                     sortKey={tableSortKey}
                     sortDir={tableSortDir}
                     onSort={onTableSort}
-                    className="whitespace-nowrap px-3 py-3 font-medium normal-case"
+                    className={DATA_TABLE_TH_SORT_RIGHT}
                   >
                     Code
                   </SortableTh>
@@ -710,40 +748,49 @@ export default function GlobalAnalytics() {
                       sortDir={tableSortDir}
                       onSort={onTableSort}
                       align="right"
-                      className="whitespace-nowrap px-3 py-3 font-medium normal-case"
+                      className={DATA_TABLE_TH_SORT_RIGHT}
                       title={c.description}
                     >
                       {c.label}
                     </SortableTh>
                   ))}
-                </tr>
-              </thead>
-              <tbody>
-                {sortedTableRows.map((r, i) => (
-                  <tr key={r.iso3} className={i % 2 === 0 ? "bg-white" : "bg-slate-50/80"}>
-                    <td className="whitespace-nowrap border-t border-slate-100 px-3 py-2">
-                      <span className="inline-flex items-center gap-2">
-                        {r.flagPng && <img src={r.flagPng} alt="" className="h-5 w-7 rounded-sm border border-slate-200 object-cover" />}
-                        <span className="font-medium text-slate-900">{r.name}</span>
+                </DataTableRow>
+              </DataTableHead>
+              <DataTableBody>
+                {sortedTableRows.map((r) => (
+                  <DataTableRow key={r.iso3}>
+                    <DataTableCell sticky label>
+                      <span className="inline-flex min-w-0 items-center gap-2">
+                        {r.flagPng ? (
+                          <img
+                            src={r.flagPng}
+                            alt=""
+                            className="h-4 w-6 shrink-0 rounded-[3px] border border-slate-200 object-cover"
+                          />
+                        ) : null}
+                        <span className="truncate">{r.name}</span>
                       </span>
-                    </td>
-                    <td className="whitespace-nowrap border-t border-slate-100 px-3 py-2 font-mono text-xs text-slate-600">
+                    </DataTableCell>
+                    <DataTableCell muted className="whitespace-nowrap uppercase">
                       {r.iso3}
-                    </td>
+                    </DataTableCell>
                     {tableData.columns.map((c) => {
                       const f = formatTableCell(c, r.cells[c.id], tableCat);
                       return (
-                        <td key={c.id} className="whitespace-nowrap border-t border-slate-100 px-3 py-2 text-right align-top">
-                          <div className="font-semibold text-slate-900">{f.main}</div>
-                          {f.sub && <div className={`text-xs font-medium ${f.subClass}`}>{f.sub}</div>}
-                        </td>
+                        <DataTableCell key={c.id} numeric>
+                          <DataTableMetricValue
+                            value={f.main}
+                            delta={f.sub}
+                            deltaClassName={f.subClass ?? "text-slate-500"}
+                          />
+                        </DataTableCell>
                       );
                     })}
-                  </tr>
+                  </DataTableRow>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </DataTableBody>
+            </DataTable>
+          </DataTableShell>
           <p
             className={`border-t border-slate-100 px-4 py-2.5 text-xs text-slate-500 ${tableFullscreen ? "shrink-0" : ""}`}
           >

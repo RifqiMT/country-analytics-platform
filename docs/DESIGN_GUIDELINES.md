@@ -165,7 +165,7 @@ Rich analytics tooltip for choropleth hover (not shared with chart tooltips):
 | --- | --- |
 | Surface | `rounded-xl border-slate-200 bg-white shadow-lg`; max width `19.5rem` |
 | Accent bar | 4px top strip in tier accent color |
-| Context chip | `border-teal-200 bg-teal-50 text-teal-800` for above/below-average insights |
+| Context chip | Tier badge with color swatch + `{shortLabel} · {rankLabel}` (replaces prior above/below-average chip) |
 | Value panel | `bg-slate-50` with large tabular value (`1.5rem` bold) |
 | Distribution bar | Tier gradient fill + median marker + country position marker |
 | Rank highlight | `text-teal-700` for rank cell and percentile sub-label |
@@ -190,6 +190,49 @@ Curated metric blurbs (`metricTooltipBlurb.ts`) provide plain-English one-liners
 - Top accent bar: `from-teal-500/70 via-slate-200 to-red-500/50`
 - Eyebrow text: `text-teal-700`
 - Shared copy source: `frontend/src/lib/platformCopy.ts` (`PAGE_INTRO`, `APP_TAGLINE_*`, `PLATFORM_DATA_SOURCES`)
+
+### 2.13 Shared data table system (`DataTable.tsx` + `index.css`)
+
+Canonical table UI for Dashboard comparison, Compare Countries pair table, Global Analytics tables, and chart/table series views.
+
+**Component API** (`frontend/src/components/ui/DataTable.tsx`):
+
+| Component | Purpose |
+| --- | --- |
+| `DataTableShell` | Scroll container with optional framed border, footer slot, wide mode |
+| `DataTable` | Base `<table>` with `compact` / `wide` size modifiers |
+| `DataTableHead` / `DataTableBody` / `DataTableRow` | Semantic table sections with shared row hover |
+| `DataTableCell` | Cell with modifiers: `numeric`, `label`, `sticky`, `muted`, `accent` (`a`/`b`), `highlight` |
+| `DataTableGroupRow` | Category divider row (Compare Countries metric groups) |
+| `DataTableEmpty` | Standard missing-value placeholder (`—`) |
+| `DataTableMetricValue` | Primary value + optional inline YoY/delta badge |
+| `DataTableFooterBar` | Row count + optional “Scroll for more columns” hint |
+
+**Sortable headers** (`SortableTh.tsx`):
+- Uses `cap-data-table-sort-th` styling; active sort column uses `cap-data-table-sort-th--active` (teal `rgb(13 148 136)`)
+- Supports `sticky` first column, `align="right"`, and `aria-sort` for accessibility
+
+**CSS token reference** (`frontend/src/index.css`):
+
+| Token | Behavior |
+| --- | --- |
+| `.cap-data-table-wrap--framed` | Rounded border shell (`slate-200`), white background |
+| `.cap-data-table-head` | Sticky header with backdrop blur |
+| `.cap-data-table-row` | Hover `slate-50`; zebra striping on even rows |
+| `.cap-data-table-cell--sticky` | Sticky first column with row-parity background sync |
+| `.cap-data-table-cell--accent-a` | Sky tint (`rgb(240 249 255 / 0.25)`) — Compare country A |
+| `.cap-data-table-cell--accent-b` | Amber tint (`rgb(255 251 235 / 0.25)`) — Compare country B |
+| `.cap-data-table-cell--highlight` | Teal metric value emphasis for leading country |
+| `.cap-data-table-metric-delta--neutral` | Inline delta badge styling |
+| `.cap-data-table-group-cell` | Section header row for grouped metrics |
+| `.cap-data-table-scroll-hint` | Visible on wide tables when horizontal scroll is expected |
+| `.cap-fs-table-shell` / `.cap-viz-fs-table` | Fullscreen table density overrides |
+
+**Adopted in:**
+- `DashboardComparisonTable.tsx` — country vs regional vs global
+- `CountryPairTable.tsx` — dual-country comparison with A/B accents
+- `GlobalAnalytics.tsx` — map-side metric table + category tables
+- `SeriesLineDataTable.tsx` — chart/table toggle time-series tables
 
 ## 3) Component standards
 
@@ -228,10 +271,15 @@ Button states:
 
 ### 3.5 Tables
 
-Tables are a core analysis output. Standards:
-- Sorting enabled on analytical comparison tables.
-- Header background should use `slate-50` or an equivalent subtle elevation.
-- Font size for fullscreen tables must be readable (the UI uses a dedicated fullscreen table sizing class).
+Tables are a core analysis output. All primary analytical tables use the **shared DataTable system** (§2.13).
+
+Standards:
+- Sorting enabled via `SortableTh` on analytical comparison tables
+- Sticky first column (`label`) on wide tables for row context while scrolling
+- Missing values render through `DataTableEmpty` (`—`) — never implicit zero
+- Compare pair tables use accent-a/accent-b column tints and `highlight` for leading values
+- Footer bar shows row count; wide tables show scroll hint
+- Fullscreen tables use `.cap-fs-table-shell` density overrides for readability
 
 ### 3.6 Charts and chart/table toggles
 

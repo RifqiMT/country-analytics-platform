@@ -2,6 +2,17 @@ import { useCallback, useMemo, useState } from "react";
 import { downloadCsv } from "../../lib/csv";
 import { formatCompactNumber } from "../../lib/formatValue";
 import { cmpNullableNumber, cmpString, toggleColumnSort, type SortDir } from "../../lib/tableSort";
+import {
+  DataTable,
+  DataTableBody,
+  DataTableCell,
+  DataTableFooterBar,
+  DataTableHead,
+  DataTableRow,
+  DataTableShell,
+  DATA_TABLE_TH_LABEL,
+  DATA_TABLE_TH_SORT_RIGHT,
+} from "../ui/DataTable";
 import SortableTh from "../ui/SortableTh";
 
 export type SeriesTableColumn = { key: string; label: string; format?: "compact" | "percent" };
@@ -105,44 +116,59 @@ export default function SeriesLineDataTable({ rows, columns }: Props) {
   }, [rows, sortKey, sortDir]);
 
   return (
-    <table className="w-full min-w-[280px] border-collapse text-left text-xs">
-      <thead>
-        <tr className="sticky top-0 z-[1] border-b border-slate-200 bg-slate-50">
-          <SortableTh
-            columnKey={PERIOD_KEY}
-            sortKey={sortKey}
-            sortDir={sortDir}
-            onSort={onSort}
-            className="whitespace-nowrap px-3 py-2 text-slate-600"
-          >
-            Period
-          </SortableTh>
-          {columns.map((c) => (
+    <DataTableShell
+      framed={false}
+      footer={
+        <DataTableFooterBar
+          count={sortedRows.length}
+          label={sortedRows.length === 1 ? "period" : "periods"}
+          wide={columns.length > 2}
+        />
+      }
+    >
+      <DataTable compact>
+        <DataTableHead>
+          <DataTableRow>
             <SortableTh
-              key={c.key}
-              columnKey={c.key}
+              columnKey={PERIOD_KEY}
               sortKey={sortKey}
               sortDir={sortDir}
               onSort={onSort}
-              className="whitespace-nowrap px-3 py-2 text-slate-600"
+              sticky
+              className={DATA_TABLE_TH_LABEL}
             >
-              {c.label}
+              Period
             </SortableTh>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {sortedRows.map((row, i) => (
-          <tr key={String(row.periodKey ?? row.year ?? i)} className="border-b border-slate-100 hover:bg-slate-50/80">
-            <td className="whitespace-nowrap px-3 py-1.5 text-slate-600">{periodLabel(row)}</td>
             {columns.map((c) => (
-              <td key={c.key} className="whitespace-nowrap px-3 py-1.5 font-mono tabular-nums text-slate-800">
-                {formatCell(c, row[c.key])}
-              </td>
+              <SortableTh
+                key={c.key}
+                columnKey={c.key}
+                sortKey={sortKey}
+                sortDir={sortDir}
+                onSort={onSort}
+                align="right"
+                className={DATA_TABLE_TH_SORT_RIGHT}
+              >
+                {c.label}
+              </SortableTh>
             ))}
-          </tr>
-        ))}
-      </tbody>
-    </table>
+          </DataTableRow>
+        </DataTableHead>
+        <DataTableBody>
+          {sortedRows.map((row, i) => (
+            <DataTableRow key={String(row.periodKey ?? row.year ?? i)}>
+            <DataTableCell sticky label>
+              {periodLabel(row)}
+            </DataTableCell>
+              {columns.map((c) => (
+                <DataTableCell key={c.key} numeric>
+                  {formatCell(c, row[c.key])}
+                </DataTableCell>
+              ))}
+            </DataTableRow>
+          ))}
+        </DataTableBody>
+      </DataTable>
+    </DataTableShell>
   );
 }

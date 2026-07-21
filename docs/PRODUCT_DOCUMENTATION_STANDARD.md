@@ -78,6 +78,13 @@ Documentation updates must preserve cross-document consistency:
   - `docs/USER_PERSONAS.md`
   - `docs/USER_STORIES.md`
   - `docs/TRACEABILITY_MATRIX.md`
+- Shared UI component / design-system changes (e.g. DataTable, choropleth tiers) require updates in:
+  - `docs/DESIGN_GUIDELINES.md`
+  - `docs/VARIABLES.md` (presentation-layer variables when applicable)
+  - `docs/PRODUCT_DOCUMENTATION.md`
+  - `docs/TESTING_STRATEGY.md`
+  - `docs/RELEASE_READINESS_CHECKLIST.md`
+  - `docs/TRACEABILITY_MATRIX.md`
 
 ## Definition of done for documentation updates
 

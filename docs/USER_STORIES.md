@@ -8,8 +8,8 @@ Stories are written in user language, but each acceptance section is specific en
 
 | Epic | Stories | Traceability (FR) | Primary persona |
 | --- | --- | --- | --- |
-| Dashboard & Global Analytics | D1–D7 | FR-01, FR-02, FR-22, FR-29–FR-32, FR-37 | Policy Analyst, Research Associate |
-| Compare Countries | CP1–CP2 | FR-36, FR-32, FR-33 | Policy Analyst, Research Associate |
+| Dashboard & Global Analytics | D1–D8 | FR-01, FR-02, FR-22, FR-29–FR-32, FR-37–FR-38 | Policy Analyst, Research Associate |
+| Compare Countries | CP1–CP2 | FR-36, FR-32, FR-33, FR-38 | Policy Analyst, Research Associate |
 | Analytics Assistant | A1–A4 | FR-04–FR-08, FR-18, FR-19 | Strategy Manager, BYOK User |
 | Strategy Modules | S1–S3 | FR-09–FR-12, FR-20, FR-21, FR-34 | Strategy Manager |
 | Business Analytics | B1–B4 | FR-13–FR-15, FR-23, FR-24, FR-35 | Research Associate, Executive Reviewer |
@@ -79,9 +79,20 @@ Stories are written in user language, but each acceptance section is specific en
 
 **Acceptance criteria:**
 - Map uses five quantile tiers within the active region scope; legend shows tier labels, rank bands, and economy count.
-- Hover tooltip displays country value, curated metric blurb, rank (#N of M), distribution stats (bottom/top/median/mean/mode), and a comparison line (e.g. “Outranks X% of countries”).
+- Hover tooltip displays country value, curated metric blurb, **tier badge** (short label + rank band), rank (#N of M), distribution stats (lowest/median/highest/mean/mode), and a comparison line.
+- Comparison line uses concise copy at extremes (“Highest/Lowest value on this map”) or `#N of M · outranks X%`.
 - Tooltip repositions to stay in viewport; `prefers-reduced-motion` disables entrance animation.
 - “No data” countries use `CHOROPLETH_NO_DATA` fill and do not show fabricated ranks.
+
+### Story D8: Consistent analytical table UX
+
+**Story:** As an analyst reviewing multiple modules, I want comparison and global tables to share the same sorting, sticky labels, and missing-value treatment so I can scan results quickly.
+
+**Acceptance criteria:**
+- Dashboard comparison, Compare pair, Global category, and chart/table series views use the shared `DataTable` component system.
+- First metric/country column is sticky on wide tables; sortable headers show active state and `aria-sort`.
+- Missing values render as `DataTableEmpty` (`—`); row-count footer displays filtered totals.
+- Compare pair table uses A/B accent column tints and highlights the leading country value per row.
 
 ## 1.1) Compare Countries
 

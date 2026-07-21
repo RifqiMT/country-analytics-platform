@@ -201,6 +201,13 @@ See `docs/TESTING_STRATEGY.md` for manual QA scope and future automation roadmap
 - Tooltip copy must state that stats are per-country comparisons within the map scope (“Each value is for one country — not a world total”).
 - Rank labels must not imply UN/WB official rankings when region filter narrows the peer set.
 
+### UG-06: Analytical tables use shared DataTable conventions
+
+- Primary comparison tables must use the shared `DataTable` component — not ad hoc `<table>` styling.
+- Missing values must use `DataTableEmpty` (`—`); never render blank cells or implicit zero.
+- Wide tables must expose sticky label columns and row-count footers for scanability.
+- Compare A/B columns must retain accent tinting so users can distinguish countries without color-only reliance on values.
+
 ---
 
 ## 8) Performance guardrails

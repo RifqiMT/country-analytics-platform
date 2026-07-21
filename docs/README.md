@@ -95,6 +95,13 @@ If implementation or behavior changes, update affected docs in the same PR and v
 - Corrected category terminology: 6 data categories + UI-only `general` grouping
 - Updated `.env.example` with business model vars and serverless budget
 
+### 2026-07-21 seventh pass — shared DataTable system:
+
+- Documented canonical **DataTable** component (`DataTable.tsx`, `cap-data-table-*` CSS)
+- Table migrations: Dashboard comparison, Compare pair, Global Analytics, SeriesLineDataTable
+- Map tooltip tier badge + copy refinements; removed stale `valueContextInsight` variable
+- Extended FR-38; story D8; guardrail UG-06; PRD §14.6; variables §4.11
+
 ### 2026-07-21 sixth pass — global choropleth analytics UX:
 
 - Documented quintile choropleth tiers, legend, and distribution-aware map tooltip

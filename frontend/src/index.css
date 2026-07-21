@@ -148,6 +148,288 @@ body {
   padding: 0.625rem 1rem;
 }
 
+/** Shared data table styling — dashboard, compare, global analytics */
+.cap-data-table-wrap--framed {
+  border: 1px solid rgb(226 232 240);
+  border-radius: 0.75rem;
+  background: rgb(255 255 255);
+  overflow: hidden;
+}
+
+.cap-data-table-wrap--framed .cap-data-table-shell {
+  background: linear-gradient(to right, rgb(248 250 252 / 0.5), transparent 1.5rem) left center / 1.5rem 100% no-repeat,
+    linear-gradient(to left, rgb(248 250 252 / 0.5), transparent 1.5rem) right center / 1.5rem 100% no-repeat;
+}
+
+.cap-data-table-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-top: 1px solid rgb(241 245 249);
+  background: rgb(248 250 252 / 0.7);
+  padding: 0.375rem 0.875rem;
+}
+
+.cap-data-table-row-count {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: rgb(100 116 139);
+  font-variant-numeric: tabular-nums;
+}
+
+.cap-data-table {
+  width: 100%;
+  min-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  text-align: left;
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+
+.cap-data-table--compact {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.cap-data-table--wide {
+  min-width: max-content;
+}
+
+.cap-data-table-head {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.cap-data-table-head .cap-data-table-cell--head,
+.cap-data-table-head .cap-data-table-sort-th {
+  background: rgb(255 255 255 / 0.98);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgb(226 232 240);
+  box-shadow: 0 1px 0 rgb(241 245 249);
+}
+
+.cap-data-table-sort-th {
+  padding: 0.625rem 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+  color: rgb(71 85 105);
+  vertical-align: bottom;
+}
+
+@media (min-width: 640px) {
+  .cap-data-table-sort-th {
+    padding: 0.75rem 1rem;
+  }
+}
+
+.cap-data-table-sort-th--label {
+  min-width: 9rem;
+  max-width: 14rem;
+}
+
+.cap-data-table-sort-th--active {
+  color: rgb(13 148 136);
+}
+
+.cap-data-table-row {
+  transition: background-color 100ms ease;
+}
+
+.cap-data-table-row:hover {
+  background: rgb(248 250 252);
+}
+
+.cap-data-table-body .cap-data-table-row:nth-child(even of .cap-data-table-row) {
+  background: rgb(249 250 251 / 0.85);
+}
+
+.cap-data-table-body .cap-data-table-row:nth-child(even of .cap-data-table-row):hover {
+  background: rgb(248 250 252);
+}
+
+.cap-data-table-cell {
+  border-bottom: 1px solid rgb(243 244 246);
+  padding: 0.625rem 0.875rem;
+  vertical-align: middle;
+  color: rgb(51 65 85);
+}
+
+@media (min-width: 640px) {
+  .cap-data-table-cell {
+    padding: 0.75rem 1rem;
+  }
+}
+
+.cap-data-table--compact .cap-data-table-cell {
+  padding: 0.5rem 0.75rem;
+}
+
+.cap-data-table-cell--label {
+  font-weight: 500;
+  color: rgb(15 23 42);
+  line-height: 1.4;
+  min-width: 8.5rem;
+  max-width: 15rem;
+}
+
+.cap-data-table-cell--numeric {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  color: rgb(15 23 42);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.cap-data-table-cell--muted {
+  color: rgb(100 116 139);
+  font-size: 0.8125rem;
+}
+
+.cap-data-table-cell--highlight .cap-data-table-metric-value {
+  color: rgb(13 148 136);
+}
+
+.cap-data-table-empty {
+  color: rgb(148 163 184);
+  font-size: 0.8125rem;
+  font-style: normal;
+}
+
+.cap-data-table-cell--accent-a {
+  background: rgb(240 249 255 / 0.25);
+}
+
+.cap-data-table-cell--accent-b {
+  background: rgb(255 251 235 / 0.25);
+}
+
+.cap-data-table-row:hover .cap-data-table-cell--accent-a {
+  background: rgb(224 242 254 / 0.35);
+}
+
+.cap-data-table-row:hover .cap-data-table-cell--accent-b {
+  background: rgb(254 243 199 / 0.35);
+}
+
+.cap-data-table-cell--sticky {
+  position: sticky;
+  left: 0;
+  z-index: 5;
+  box-shadow: 4px 0 10px -6px rgb(15 23 42 / 0.1);
+}
+
+.cap-data-table-body .cap-data-table-row:nth-child(odd of .cap-data-table-row) .cap-data-table-cell--sticky {
+  background: rgb(255 255 255);
+}
+
+.cap-data-table-body .cap-data-table-row:nth-child(even of .cap-data-table-row) .cap-data-table-cell--sticky {
+  background: rgb(249 250 251);
+}
+
+.cap-data-table-body .cap-data-table-row:hover .cap-data-table-cell--sticky {
+  background: rgb(248 250 252);
+}
+
+.cap-data-table-head .cap-data-table-cell--sticky {
+  z-index: 15;
+  background: rgb(255 255 255 / 0.98);
+}
+
+.cap-data-table-metric {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.5rem;
+}
+
+.cap-data-table-metric--right {
+  justify-content: flex-end;
+}
+
+.cap-data-table-metric-value {
+  font-weight: 600;
+  color: rgb(15 23 42);
+}
+
+.cap-data-table-metric-delta {
+  font-size: 0.75rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.cap-data-table-metric-delta--neutral {
+  color: rgb(100 116 139);
+}
+
+.cap-data-table-scroll-hint {
+  font-size: 0.6875rem;
+  color: rgb(148 163 184);
+}
+
+@media (min-width: 768px) {
+  .cap-data-table-scroll-hint {
+    display: none;
+  }
+}
+
+.cap-data-table-shell--wide .cap-data-table-scroll-hint {
+  display: inline;
+}
+
+@media (min-width: 1024px) {
+  .cap-data-table-shell--wide .cap-data-table-scroll-hint {
+    display: none;
+  }
+}
+
+.cap-data-table-group-row {
+  background: rgb(248 250 252 / 0.9);
+}
+
+.cap-data-table-group-cell {
+  padding: 0.375rem 1rem;
+  border-bottom: 1px solid rgb(226 232 240);
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgb(100 116 139);
+}
+
+.cap-data-table-shell {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
+}
+
+.cap-data-table-shell::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+
+.cap-data-table-shell::-webkit-scrollbar-thumb {
+  background: rgb(203 213 225);
+  border-radius: 9999px;
+}
+
+.cap-data-table-shell::-webkit-scrollbar-thumb:hover {
+  background: rgb(148 163 184);
+}
+
+.cap-fs-table-shell .cap-data-table,
+.cap-viz-fs-table .cap-data-table {
+  font-size: 0.9375rem;
+}
+
+.cap-fs-table-shell .cap-data-table-cell,
+.cap-viz-fs-table .cap-data-table-cell {
+  padding: 0.625rem 1rem;
+}
+
 /**
  * Global analytics: group fullscreen (VisualizationStepper) — WLD cards fill the step panel height.
  */
