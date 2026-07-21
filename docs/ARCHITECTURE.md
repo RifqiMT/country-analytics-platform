@@ -63,11 +63,12 @@ If evidence quality or scope constraints fail, the system uses deterministic fal
 1. UI selects a `metric`, `year`, and optionally `region`/`category` (including `crime`).
 2. Frontend requests:
    - `GET /api/global/snapshot`
-   - `GET /api/global/table`
+   - `GET /api/global/table` (via `getJsonWithMeta` to surface `x-cap-warning`)
    - `GET /api/global/wld-series`
 3. Backend applies year fallback resolution and returns rows aligned to the resolved data year.
-4. Frontend builds a **quintile tier model** from scoped snapshot values (`choroplethTiers.ts`) and renders choropleth + legend + tooltip (with tier badge).
-5. Global and comparison tables render via shared **DataTable** components with sticky labels and sortable headers.
+4. **Table path:** `buildGlobalTable` → `loadMetricMatrices` → `composeMetricMatrix` (WDI range → IMF bulk → UIS bulk → WHO GHO for UHC) under an internal deadline.
+5. Frontend builds a **quintile tier model** from scoped snapshot values (`choroplethTiers.ts`) and renders choropleth + legend + tooltip (with tier badge).
+6. Global and comparison tables render via shared **DataTable** components with sticky labels and sortable headers.
 
 #### C) Assistant chat (`POST /api/assistant/chat`)
 

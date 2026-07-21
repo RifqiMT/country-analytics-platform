@@ -16,7 +16,7 @@ type DataProvider = {
 
 /** Order for country-level indicator series: primary WDI → alternate WDI code → IMF WEO (per metric). */
 const SERIES_MERGE_PIPELINE =
-  "World Bank WDI (primary) → WDI alternate code (fallbackWorldBankCode) → IMF WEO DataMapper (imfWeoIndicator) → UNESCO UIS Data API (uisIndicatorId, selected education metrics); only null years are filled at each step. After that, the API may derive values from other series in the same year: GDP ÷ population for per-capita metrics; one missing population age-band share from the other two; out-of-school rates from 100% minus adjusted net or gross enrollment where direct OOSC is null; life expectancy and under-five mortality from the mean of male and female WDI series when the total is null. Then: short terminal carry-forward, range completion (edge fill / interpolation / step), optional WLD world-aggregate proxy, and % clamping where applicable. Each yearly point may include a `provenance` field (`reported`, `imf_weo`, `interpolated`, `wld_proxy`, etc.) for audit trails and chart tooltips.";
+  "World Bank WDI (primary) → WDI alternate code (fallbackWorldBankCode) → IMF WEO DataMapper (imfWeoIndicator) → UNESCO UIS Data API (uisIndicatorId, selected education metrics); only null years are filled at each step. After that, the API may derive values from other series in the same year: GDP ÷ population for per-capita metrics; one missing population age-band share from the other two; out-of-school rates from 100% minus adjusted net or gross enrollment where direct OOSC is null; life expectancy and under-five mortality from the mean of male and female WDI series when the total is null. Then: short terminal carry-forward, range completion (edge fill / interpolation / step), optional WLD world-aggregate proxy, and % clamping where applicable. Each yearly point may include a `provenance` field (`reported`, `imf_weo`, `interpolated`, `wld_proxy`, etc.) for audit trails and chart tooltips. Global Analytics tables compose multi-year country×metric matrices via `backend/src/globalData/` (WDI range → IMF bulk range → UIS range → WHO GHO for UHC service coverage when the live WDI series is archived).";
 
 const DATA_PROVIDERS: DataProvider[] = [
   {
@@ -77,7 +77,20 @@ const DATA_PROVIDERS: DataProvider[] = [
       "Completion / graduation proxies (CR.*, GGR.*)",
       "Adult literacy GALP series (LR.GALP.AG15T99)",
     ],
-    notes: "Configured per metric via `uisIndicatorId` in `metrics.ts`. WDI values always take precedence when present.",
+    notes: "Configured per metric via `uisIndicatorId` in `metrics.ts`. WDI values always take precedence when present. Global tables use `fetchUisGlobalMatrixForRange` for bulk year×country fills.",
+  },
+  {
+    id: "who-gho",
+    institution: "World Health Organization (WHO)",
+    name: "Global Health Observatory (GHO) OData API",
+    role: "Gap-fill for UHC service coverage when the live WDI series is archived",
+    url: "https://www.who.int/data/gho",
+    seriesMergeOrder: 5,
+    usedFor: [
+      "UHC service coverage index (`uhc_service_coverage` → GHO `UHC_INDEX_REPORTED`)",
+      "Global map/table and country series enrichment for UHC",
+    ],
+    notes: "Azure-hosted OData API (`ghoapi.azureedge.net`). Wired by metric id `uhc_service_coverage` (not a generic catalog field). Merged only into null cells after WDI/IMF/UIS. Cached as `who:gho:{indicator}:{year}`.",
   },
   {
     id: "rest-countries",

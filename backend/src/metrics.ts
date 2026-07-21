@@ -382,10 +382,10 @@ export const METRICS: MetricDef[] = [
     unit: "index",
     category: "health",
     worldBankCode: "SH.UHC.SRVS.CV.XD",
-    sourceName: "World Bank WDI (WHO/World Bank UHC monitoring)",
-    sourceUrl: "https://data.worldbank.org/indicator/SH.UHC.SRVS.CV.XD",
+    sourceName: "WHO Global Health Observatory (SDG 3.8.1); World Bank WDI archive when available",
+    sourceUrl: "https://www.who.int/data/gho/data/indicators/indicator-details/GHO/uhc-index-of-service-coverage",
     description:
-      "A composite index (0–100) measuring how well essential health services—such as reproductive, maternal, and infectious disease care—are covered for the population.",
+      "A composite index (0–100) measuring how well essential health services—such as reproductive, maternal, and infectious disease care—are covered for the population. The live WDI series is archived; the platform fills from WHO GHO UHC_INDEX_REPORTED.",
   },
   {
     id: "hospital_beds",

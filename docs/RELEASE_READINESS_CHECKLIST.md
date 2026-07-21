@@ -19,6 +19,8 @@ Use this checklist before production releases to keep analytics quality, guardra
 - [ ] Dashboard comparison table: DataTable sticky column, sort, row-count footer
 - [ ] Global Analytics: choropleth map with quintile tier legend, analytics tooltip (tier badge, rank/stats/blurb), compact toolbar
 - [ ] Global Analytics tables: DataTable sticky country column, sort, footer, wide scroll hint
+- [ ] Global Analytics empty table: amber note for `global-table-empty`; “Not reported” for sparse cells
+- [ ] UHC service coverage: values can appear via WHO GHO when WDI archived; Sources lists WHO GHO
 - [ ] Series resilience: large metric loads complete via chunking/retry without unhandled UI crash
 - [ ] Assistant, PESTEL, Porter, and Business Analytics complete primary user flows
 - [ ] App-wide AI key manager: save, clear, validate, and reuse keys across all AI modules

@@ -188,6 +188,85 @@ export async function getJson<T>(path: string): Promise<T> {
   }
 }
 
+/** Like `getJson`, but also surfaces optional `x-cap-warning` response headers. */
+export async function getJsonWithMeta<T>(
+  path: string
+): Promise<{ data: T; warning: string | null }> {
+  const method = "GET" as const;
+  const t0 = performance.now();
+  const url = `${base}${path}`;
+  let status: number | null = null;
+  try {
+    const res = await fetch(url, {
+      headers: getUserApiKeyHeaders(),
+    });
+    status = res.status;
+    const text = await res.text();
+    const durationSec = durationSecFrom(t0);
+    const warning = res.headers.get("x-cap-warning");
+    if (!res.ok) {
+      const { message, excerpt } = parseErrorDetail(text);
+      emitTransport({
+        id: nextEventId(),
+        outcome: "failure",
+        method,
+        path,
+        status,
+        durationSec,
+        error: message || `Request failed (HTTP ${status})`,
+        bodyExcerpt: excerpt || undefined,
+        at: Date.now(),
+      });
+      throw new Error(message || `Request failed (HTTP ${status})`);
+    }
+    let data: T;
+    try {
+      data = (text ? JSON.parse(text) : null) as T;
+    } catch (parseErr) {
+      const errMsg = parseErr instanceof Error ? parseErr.message : "Invalid JSON";
+      const excerpt = text.length > 800 ? `${text.slice(0, 800)}…` : text;
+      emitTransport({
+        id: nextEventId(),
+        outcome: "failure",
+        method,
+        path,
+        status,
+        durationSec,
+        error: `JSON parse error: ${errMsg}`,
+        bodyExcerpt: excerpt,
+        at: Date.now(),
+      });
+      throw parseErr;
+    }
+    emitTransport({
+      id: nextEventId(),
+      outcome: "success",
+      method,
+      path,
+      status,
+      durationSec,
+      responseBytes: responseByteLength(text),
+      at: Date.now(),
+    });
+    return { data, warning };
+  } catch (e) {
+    const durationSec = durationSecFrom(t0);
+    if (status === null) {
+      emitTransport({
+        id: nextEventId(),
+        outcome: "failure",
+        method,
+        path,
+        status: null,
+        durationSec,
+        error: e instanceof Error ? e.message : String(e),
+        at: Date.now(),
+      });
+    }
+    throw e;
+  }
+}
+
 export async function postJson<T>(path: string, body: unknown): Promise<T> {
   const method = "POST" as const;
   const t0 = performance.now();

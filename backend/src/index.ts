@@ -1044,17 +1044,9 @@ app.get("/api/global/table", async (req, res) => {
     if (!["general", "financial", "health", "education", "crime"].includes(category)) {
       return res.status(400).json({ error: "Invalid category" });
     }
-    const fallbackTable: Awaited<ReturnType<typeof buildGlobalTable>> = {
-      requestedYear: year,
-      dataYear: year,
-      category,
-      columns: [],
-      rows: [],
-      wdiLookbackYears: 0,
-    };
-    const data = await settleWithin(buildGlobalTable(year, region, category), capServerlessTimeout(30_000), fallbackTable);
-    if (!Array.isArray(data) || data.length === 0) {
-      res.setHeader("x-cap-warning", "global-table-fallback-empty");
+    const data = await buildGlobalTable(year, region, category);
+    if (!data.rows || data.rows.length === 0) {
+      res.setHeader("x-cap-warning", "global-table-empty");
     }
     res.json(data);
   } catch (e) {

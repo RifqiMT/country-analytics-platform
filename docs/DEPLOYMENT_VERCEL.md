@@ -74,6 +74,8 @@ See `docs/VARIABLES.md` for full Groq env var reference.
 | --- | --- | --- |
 | `vercel.json` `maxDuration` | 60 seconds | Hard platform limit per invocation |
 | `CAP_SERVERLESS_BUDGET_MS` default | 55 seconds | Application-level budget with 1.5s reserve |
+| Global table matrix deadline | ~55s serverless / ~120s local | Internal `TABLE_BUILD_DEADLINE_MS` in `globalTable.ts` (no outer 30s empty fallback) |
+| Outbound HTTP timeouts | WDI 12–18s; WHO 18s; IMF 30s; UIS 45s | `fetchWithRetry({ timeoutMs })` |
 | FX series route timeout | ~22 seconds | `settleWithin` cap in `index.ts` |
 | Correlation year batch concurrency | 8 (serverless) | Higher than local (4) for throughput |
 

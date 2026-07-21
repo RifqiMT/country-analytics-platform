@@ -95,6 +95,13 @@ If implementation or behavior changes, update affected docs in the same PR and v
 - Corrected category terminology: 6 data categories + UI-only `general` grouping
 - Updated `.env.example` with business model vars and serverless budget
 
+### 2026-07-21 eighth pass — global metric matrices + WHO GHO:
+
+- Documented `backend/src/globalData/` matrix pipeline and `whoGho.ts` UHC fill
+- Updated Sources provider list (`who-gho`); METRIC_CATALOG UHC source metadata
+- Extended FR-39; story D9; guardrails UG-07 / PG-05; variables §4.12
+- Documented `global-table-empty` + `getJsonWithMeta` empty-state UX
+
 ### 2026-07-21 seventh pass — shared DataTable system:
 
 - Documented canonical **DataTable** component (`DataTable.tsx`, `cap-data-table-*` CSS)

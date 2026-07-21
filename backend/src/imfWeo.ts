@@ -77,3 +77,91 @@ export async function fetchImfWeoSeries(
   setCache(cacheKey, series, 1000 * 60 * 60 * 12);
   return series;
 }
+
+/**
+ * Bulk IMF DataMapper values for one indicator and calendar year (all economies in one request).
+ * Prefer this over per-country calls when filling global tables/snapshots.
+ */
+export async function fetchImfWeoGlobalYearMap(
+  indicator: string,
+  year: number,
+  scale = 1
+): Promise<Map<string, number>> {
+  const range = await fetchImfWeoGlobalRangeMatrix(indicator, year, year, scale);
+  return range.get(year) ?? new Map();
+}
+
+/**
+ * Bulk IMF DataMapper values for one indicator across a year span (all economies, one HTTP request).
+ */
+export async function fetchImfWeoGlobalRangeMatrix(
+  indicator: string,
+  startYear: number,
+  endYear: number,
+  scale = 1
+): Promise<Map<number, Map<string, number>>> {
+  const lo = Math.min(startYear, endYear);
+  const hi = Math.max(startYear, endYear);
+  const cacheKey = `imf:global:range:${indicator}:${lo}:${hi}:${scale}`;
+  const cached = getCache<Array<[number, Array<[string, number]>]>>(cacheKey);
+  if (cached) {
+    return new Map(cached.map(([y, pairs]) => [y, new Map(pairs)] as const));
+  }
+
+  const periods = buildPeriodsParam(lo, hi);
+  const url = `${IMF_DATAMAPPER}/${encodeURIComponent(indicator)}?periods=${encodeURIComponent(periods)}`;
+  const out = new Map<number, Map<string, number>>();
+  for (let y = lo; y <= hi; y++) out.set(y, new Map());
+
+  try {
+    const res = await fetchWithRetry(
+      url,
+      { headers: { Accept: "application/json" } },
+      { attempts: 3, baseDelayMs: 400, timeoutMs: 30_000 }
+    );
+    if (!res.ok) {
+      setCache(cacheKey, [], 1000 * 60 * 30);
+      return out;
+    }
+    const raw = (await res.json()) as {
+      values?: Record<string, Record<string, Record<string, number | string>>>;
+    };
+    const byCountry = raw.values?.[indicator];
+    if (!byCountry || typeof byCountry !== "object") {
+      setCache(cacheKey, [], 1000 * 60 * 30);
+      return out;
+    }
+    for (const [imfCode, years] of Object.entries(byCountry)) {
+      if (!years || typeof years !== "object") continue;
+      const iso = canonicalWbIso3(imfCode.toUpperCase());
+      if (!/^[A-Z]{3}$/.test(iso)) continue;
+      for (let y = lo; y <= hi; y++) {
+        const v: unknown = years[String(y)];
+        let n: number | null = null;
+        if (typeof v === "number" && Number.isFinite(v)) n = v;
+        else if (typeof v === "string") {
+          const t = v.trim();
+          if (t !== "" && t !== "..") {
+            const p = Number(t);
+            if (Number.isFinite(p)) n = p;
+          }
+        }
+        if (n === null) continue;
+        out.get(y)!.set(iso, n * scale);
+      }
+    }
+    setCache(
+      cacheKey,
+      [...out.entries()].map(([y, m]) => [y, [...m.entries()]] as [number, Array<[string, number]>]),
+      1000 * 60 * 60 * 6
+    );
+    return out;
+  } catch (e) {
+    console.error(
+      `[IMF] global range matrix failed for ${indicator} ${lo}:${hi}:`,
+      e instanceof Error ? e.message : e
+    );
+    setCache(cacheKey, [], 1000 * 60 * 15);
+    return out;
+  }
+}

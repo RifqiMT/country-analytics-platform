@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-07-21 (Eighth pass — global metric matrices + WHO GHO UHC)
+
+### Product & implementation alignment
+- Documented modular **`backend/src/globalData/`** matrix pipeline (`composeMetricMatrix`, `loadMetricMatrices`, `YearIsoMatrix`)
+- Documented **WHO GHO** OData client (`whoGho.ts`) for `uhc_service_coverage` → `UHC_INDEX_REPORTED`
+- Documented bulk IMF/UIS range APIs and `fetchWithRetry` `timeoutMs`
+- Documented `x-cap-warning: global-table-empty` + frontend `getJsonWithMeta` empty-state UX
+- Updated `dataProviders.ts` with `who-gho` provider and pipeline text for Sources UI
+- Extended traceability with **FR-39**; user story **D9**; guardrails **UG-07**, **PG-05**
+- Updated METRIC_CATALOG (UHC row), API_REFERENCE, ARCHITECTURE, VARIABLES §4.12, PRD §14.7
+
 ## 2026-07-21 (Seventh pass — shared DataTable system + map tooltip polish)
 
 ### Product & implementation alignment

@@ -58,6 +58,7 @@ For persona details, see `docs/USER_PERSONAS.md`.
 - Resilient metric series delivery (client chunking + server bisect on timeout)
 - Choropleth map analytics: quintile tier coloring, legend, curated metric blurbs, rank and distribution stats in hover tooltip (with tier badge)
 - Shared **DataTable** system for analytical tables across Dashboard, Compare, Global, and chart/table views
+- Global table **metric-matrix** pipeline (WDI → IMF → UIS → WHO GHO for UHC) with `global-table-empty` warning UX
 
 ### Out of scope (current)
 
@@ -184,7 +185,7 @@ Additional AI and technical constraints are documented in `docs/GUARDRAILS.md`.
 
 ## 12) Dependencies and operational prerequisites
 
-- Data providers: World Bank WDI, with controlled enrichments/gap-fill behavior.
+- Data providers: World Bank WDI, with controlled enrichments/gap-fill (IMF WEO, UNESCO UIS, WHO GHO for UHC).
 - LLM provider keys (optional): Groq for narrative generation paths.
 - Web retrieval key (optional): Tavily for verified-web grounding paths.
 
@@ -248,3 +249,10 @@ For governance details, see `docs/PRODUCT_DOCUMENTATION_STANDARD.md`.
 - Canonical table UI in `frontend/src/components/ui/DataTable.tsx` with CSS tokens in `index.css`.
 - Adopted across Dashboard comparison, Compare pair table, Global Analytics tables, and chart/table series views.
 - Features: sticky label column, sortable headers (`SortableTh`), row-count footer, wide-table scroll hint, A/B accent columns on Compare, inline metric deltas.
+
+### 14.7 Global metric matrices and WHO GHO UHC fill (2026-07-21)
+
+- `backend/src/globalData/` composes year×country matrices for Global tables (`composeMetricMatrix`, `loadMetricMatrices`).
+- Provider chain: WDI range → IMF bulk range → UIS bulk range → WHO GHO `UHC_INDEX_REPORTED` for `uhc_service_coverage` (archived WDI).
+- `GET /api/global/table` sets `x-cap-warning: global-table-empty` on empty rows; frontend uses `getJsonWithMeta` for amber empty-state UX.
+- Outbound `fetchWithRetry` supports per-attempt `timeoutMs`; Sources/`dataProviders` lists `who-gho`.

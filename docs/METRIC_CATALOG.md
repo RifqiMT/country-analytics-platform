@@ -47,6 +47,8 @@ Many metrics support controlled gap-fill beyond the primary WDI code. These fiel
 | `imfWeoIndicator` | IMF WEO Indicator ID | IMF DataMapper series used to fill null WDI years | `NGDPD` (GDP in billions US$) |
 | `imfWeoScale` | IMF Scale Multiplier | Multiplier applied to IMF values (e.g. `1e9` for billions) | `1000000000` |
 | `uisIndicatorId` | UNESCO UIS Indicator ID | UIS API series used for education gap-fill | `LR.GALP.AG15T99` (adult literacy) |
+
+**Special-case WHO GHO fill (not a catalog field):** metric `uhc_service_coverage` merges WHO Global Health Observatory `UHC_INDEX_REPORTED` after WDI when the live WDI series is archived. Implementation: `backend/src/whoGho.ts` + `globalData/composeMetricMatrix.ts`.
 | `shortLabel` | Chart Short Label | Compact display name computed at runtime | `GDP per capita` |
 
 For the complete machine-readable catalog including gap-fill fields, call `GET /api/metrics` or read `backend/src/metrics.ts`.
@@ -84,7 +86,9 @@ flowchart TB
     WDI[World Bank WDI]
     IMF[IMF WEO gap-fill]
     UIS[UNESCO UIS gap-fill]
+    WHO[WHO GHO UHC fill]
     DER[Derived calculations]
+    MTX[Global metric matrices]
   end
 
   subgraph Modules["Application Modules"]
@@ -100,7 +104,10 @@ flowchart TB
   WDI --> FIN & DEMO & HLTH & EDU & LAB & CRM
   IMF --> FIN & DEMO
   UIS --> EDU
+  WHO --> HLTH
   FIN & DEMO --> DER
+  WDI & IMF & UIS & WHO --> MTX
+  MTX --> GLOB
 
   FIN & DEMO & HLTH & EDU & LAB & CRM --> DASH
   FIN & HLTH & EDU & CRM --> GLOB
@@ -151,7 +158,7 @@ flowchart TB
 | `undernourishment` | Prevalence of undernourishment (% of population) | % | health | SN.ITK.DEFC.ZS | — | — | Population in a state of undernourishment. |
 | `birth_rate` | Birth rate, crude (per 1,000 people) | per 1,000 | health | SP.DYN.CBRT.IN | — | — | Annual live births per 1,000 population (midyear estimate). |
 | `tb_incidence` | Incidence of tuberculosis (per 100,000 people) | per 100,000 | health | SH.TBS.INCD | — | — | Estimated new and relapse TB cases per 100,000 population. |
-| `uhc_service_coverage` | UHC service coverage index (0-100) | index | health | SH.UHC.SRVS.CV.XD | — | — | Universal health coverage service coverage index. |
+| `uhc_service_coverage` | UHC service coverage index (0-100) | index | health | SH.UHC.SRVS.CV.XD | — | — | Universal health coverage service coverage index (SDG 3.8.1). Live WDI series is archived; platform fills from WHO GHO `UHC_INDEX_REPORTED` (see Sources / `who-gho` provider). |
 | `hospital_beds` | Hospital beds (per 1,000 people) | per 1,000 | health | SH.MED.BEDS.ZS | — | — | Hospital beds available per 1,000 people. |
 | `physicians_density` | Physicians (per 1,000 people) | per 1,000 | health | SH.MED.PHYS.ZS | — | — | Medical doctors per 1,000 people. |
 | `nurses_midwives_density` | Nurses and midwives (per 1,000 people) | per 1,000 | health | SH.MED.NUMW.P3 | — | — | Nurses and midwives per 1,000 people. |

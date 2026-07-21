@@ -55,6 +55,7 @@ It is not meant to replace testing. Instead, it provides a release-ready mapping
 | FR-36 | Compare Countries dual-country analysis with pair charts and tables | `frontend/src/pages/CountryCompare.tsx` | `frontend/src/components/compare/*`, `GET /api/compare` / series routes | Select two countries; verify dual series, deltas, export |
 | FR-37 | Global choropleth uses quintile tiers, legend, and distribution-aware map tooltip | `frontend/src/lib/choroplethTiers.ts`, `frontend/src/components/global/GlobalChoropleth.tsx` | `ChoroplethTierLegend.tsx`, `MapCountryTooltip.tsx`, `metricTooltipBlurb.ts` | Change region filter; verify tier breaks update; hover country; confirm tier badge, rank/stats/blurb; check reduced-motion |
 | FR-38 | Analytical tables use shared DataTable system (sticky labels, sort, footer, accents) | `frontend/src/components/ui/DataTable.tsx`, `SortableTh.tsx` | `DashboardComparisonTable.tsx`, `CountryPairTable.tsx`, `GlobalAnalytics.tsx`, `SeriesLineDataTable.tsx` | Sort columns; scroll wide table; verify sticky label, row count footer, A/B accents on Compare; fullscreen density |
+| FR-39 | Global tables compose multi-year metric matrices with WHO GHO UHC fill and empty-table warning | `backend/src/globalData/*`, `backend/src/whoGho.ts`, `buildGlobalTable` | `GET /api/global/table`, `getJsonWithMeta`, `dataProviders.ts` (`who-gho`) | Load health table; confirm UHC cells when WDI archived; force empty → `global-table-empty` amber note |
 
 ### Legacy / internal endpoints
 
@@ -97,6 +98,7 @@ Release changes that affect any assistant/analysis output behavior must be accom
 | Journey E: Crime & safety assessment | FR-26, FR-27, FR-28 | Dashboard, Global, Sources |
 | Journey F: Global map peer benchmarking | FR-02, FR-37 | Global Analytics |
 | Cross-module table UX | FR-38, FR-33 | Dashboard, Compare, Global, chart/table toggles |
+| Global table matrix pipeline | FR-39, FR-02, FR-27 | Global Analytics, Sources |
 
 ---
 
@@ -105,7 +107,7 @@ Release changes that affect any assistant/analysis output behavior must be accom
 | Document | Covers FR/NFR |
 | --- | --- |
 | `docs/PRD.md` | All journeys; scope definition |
-| `docs/USER_STORIES.md` | Acceptance criteria for FR-01–FR-38 |
+| `docs/USER_STORIES.md` | Acceptance criteria for FR-01–FR-39 |
 | `docs/VARIABLES.md` | Request/env variables for all API routes |
 | `docs/API_REFERENCE.md` | Endpoint contracts for FR-03, FR-13, FR-18, FR-29 |
 | `docs/ASSISTANT_BEHAVIOR.md` | FR-04–FR-08 behavior detail |

@@ -8,7 +8,7 @@ It is designed to answer four executive questions quickly:
 - Where are quality/safety controls documented?
 - Which documents are the source of truth for product, engineering, and governance?
 
-**Last updated:** 2026-07-21 (seventh pass)
+**Last updated:** 2026-07-21 (eighth pass)
 
 ---
 
@@ -29,6 +29,11 @@ Core value:
 ---
 
 ## 2) Current release highlights
+
+### 2026-07-21 — Global metric matrices + WHO GHO
+- Modular Global table matrices (`globalData/`) with bulk IMF/UIS fills
+- **WHO GHO** UHC coverage fill when WDI archived; Sources lists `who-gho`
+- Empty-table warning UX (`global-table-empty`)
 
 ### 2026-07-21 — Shared DataTable + map tooltip polish
 - Canonical **DataTable** UI across Dashboard, Compare, Global, and series chart/table views
@@ -95,7 +100,7 @@ Core value:
 ### Design and operational governance
 - `docs/DESIGN_GUIDELINES.md` (brand tokens, refreshed PESTEL/Porter/SWOT/Compare palettes)
 - `docs/METRICS_AND_OKRS.md` (incl. Objective 4: security/governance coverage)
-- `docs/TRACEABILITY_MATRIX.md` (FR-01–FR-38, NFR-01–NFR-09)
+- `docs/TRACEABILITY_MATRIX.md` (FR-01–FR-39, NFR-01–NFR-09)
 - `docs/PRODUCT_DOCUMENTATION_STANDARD.md`
 - `docs/RELEASE_READINESS_CHECKLIST.md`
 - `docs/CHANGELOG.md`
@@ -138,6 +143,6 @@ Core value:
 | Application modules | 8 routes (incl. Compare Countries) |
 | API endpoints | 20+ |
 | Documentation files | 23 |
-| Functional requirements (traceability) | FR-01 through FR-38 |
+| Functional requirements (traceability) | FR-01 through FR-39 |
 | User personas | 7 |
 | Year range | 2000 – current |

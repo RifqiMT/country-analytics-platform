@@ -21,7 +21,7 @@ import {
 } from "../components/ui/DataTable";
 import LoadingProgressSection from "../components/ui/LoadingProgressSection";
 import { startSimulatedLoadProgress } from "../lib/loadProgress";
-import { getJson, type CountrySummary, type MetricDef } from "../api";
+import { getJson, getJsonWithMeta, type CountrySummary, type MetricDef } from "../api";
 import { metricDisplayLabel } from "../lib/metricDisplay";
 import { downloadCsv } from "../lib/csv";
 import { formatCompactNumber, formatYoY, yoYClass } from "../lib/formatValue";
@@ -105,14 +105,18 @@ const MAP_METRIC_VALUE_PERCENT = new Set([
 ]);
 
 function missingWdiCellLabel(_cat: TableCategory): string {
-  return "No value (WDI + IMF / UIS gap-fills exhausted)";
+  return "Not reported";
+}
+
+function missingWdiCellTitle(_cat: TableCategory): string {
+  return "No value found in WDI, IMF, or UIS gap-fill pipelines for this country and year.";
 }
 
 function formatTableCell(
   col: TableColumn,
   cell: string | TableCell | undefined,
   tableCat: TableCategory
-): { main: string; sub?: string; subClass?: string } {
+): { main: string; sub?: string; subClass?: string; title?: string } {
   if (cell === undefined) return { main: "Not reported" };
   if (typeof cell === "string") {
     if ((col.id === "area" || col.id === "eez") && cell !== "—" && !Number.isNaN(Number(cell))) {
@@ -123,7 +127,7 @@ function formatTableCell(
     return { main: cell };
   }
   if (cell.value === null || Number.isNaN(cell.value)) {
-    return { main: missingWdiCellLabel(tableCat) };
+    return { main: missingWdiCellLabel(tableCat), title: missingWdiCellTitle(tableCat) };
   }
   let main: string;
   if (col.format === "percent") main = `${cell.value.toFixed(1)}%`;
@@ -173,12 +177,11 @@ function compareGlobalTableRows(
 
 function GlobalMapMetricTable({
   rows,
-  allowedIso3,
   metricLabel,
   year,
 }: {
   rows: { countryIso3: string; countryName: string; value: number | null }[];
-  allowedIso3: Set<string>;
+  allowedIso3?: Set<string>;
   metricLabel: string;
   year: number;
 }) {
@@ -194,21 +197,16 @@ function GlobalMapMetricTable({
     [sortKey, sortDir]
   );
 
-  const filtered = useMemo(
-    () => rows.filter((r) => allowedIso3.has(r.countryIso3.toUpperCase())),
-    [rows, allowedIso3]
-  );
-
   const sorted = useMemo(() => {
-    if (sortKey === null) return [...filtered].sort((a, b) => a.countryName.localeCompare(b.countryName));
-    const copy = [...filtered];
+    if (sortKey === null) return rows;
+    const copy = [...rows];
     copy.sort((a, b) => {
       if (sortKey === "country") return cmpString(a.countryName, b.countryName, sortDir);
       if (sortKey === "iso3") return cmpString(a.countryIso3, b.countryIso3, sortDir);
       return cmpNullableNumber(a.value, b.value, sortDir);
     });
     return copy;
-  }, [filtered, sortKey, sortDir]);
+  }, [rows, sortKey, sortDir]);
 
   return (
     <DataTableShell
@@ -296,6 +294,7 @@ export default function GlobalAnalytics() {
   const [loading, setLoading] = useState(false);
   const [mapLoadProgress, setMapLoadProgress] = useState(0);
   const [tableLoadProgress, setTableLoadProgress] = useState(0);
+  const [tableLoadNote, setTableLoadNote] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   const regions = useMemo(() => {
@@ -410,12 +409,16 @@ export default function GlobalAnalytics() {
     setLoading(true);
     setErr(null);
     setTableData(null);
+    setTableLoadNote(null);
     setTableLoadProgress(8);
     const stopTableProgress = startSimulatedLoadProgress(setTableLoadProgress);
     const q = new URLSearchParams({ year: String(year), region, category: tableCat });
-    getJson<GlobalTablePayload>(`/api/global/table?${q}`)
-      .then((payload) => {
+    getJsonWithMeta<GlobalTablePayload>(`/api/global/table?${q}`)
+      .then(({ data: payload, warning }) => {
         if (!active) return;
+        if (warning === "global-table-empty" || !payload?.rows?.length) {
+          setTableLoadNote("Table data could not be loaded completely. Try again or pick another year.");
+        }
         setTableData(payload);
         setTableLoadProgress(100);
       })
@@ -468,14 +471,41 @@ export default function GlobalAnalytics() {
     [tableSortKey, tableSortDir]
   );
 
+  const mapTableRows = useMemo(() => {
+    if (!snapshot) return [];
+    const byIso = new Map(
+      snapshot.rows.map((r) => [r.countryIso3.toUpperCase(), r] as const)
+    );
+    const out: { countryIso3: string; countryName: string; value: number | null }[] = [];
+    for (const c of countries) {
+      const iso = c.cca3.toUpperCase();
+      if (!allowedIso3.has(iso)) continue;
+      const snap = byIso.get(iso);
+      out.push({
+        countryIso3: iso,
+        countryName: snap?.countryName ?? c.name,
+        value: snap?.value ?? null,
+      });
+    }
+    return out.sort((a, b) => a.countryName.localeCompare(b.countryName));
+  }, [snapshot, countries, allowedIso3]);
+
+  const tableRows = useMemo(() => {
+    if (!tableData) return [];
+    return tableData.rows.map((r) => ({
+      ...r,
+      flagPng: r.flagPng ?? flagByIso3.get(r.iso3.toUpperCase())?.flagPng,
+    }));
+  }, [tableData, flagByIso3]);
+
   const sortedTableRows = useMemo(() => {
     if (!tableData) return [];
-    if (tableSortKey === null) return tableData.rows;
+    if (tableSortKey === null) return tableRows;
     const col = tableData.columns.find((c) => c.id === tableSortKey);
-    const copy = [...tableData.rows];
+    const copy = [...tableRows];
     copy.sort((a, b) => compareGlobalTableRows(a, b, tableSortKey, col, tableSortDir, tableCat));
     return copy;
-  }, [tableData, tableSortKey, tableSortDir, tableCat]);
+  }, [tableData, tableRows, tableSortKey, tableSortDir, tableCat]);
 
   const exportTable = () => {
     if (!tableData) return;
@@ -572,7 +602,7 @@ export default function GlobalAnalytics() {
                 }
                 table={
                   <GlobalMapMetricTable
-                    rows={snapshot.rows}
+                    rows={mapTableRows}
                     allowedIso3={allowedIso3}
                     metricLabel={mapMeta.label}
                     year={mapDataYear}
@@ -594,7 +624,19 @@ export default function GlobalAnalytics() {
         <LoadingProgressSection label="Loading global table data…" progress={tableLoadProgress} />
       ) : null}
 
-      {view === "table" && tableData && (
+      {view === "table" && tableLoadNote && !loading ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900" role="status">
+          {tableLoadNote}
+        </div>
+      ) : null}
+
+      {view === "table" && tableData && tableData.rows.length === 0 && !loading ? (
+        <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-600">
+          No table rows returned for this selection. Try another category, region, or year.
+        </div>
+      ) : null}
+
+      {view === "table" && tableData && tableData.rows.length > 0 && (
         <div
           className={
             tableFullscreen
@@ -777,7 +819,7 @@ export default function GlobalAnalytics() {
                     {tableData.columns.map((c) => {
                       const f = formatTableCell(c, r.cells[c.id], tableCat);
                       return (
-                        <DataTableCell key={c.id} numeric>
+                        <DataTableCell key={c.id} numeric title={f.title}>
                           <DataTableMetricValue
                             value={f.main}
                             delta={f.sub}

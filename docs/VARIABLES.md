@@ -203,7 +203,7 @@ Request variables are the fields you send to endpoints. Backend validation rules
 
 | Variable Name | Friendly Name | Definition | Formula / Rule | Location in the apps | Example |
 | --- | --- | --- | --- | --- | --- |
-| `x-cap-warning` | Upstream Warning | Non-fatal upstream degradation notice | Examples: REST Countries partial fallback; `country-series-partial-timeout` when series timed out but partial data returned | Response header on selected routes | `country-series-partial-timeout` |
+| `x-cap-warning` | Upstream Warning | Non-fatal upstream degradation notice | Examples: `country-series-partial-timeout`; `global-table-empty` when Global table returns no rows | Response header on selected routes; surfaced by `getJsonWithMeta` on Global Analytics | `global-table-empty` |
 
 #### `POST /api/analysis/correlation`
 
@@ -377,6 +377,22 @@ Presentation-layer variables for the canonical table system. Source: `frontend/s
 | `DataTableFooterBar.count` | Row Count Footer | Displays filtered/sorted row total | `{count} {label}` localized | Table footers across modules | `142 countries` |
 | `sortKey` / `sortDir` | Table Sort State | Active sort column and direction | Managed per table via `tableSort.ts` helpers | All `SortableTh` tables | `gdp_per_capita`, `desc` |
 
+### 4.12 Global metric-matrix and WHO GHO variables
+
+Backend variables for Global Analytics table composition and UHC archival fill. Sources: `backend/src/globalData/*`, `whoGho.ts`, `imfWeo.ts`, `uisApi.ts`, `httpClient.ts`.
+
+| Variable Name | Friendly Name | Definition | Formula / Rule | Location in the apps | Example |
+| --- | --- | --- | --- | --- | --- |
+| `YearIsoMatrix` | Year×ISO Value Matrix | Nested map of year → ISO3 → numeric value (or null) | Built by `emptyYearIsoMatrix` + `mergeMatrixFill` | `composeMetricMatrix` → `buildGlobalTable` | `{ 2022 → { IDN → 62.1 } }` |
+| `composeMetricMatrix` | Metric Matrix Composer | Fills one metric across all countries for a year span | WDI range → IMF bulk → UIS bulk → WHO GHO (UHC only); null-only merge | `backend/src/globalData/composeMetricMatrix.ts` | `composeMetricMatrix("gdp", 2000, 2023)` |
+| `loadMetricMatrices` | Matrix Pool Loader | Concurrent matrix loads with deadline | Concurrency 2 (serverless) / 3 (local); aborts past deadline | `metricMatrixStore.ts` → Global table | `{ life_expectancy: YearIsoMatrix }` |
+| `metric-matrix:v1:{id}:{lo}:{hi}` | Matrix Cache Key | Server cache for composed matrices | TTL 6h; cached only when finite count > 0 | `composeMetricMatrix` | `metric-matrix:v1:uhc_service_coverage:2000:2023` |
+| `who:gho:{indicator}:{year}` | WHO GHO Cache Key | Cached GHO country rows for one year | TTL 6h success / 30m empty / 15m error | `whoGho.ts` | `who:gho:UHC_INDEX_REPORTED:2022` |
+| `UHC_INDEX_REPORTED` | WHO UHC Indicator Code | GHO OData indicator for UHC service coverage | Hardcoded for metric id `uhc_service_coverage` | Snapshot + matrix compose | `UHC_INDEX_REPORTED` |
+| `TABLE_BUILD_DEADLINE_MS` | Global Table Deadline | Max wall time for matrix-backed table build | ~55_000 serverless / ~120_000 otherwise | `globalTable.ts` | `55000` |
+| `fetchWithRetry.timeoutMs` | Outbound HTTP Timeout | Per-attempt abort for upstream fetches | AbortController; retries on network/abort | `httpClient.ts` call sites | WDI 12–18s; WHO 18s; IMF 30s; UIS 45s |
+| `getJsonWithMeta.warning` | Client Warning Header | Optional `x-cap-warning` from GET responses | Parsed from response headers | `frontend/src/api.ts` → GlobalAnalytics | `"global-table-empty"` |
+
 ## 5) Relationship Chart (Where variables connect)
 
 ```mermaid
@@ -401,7 +417,9 @@ flowchart TD
   D1 --> E6[POST /api/analysis/porter]
   F1 --> E7[GET /api/country/:cca3/series + comparison + fx-series]
   G1 --> E8[GET /api/global/snapshot + /api/global/table]
-  E8 --> M2[Choropleth tier model + map scope stats]
+  E8 --> MX[composeMetricMatrix / loadMetricMatrices]
+  MX --> WHO[WHO GHO UHC_INDEX_REPORTED]
+  MX --> M2[Choropleth tier model + map scope stats]
   M2 --> M3[MapCountryTooltip rank/blurb/tierBadge UI]
   F1 --> T1[DataTable comparison UI]
   CP[Compare Countries UI] --> T1

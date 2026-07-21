@@ -1,6 +1,6 @@
 # Country Analytics Platform — Comprehensive Product Documentation
 
-**Document version:** 2026-07-21 (seventh pass)  
+**Document version:** 2026-07-21 (eighth pass)  
 **Audience:** Product managers, strategy leads, analysts, engineers, design, QA, and leadership  
 **Status:** Implementation-aligned with current codebase
 
@@ -118,6 +118,9 @@ Deliver analyst-grade country analytics and strategic interpretation tools that 
 **Table business logic:**
 - Global category tables and map-side metric tables use shared **DataTable** (sticky label column, sortable headers, row-count footer, wide-table scroll hint)
 - Table categories map to metric subsets in `backend/src/globalTable.ts`
+- Tables load via **metric matrices** (`loadMetricMatrices` / `composeMetricMatrix`) with WDI → IMF → UIS → WHO (UHC) fills
+- Empty table responses set `x-cap-warning: global-table-empty`; UI shows amber note and empty-state panel via `getJsonWithMeta`
+- Missing cells display “Not reported” (no fabricated zeros); map side table includes all scoped countries even when values are null
 
 ### 4.3 Analytics Assistant (`/assistant`)
 
@@ -231,6 +234,8 @@ Users and the system must stay within requested metric IDs. Substituting related
 - **Deployment:** Vercel (static frontend + serverless API handler)
 
 ### 6.2 Data pipeline
+
+**Country-level series** (`worldBank.ts`):
 ```
 World Bank WDI (primary)
   → WDI fallback code (if configured)
@@ -242,7 +247,17 @@ World Bank WDI (primary)
   → Percentage clamping
 ```
 
-Each series point may carry a `provenance` field: `reported`, `imf_weo`, `interpolated`, `wld_proxy`, etc.
+**Global Analytics tables / multi-year matrices** (`backend/src/globalData/`):
+```
+composeMetricMatrix(metricId, startYear, endYear)
+  → WDI year-range snapshots
+  → IMF bulk range matrix (when imfWeoIndicator set)
+  → UIS bulk range matrix (when uisIndicatorId set)
+  → WHO GHO (uhc_service_coverage → UHC_INDEX_REPORTED)
+  → loadMetricMatrices pools compose with concurrency + deadline
+```
+
+Each series point may carry a `provenance` field: `reported`, `imf_weo`, `interpolated`, `wld_proxy`, etc. WHO GHO fills are merged into null cells only (WDI wins when present).
 
 ### 6.3 Caching strategy
 - Server-side in-memory TTL cache for expensive fetches
@@ -291,8 +306,9 @@ Override via environment variables (see `docs/VARIABLES.md`).
 |----------|------|----------|
 | World Bank WDI | Primary time series (68 metrics) | Yes |
 | World Bank Country API | Income level, lending type | Yes |
-| IMF WEO DataMapper | Macro gap-fill | No (enhancement) |
-| UNESCO UIS API | Education gap-fill | No (enhancement) |
+| IMF WEO DataMapper | Macro gap-fill (incl. bulk global range for tables) | No (enhancement) |
+| UNESCO UIS API | Education gap-fill (incl. bulk global range for tables) | No (enhancement) |
+| WHO Global Health Observatory | UHC service coverage fill (`UHC_INDEX_REPORTED`) when WDI archived | No (enhancement) |
 | REST Countries v3.1 | Geography, flags, currencies | Yes |
 | Frankfurter (ECB) | Daily FX quotes | No (fallback to WB) |
 | Sea Around Us | EEZ area | No (static fallback) |

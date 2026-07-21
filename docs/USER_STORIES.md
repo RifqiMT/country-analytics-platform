@@ -8,7 +8,7 @@ Stories are written in user language, but each acceptance section is specific en
 
 | Epic | Stories | Traceability (FR) | Primary persona |
 | --- | --- | --- | --- |
-| Dashboard & Global Analytics | D1–D8 | FR-01, FR-02, FR-22, FR-29–FR-32, FR-37–FR-38 | Policy Analyst, Research Associate |
+| Dashboard & Global Analytics | D1–D9 | FR-01, FR-02, FR-22, FR-29–FR-32, FR-37–FR-39 | Policy Analyst, Research Associate |
 | Compare Countries | CP1–CP2 | FR-36, FR-32, FR-33, FR-38 | Policy Analyst, Research Associate |
 | Analytics Assistant | A1–A4 | FR-04–FR-08, FR-18, FR-19 | Strategy Manager, BYOK User |
 | Strategy Modules | S1–S3 | FR-09–FR-12, FR-20, FR-21, FR-34 | Strategy Manager |
@@ -93,6 +93,16 @@ Stories are written in user language, but each acceptance section is specific en
 - First metric/country column is sticky on wide tables; sortable headers show active state and `aria-sort`.
 - Missing values render as `DataTableEmpty` (`—`); row-count footer displays filtered totals.
 - Compare pair table uses A/B accent column tints and highlights the leading country value per row.
+
+### Story D9: Global table matrix load and sparse-data honesty
+
+**Story:** As a global analyst, I want Global Analytics tables to load complete category matrices (including UHC from WHO when WDI is archived) and to show clear empty/Not reported states when data is missing.
+
+**Acceptance criteria:**
+- Health/education/financial/crime tables load via metric-matrix composition (not per-cell country series backfill).
+- `uhc_service_coverage` can show WHO GHO-sourced values when WDI is empty; Sources lists WHO GHO.
+- Empty table responses show amber warning for `global-table-empty` and an empty-state panel — not a silent blank table.
+- Missing cells show “Not reported”; map side table lists all scoped countries even with null values.
 
 ## 1.1) Compare Countries
 

@@ -47,7 +47,7 @@ Platform analytics are grounded in **metric time series** and deterministic proc
 ### Year-bound logic
 - Supported data window: **2000 – current calendar year**
 - Input years are clamped to platform bounds
-- Sparse series may use controlled gap-fill (IMF WEO, UNESCO UIS) or carry-forward interpolation
+- Sparse series may use controlled gap-fill (IMF WEO, UNESCO UIS, WHO GHO for UHC) or carry-forward interpolation
 - Global snapshots default to `currentYear − 1` when the current year is requested but not yet published
 
 ### Safety and fallback logic
@@ -77,6 +77,9 @@ Choropleth uses **five quantile tiers** within the active region scope, a dedica
 ### Shared analytical tables
 Dashboard comparison, Compare pair, Global category, and chart/table series views use a unified **DataTable** system (sticky labels, sortable headers, row-count footers, A/B accent columns).
 
+### Global metric matrices
+Global Analytics tables compose multi-year country×metric matrices (`backend/src/globalData/`) with bulk IMF/UIS fills and WHO GHO for archived UHC coverage; empty loads surface `global-table-empty`.
+
 ---
 
 ## Metric coverage (68 indicators, 6 data categories + UI grouping)
@@ -102,7 +105,7 @@ Canonical source: `backend/src/metrics.ts` · Full dictionary: `docs/METRIC_CATA
 |-------|------------|
 | **Frontend** | React 18 · TypeScript · Vite 6 · Tailwind CSS 3.4 · Recharts · react-simple-maps |
 | **Backend** | Node.js ≥ 20 · Express 4 · TypeScript |
-| **Primary data** | World Bank WDI API (with IMF WEO and UNESCO UIS gap-fill) |
+| **Primary data** | World Bank WDI API (with IMF WEO, UNESCO UIS, and WHO GHO UHC gap-fill) |
 | **Enrichment** | REST Countries, Wikidata, Sea Around Us EEZ, Frankfurter (ECB FX) |
 | **LLM** | Groq API (use-case-specific models + fallback chains) |
 | **Web retrieval** | Tavily API (optional verified-web mode) |
@@ -229,7 +232,13 @@ Full contracts: [`docs/API_REFERENCE.md`](docs/API_REFERENCE.md)
 
 ## Latest implementation highlights
 
-> **Documentation status:** Re-audited against uncommitted implementation as of **2026-07-21 (seventh pass)**. See [`docs/DOCUMENTATION_AUDIT_REPORT.md`](docs/DOCUMENTATION_AUDIT_REPORT.md).
+> **Documentation status:** Re-audited against uncommitted implementation as of **2026-07-21 (eighth pass)**. See [`docs/DOCUMENTATION_AUDIT_REPORT.md`](docs/DOCUMENTATION_AUDIT_REPORT.md).
+
+### 2026-07-21 — Global metric matrices + WHO GHO UHC
+- Modular **`globalData/`** pipeline (`composeMetricMatrix`, `loadMetricMatrices`) for Global Analytics tables
+- **WHO GHO** OData fill for `uhc_service_coverage` (`UHC_INDEX_REPORTED`) when WDI is archived
+- Bulk IMF/UIS range fetches; outbound HTTP `timeoutMs`; `x-cap-warning: global-table-empty` + `getJsonWithMeta` UX
+- Sources provider list includes `who-gho`
 
 ### 2026-07-21 — Shared DataTable system
 - Canonical **DataTable** component for Dashboard comparison, Compare pair, Global tables, and chart/table series views

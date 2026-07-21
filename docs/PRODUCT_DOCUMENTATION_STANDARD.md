@@ -85,6 +85,13 @@ Documentation updates must preserve cross-document consistency:
   - `docs/TESTING_STRATEGY.md`
   - `docs/RELEASE_READINESS_CHECKLIST.md`
   - `docs/TRACEABILITY_MATRIX.md`
+- Data-provider or gap-fill pipeline changes require updates in:
+  - `backend/src/dataProviders.ts` (Sources UI)
+  - `docs/METRIC_CATALOG.md`
+  - `docs/API_REFERENCE.md`
+  - `docs/ARCHITECTURE.md`
+  - `docs/VARIABLES.md`
+  - `docs/GUARDRAILS.md` / `docs/DEPLOYMENT_VERCEL.md` when timeouts change
 
 ## Definition of done for documentation updates
 

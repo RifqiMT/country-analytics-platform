@@ -308,13 +308,18 @@ Query params:
 - `region` (optional): defaults to `"All"`
 - `category` (optional): one of `general|financial|health|education|crime` (defaults to `"general"`)
 
+**Implementation notes:**
+- Built via `loadMetricMatrices` → `composeMetricMatrix` (WDI range → IMF bulk → UIS bulk → WHO GHO for UHC).
+- Internal build deadline: ~55s serverless / ~120s otherwise (no outer `settleWithin` empty fallback).
+- `wdiLookbackYears` reflects the ladder span from `dataYear` back toward `MIN_DATA_YEAR` (2000), not a fixed zero.
+
 Response shape:
 ```json
 {
   "requestedYear": 2023,
   "dataYear": 2022,
   "category": "health",
-  "wdiLookbackYears": 0,
+  "wdiLookbackYears": 23,
   "columns": [
     { "id": "life_expectancy", "label": "Life expectancy", "format": "number", "yoyBps": false, "description": "..." }
   ],
@@ -330,6 +335,9 @@ Response shape:
   ]
 }
 ```
+
+Warnings (response header):
+- `x-cap-warning: global-table-empty` when `rows` is empty (frontend surfaces an amber retry note via `getJsonWithMeta`)
 
 Errors:
 - `400` invalid category

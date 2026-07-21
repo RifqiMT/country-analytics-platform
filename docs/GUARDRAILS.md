@@ -208,6 +208,12 @@ See `docs/TESTING_STRATEGY.md` for manual QA scope and future automation roadmap
 - Wide tables must expose sticky label columns and row-count footers for scanability.
 - Compare A/B columns must retain accent tinting so users can distinguish countries without color-only reliance on values.
 
+### UG-07: Global table empty and sparse cells are explicit
+
+- Empty Global table responses must set `x-cap-warning: global-table-empty` and show a user-visible empty/retry state.
+- Sparse cells must label **Not reported** — not invent values from removed per-country series backfill.
+- UHC coverage may come from WHO GHO when WDI is archived; Sources/`data-providers` must disclose WHO GHO.
+
 ---
 
 ## 8) Performance guardrails
@@ -230,4 +236,11 @@ See `docs/TESTING_STRATEGY.md` for manual QA scope and future automation roadmap
 ### PG-04: Business Analytics timeout disclosure
 
 - When reliability mode delivers a narrower year window, UI must show explicit delivery note.
+
+### PG-05: Global table matrix deadlines
+
+- `GET /api/global/table` no longer uses an outer 30s `settleWithin` empty fallback.
+- Builds rely on internal `TABLE_BUILD_DEADLINE_MS` (~55s serverless / ~120s local) inside `loadMetricMatrices`.
+- Outbound fetches must set `timeoutMs` (WDI 12–18s, WHO 18s, IMF 30s, UIS 45s) so hung upstreams do not exhaust the deadline silently.
+- On Vercel, ensure platform `maxDuration` ≥ table deadline or users may see hard 504 before `global-table-empty`.
 - Strict mode users accept potential timeout failure over undisclosed fallback.

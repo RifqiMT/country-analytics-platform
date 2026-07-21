@@ -39,6 +39,8 @@ Define how the Country Analytics Platform validates quality today and how automa
 - Map hover tooltip: tier badge, rank, lowest/median/highest/mean/mode, comparison line, metric blurb
 - Region filter changes tier breaks within scoped countries
 - Category tables use DataTable (sticky country column, sort, row-count footer, scroll hint on wide)
+- Empty table: amber note for `global-table-empty`; empty-state panel when no rows
+- Sparse cells show “Not reported”; UHC may fill from WHO GHO
 - Metric selector (incl. `homicide_rate`); compact toolbar layout
 - Table tabs: general, financial, health, education, crime
 - WLD aggregate charts

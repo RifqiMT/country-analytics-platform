@@ -449,7 +449,7 @@ async function applyCrossMetricBundleEnrichments(
   }
 }
 
-export async function fetchMetricSeriesForCountry(
+async function fetchMetricSeriesForCountry(
   countryIso3: string,
   metricId: string,
   startYear = MIN_DATA_YEAR,

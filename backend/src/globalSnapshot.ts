@@ -1,7 +1,7 @@
 import { getCache, setCache } from "./cache.js";
 import { METRIC_BY_ID } from "./metrics.js";
 import { MIN_DATA_YEAR, resolveGlobalWdiYear } from "./yearBounds.js";
-import { fetchImfWeoSeries } from "./imfWeo.js";
+import { fetchImfWeoGlobalYearMap } from "./imfWeo.js";
 import { listCountries } from "./restCountries.js";
 import { fetchCountryBundle } from "./worldBank.js";
 import {
@@ -12,7 +12,11 @@ import {
 } from "./wdiParse.js";
 import { fetchWithRetry } from "./httpClient.js";
 import { fetchUisGlobalRowsForYear } from "./uisApi.js";
+import { fetchWhoGhoGlobalRowsForYear } from "./whoGho.js";
 import { isServerlessRuntime } from "./serverlessBudget.js";
+
+/** Per-request ceiling for WDI global indicator pages (prevents hung table builds). */
+const WDI_GLOBAL_HTTP_TIMEOUT_MS = isServerlessRuntime() ? 12_000 : 18_000;
 
 export interface GlobalRow {
   countryIso3: string;
@@ -33,7 +37,11 @@ async function fetchGlobalIndicatorYearOnce(indicatorCode: string, year: number)
     const url = `https://api.worldbank.org/v2/country/all/indicator/${encodeURIComponent(
       indicatorCode
     )}?date=${year}&format=json&per_page=${perPage}&page=${page}`;
-    const res = await fetchWithRetry(url, undefined, { attempts: 5, baseDelayMs: 500 });
+    const res = await fetchWithRetry(url, undefined, {
+      attempts: 5,
+      baseDelayMs: 500,
+      timeoutMs: WDI_GLOBAL_HTTP_TIMEOUT_MS,
+    });
     if (!res.ok) throw new Error(`World Bank global HTTP ${res.status}`);
     const text = await res.text();
     if (!text.trimStart().startsWith("[") && !text.trimStart().startsWith("{")) {
@@ -134,9 +142,7 @@ function mergeGlobalRows(primary: GlobalRow[], fallback: GlobalRow[]): GlobalRow
   return [...byIso.values()];
 }
 
-const IMF_ENRICH_CONCURRENCY = isServerlessRuntime() ? 8 : 16;
-
-/** Fill null cells from IMF WEO DataMapper for the same calendar year (e.g. government debt % GDP). */
+/** Fill null cells from IMF WEO DataMapper for the same calendar year (bulk, one request). */
 async function enrichGlobalRowsWithImf(
   rows: GlobalRow[],
   imfIndicator: string,
@@ -145,21 +151,12 @@ async function enrichGlobalRowsWithImf(
 ): Promise<GlobalRow[]> {
   const need = rows.filter((r) => isMissingValue(r.value));
   if (need.length === 0) return rows;
-  const updates = new Map<string, number>();
-  for (let i = 0; i < need.length; i += IMF_ENRICH_CONCURRENCY) {
-    const chunk = need.slice(i, i + IMF_ENRICH_CONCURRENCY);
-    await Promise.all(
-      chunk.map(async (r) => {
-        const ser = await fetchImfWeoSeries(r.countryIso3, imfIndicator, year, year);
-        const pt = ser.find((p) => p.year === year);
-        if (pt && !isMissingValue(pt.value)) updates.set(r.countryIso3, pt.value! * scale);
-      })
-    );
-  }
-  if (updates.size === 0) return rows;
+  const bulk = await fetchImfWeoGlobalYearMap(imfIndicator, year, scale);
+  if (bulk.size === 0) return rows;
   return rows.map((row) => {
-    const v = updates.get(row.countryIso3);
-    if (v !== undefined && isMissingValue(row.value)) return { ...row, value: v };
+    if (!isMissingValue(row.value)) return row;
+    const v = bulk.get(row.countryIso3.toUpperCase());
+    if (v !== undefined && Number.isFinite(v)) return { ...row, value: v };
     return row;
   });
 }
@@ -248,7 +245,11 @@ async function fetchGlobalIndicatorYearRangeOnce(
     const url = `https://api.worldbank.org/v2/country/all/indicator/${encodeURIComponent(
       indicatorCode
     )}?date=${startYear}:${endYear}&format=json&per_page=${perPage}&page=${page}`;
-    const res = await fetchWithRetry(url, undefined, { attempts: 5, baseDelayMs: 500 });
+    const res = await fetchWithRetry(url, undefined, {
+      attempts: 5,
+      baseDelayMs: 500,
+      timeoutMs: WDI_GLOBAL_HTTP_TIMEOUT_MS,
+    });
     if (!res.ok) throw new Error(`World Bank global range HTTP ${res.status}`);
     const text = await res.text();
     // WAF / CDN sometimes returns HTML with HTTP 200 — treat as failure so we can fall back.
@@ -476,6 +477,21 @@ async function fetchGlobalYearSnapshotLite(metricId: string, year: number): Prom
   if (metricId === "mortality_under5") {
     rows = await enrichFromSexPairAverage(rows, year, "SH.DYN.MORT.MA", "SH.DYN.MORT.FE");
   }
+  if (metricId === "uhc_service_coverage") {
+    try {
+      const who = await fetchWhoGhoGlobalRowsForYear("UHC_INDEX_REPORTED", year);
+      rows = mergeGlobalRows(
+        rows,
+        who.map((r) => ({
+          countryIso3: r.countryIso3,
+          countryName: r.countryName,
+          value: r.value,
+        }))
+      );
+    } catch {
+      /* keep WDI (likely empty) */
+    }
+  }
   if (rows.length > 0) setCache(cacheKey, rows, 1000 * 60 * 60);
   return rows;
 }
@@ -523,23 +539,63 @@ export async function fetchGlobalYearSnapshot(metricId: string, year: number): P
     rows = mergeGlobalRows(primary, fb);
   }
   if (def.imfWeoIndicator) {
-    rows = await enrichGlobalRowsWithImf(
-      rows,
-      def.imfWeoIndicator,
-      year,
-      def.imfWeoScale ?? 1
-    );
+    try {
+      rows = await enrichGlobalRowsWithImf(
+        rows,
+        def.imfWeoIndicator,
+        year,
+        def.imfWeoScale ?? 1
+      );
+    } catch (e) {
+      console.error(
+        `[WDI] IMF enrich failed for ${metricId} ${year}:`,
+        e instanceof Error ? e.message : e
+      );
+    }
   }
   if (def.uisIndicatorId) {
-    const uis = await fetchUisGlobalRowsForYear(def.uisIndicatorId, year);
-    rows = mergeGlobalRows(
-      rows,
-      uis.map((r) => ({ countryIso3: r.countryIso3, countryName: r.countryName, value: r.value }))
-    );
+    try {
+      const uis = await fetchUisGlobalRowsForYear(def.uisIndicatorId, year);
+      rows = mergeGlobalRows(
+        rows,
+        uis.map((r) => ({ countryIso3: r.countryIso3, countryName: r.countryName, value: r.value }))
+      );
+    } catch (e) {
+      console.error(
+        `[WDI] UIS enrich failed for ${metricId} ${year}:`,
+        e instanceof Error ? e.message : e
+      );
+    }
   }
 
   if (metricId === "gov_debt_usd") {
-    rows = await enrichGlobalGovDebtUsd(rows, year);
+    try {
+      rows = await enrichGlobalGovDebtUsd(rows, year);
+    } catch (e) {
+      console.error(
+        `[WDI] gov debt USD enrich failed for ${year}:`,
+        e instanceof Error ? e.message : e
+      );
+    }
+  }
+  if (metricId === "uhc_service_coverage") {
+    try {
+      // WDI series SH.UHC.SRVS.CV.XD is archived; WHO GHO remains the authoritative source.
+      const who = await fetchWhoGhoGlobalRowsForYear("UHC_INDEX_REPORTED", year);
+      rows = mergeGlobalRows(
+        rows,
+        who.map((r) => ({
+          countryIso3: r.countryIso3,
+          countryName: r.countryName,
+          value: r.value,
+        }))
+      );
+    } catch (e) {
+      console.error(
+        `[WHO] UHC enrich failed for ${year}:`,
+        e instanceof Error ? e.message : e
+      );
+    }
   }
   if (metricId === "life_expectancy") {
     rows = await enrichFromSexPairAverage(rows, year, "SP.DYN.LE00.MA.IN", "SP.DYN.LE00.FE.IN");
